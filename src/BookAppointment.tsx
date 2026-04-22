@@ -3,15 +3,12 @@ import {
   ArrowLeft,
   Building2,
   Calendar,
-  CheckSquare,
   Home,
-  Info,
   Mail,
   MapPin,
   Mars,
   Phone,
   User,
-  UsersRound,
   Venus,
   X,
 } from 'lucide-react'
@@ -19,16 +16,9 @@ import { AddMemberModal } from './components/AddMemberModal'
 import { ContinueButton } from './components/ContinueButton'
 import { PackageDetailBody } from './components/PackageDetailBody'
 import { PageBackdrop } from './components/PageBackdrop'
-import { Stepper } from './components/Stepper'
+import { Stepper } from './components'
 import { getPackage, PACKAGES, type PackageId } from './data/packages'
 import { defaultFormData, type FormData } from './types'
-
-const RELATIONS = ['Parent', 'Sibling', 'Spouse', 'Grandparent', 'Child', 'In-Laws'] as const
-
-function relationKey(r: (typeof RELATIONS)[number]) {
-  if (r === 'In-Laws') return 'inlaws'
-  return r.toLowerCase()
-}
 
 function useIsLg() {
   const [lg, setLg] = useState(false)
@@ -44,8 +34,8 @@ function useIsLg() {
 
 function inputClass(short?: boolean) {
   return [
-    'w-full rounded-lg bg-white/5 px-4 text-sm text-white outline-none ring-1 ring-transparent placeholder:text-white/60 focus:ring-[#4b8d83]',
-    short ? 'h-10' : 'h-[46px]',
+    'w-full rounded-[8px] bg-white/5 px-4 text-sm text-white outline-none ring-1 ring-white/5 placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]/70',
+    short ? 'h-10' : 'h-[44px]',
   ].join(' ')
 }
 
@@ -57,7 +47,7 @@ function labelRow(
   mobile?: boolean,
 ) {
   return (
-    <div className={`flex items-center gap-2 ${mobile ? 'mb-1' : 'mb-2'}`}>
+    <div className={`flex items-center gap-2 ${mobile ? 'mb-1' : 'mb-1.5'}`}>
       <span
         className={`flex shrink-0 items-center justify-center ${mobile ? 'size-5 text-[#999]' : 'size-3.5 text-[#9a9a9a]'}`}
       >
@@ -70,6 +60,14 @@ function labelRow(
       </span>
       {extra}
     </div>
+  )
+}
+
+function PackageInfoIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+      <path d="M7 0C8.85652 0 10.637 0.737498 11.9497 2.05025C13.2625 3.36301 14 5.14348 14 7C14 8.85652 13.2625 10.637 11.9497 11.9497C10.637 13.2625 8.85652 14 7 14C5.14348 14 3.36301 13.2625 2.05025 11.9497C0.737498 10.637 0 8.85652 0 7C0 5.14348 0.737498 3.36301 2.05025 2.05025C3.36301 0.737498 5.14348 0 7 0ZM8.05 4.29688C8.57031 4.29688 8.99219 3.9375 8.99219 3.40156C8.99219 2.86563 8.57031 2.50625 8.05 2.50625C7.52969 2.50625 7.10938 2.86563 7.10938 3.40156C7.10938 3.9375 7.53125 4.29844 8.05 4.29844M8.23281 9.925C8.23281 9.81875 8.27031 9.54063 8.24844 9.38125L7.42656 10.3281C7.25625 10.5063 7.04375 10.6312 6.94375 10.5984C6.89862 10.5816 6.86096 10.5492 6.83749 10.5071C6.81403 10.4651 6.80627 10.416 6.81563 10.3687L8.18437 6.04063C8.29688 5.49062 7.98906 4.99062 7.33594 4.92656C6.64844 4.92656 5.63281 5.625 5.01562 6.5125C5.01562 6.61875 4.99531 6.88125 5.01562 7.04062L5.8375 6.09375C6.00938 5.91563 6.20625 5.79062 6.30625 5.825C6.35491 5.84336 6.39467 5.87968 6.41734 5.92648C6.44002 5.97328 6.44387 6.027 6.42812 6.07656L5.06875 10.3844C4.9125 10.8875 5.20937 11.3812 5.92969 11.4937C6.99062 11.4937 7.61719 10.8125 8.23438 9.925H8.23281Z" fill="white"/>
+    </svg>
   )
 }
 
@@ -86,7 +84,7 @@ export default function BookAppointment() {
   }, [])
 
   const fullName = useMemo(
-    () => [form.firstName, form.lastName].filter(Boolean).join(' ') || 'John Doe',
+    () => [form.firstName, form.lastName].filter(Boolean).join(' '),
     [form.firstName, form.lastName],
   )
 
@@ -112,34 +110,35 @@ export default function BookAppointment() {
   const headerTitle = 'Book Appointment'
 
   const glassPanel =
-    'rounded-3xl border border-white/10 bg-black/10 shadow-2xl backdrop-blur-md lg:rounded-3xl'
+    'rounded-[18px] border border-white/12 bg-black/18 shadow-[0_26px_70px_rgba(0,0,0,0.35)] backdrop-blur-[2px]'
   /** Thick rounded stroke only — no inner tint/blur so the page background shows through */
   const mobileStep1Shell =
     'mx-auto w-full max-w-[360px] flex-1 overflow-hidden rounded-[18px] border-4 border-[rgba(116,119,117,0.5)] bg-transparent shadow-none ring-0'
 
   const showBack = isLg ? step > 1 : true
   const mobilePersonal = !isLg && step === 1
+  const stretchStepBody = !isLg || step === 4
   const hideGlobalContinue = mobilePersonal
   const mobileHeader = !isLg
 
   return (
     <PageBackdrop>
       <div
-        className={`mx-auto flex flex-col lg:max-w-none lg:min-h-svh lg:px-8 lg:py-10 lg:pb-10 ${
+        className={`mx-auto flex flex-col lg:max-w-none lg:min-h-svh lg:px-10 lg:py-14 ${
           mobilePersonal
             ? 'h-dvh max-h-dvh min-h-0 overflow-hidden px-0 py-2'
-            : 'min-h-svh max-w-[1000px] px-4 py-6 pb-28'
+            : 'min-h-svh max-w-[980px] px-4 py-6 pb-24'
         }`}
       >
         <div
-          className={`flex min-h-0 flex-1 flex-col ${mobilePersonal ? mobileStep1Shell : `${glassPanel} p-5 lg:relative lg:mx-auto lg:min-h-[560px] lg:w-full lg:max-w-[1000px] lg:p-10`}`}
+          className={`flex min-h-0 flex-col ${mobilePersonal ? 'flex-1' : 'flex-1 lg:flex-none'} ${mobilePersonal ? mobileStep1Shell : `${glassPanel} p-5 lg:relative lg:mx-auto lg:w-full lg:max-w-[970px] lg:p-7`}`}
         >
           {/* Header — Figma mobile: back | centered title | close */}
           <header
             className={
               mobileHeader
                 ? 'mb-2 grid grid-cols-[44px_1fr_44px] items-center gap-1 px-5 pt-5'
-                : 'mb-6 flex items-center gap-3 lg:mb-8 lg:gap-6'
+                : 'mb-6 flex items-center gap-3 lg:mb-6 lg:gap-4'
             }
           >
             {mobileHeader ? (
@@ -181,19 +180,19 @@ export default function BookAppointment() {
                 ) : (
                   <span className="w-6 shrink-0" aria-hidden />
                 )}
-                <h1 className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight text-white lg:text-2xl">
+                <h1 className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight text-white lg:text-[24px] lg:leading-none lg:tracking-[-0.5px]">
                   {headerTitle}
                 </h1>
               </>
             )}
           </header>
 
-          <div className={mobilePersonal ? 'mb-4 shrink-0 px-5' : 'mb-8 px-1 lg:px-[10%]'}>
+          <div className={mobilePersonal ? 'mb-4 shrink-0 px-5' : 'mb-8 px-1 lg:mx-auto lg:w-[600px] lg:px-0'}>
             <Stepper current={step === 4 ? 5 : step} compact={!isLg} />
           </div>
 
           <div
-            className={`flex min-h-0 flex-1 flex-col ${mobilePersonal ? 'min-h-0 overflow-hidden' : ''}`}
+            className={`flex min-h-0 flex-col ${stretchStepBody ? 'flex-1' : 'flex-none'} ${mobilePersonal ? 'min-h-0 overflow-hidden' : ''}`}
           >
             {step === 1 && (
               <>
@@ -256,7 +255,7 @@ export default function BookAppointment() {
           {!hideGlobalContinue && (
             <div
               className={[
-                'mt-auto flex pt-6',
+                step < 4 ? 'mt-6 flex' : 'mt-auto flex pt-8',
                 step === 4 && isLg ? 'justify-end' : 'justify-end lg:justify-end',
               ].join(' ')}
             >
@@ -301,7 +300,7 @@ export default function BookAppointment() {
 }
 
 const mobileFieldInput =
-  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-white outline-none ring-1 ring-transparent placeholder:text-white/60 focus:ring-[#4b8d83]'
+  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
 const mobileFieldInput14 = `${mobileFieldInput} text-sm`
 const mobileFieldInput12 = `${mobileFieldInput} text-xs`
 
@@ -356,7 +355,7 @@ function PersonalStep({
             <input
               className={mobileFieldInput12}
               inputMode="tel"
-              placeholder="+91 999999999"
+              placeholder="Phone"
               value={form.phone}
               onChange={(e) => update('phone', e.target.value)}
             />
@@ -368,7 +367,7 @@ function PersonalStep({
               className={mobileFieldInput12}
               type="email"
               inputMode="email"
-              placeholder="abc.xyz@gmail.com"
+              placeholder="Email"
               autoComplete="email"
               value={form.email}
               onChange={(e) => update('email', e.target.value)}
@@ -380,7 +379,7 @@ function PersonalStep({
             <input
               className={mobileFieldInput12}
               inputMode="numeric"
-              placeholder="24"
+              placeholder="Age"
               value={form.age}
               onChange={(e) => update('age', e.target.value)}
             />
@@ -432,14 +431,17 @@ function PersonalStep({
 
   return (
     <>
-      <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Personal Information</h2>
+      <h2 className="mb-7 text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
+        Personal Information
+      </h2>
 
-      <div className="grid flex-1 gap-8 lg:grid-cols-2 lg:gap-x-14 lg:gap-y-6">
+      <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
         <div>
           {labelRow(User, 'Full Name')}
           <input
             className={inputClass()}
-            value={[form.firstName, form.lastName].filter(Boolean).join(' ') || 'John Doe'}
+            placeholder="Full Name"
+            value={[form.firstName, form.lastName].filter(Boolean).join(' ')}
             onChange={(e) => {
               const parts = e.target.value.split(' ')
               update('firstName', parts[0] ?? '')
@@ -455,10 +457,10 @@ function PersonalStep({
               type="button"
               onClick={() => update('gender', 'male')}
               className={[
-                'flex h-[46px] flex-1 items-center justify-center gap-2 rounded-[10px] text-sm text-[#9a9a9a]',
+                'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm text-[#9a9a9a]',
                 form.gender === 'male'
-                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                  : 'bg-white/5',
+                  ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
+                  : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)]',
               ].join(' ')}
             >
               <Mars className="size-4" />
@@ -468,10 +470,10 @@ function PersonalStep({
               type="button"
               onClick={() => update('gender', 'female')}
               className={[
-                'flex h-[46px] flex-1 items-center justify-center gap-2 rounded-md text-sm',
+                'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm',
                 form.gender === 'female'
-                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                  : 'bg-white/5 text-[#9a9a9a]',
+                  ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
+                  : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#9a9a9a]',
               ].join(' ')}
             >
               <Venus className="size-4" />
@@ -481,9 +483,10 @@ function PersonalStep({
         </div>
 
         <div>
-          {labelRow(Mail, 'Email', <UseSame checked={form.useSameEmail} onChange={(v) => update('useSameEmail', v)} />)}
+          {labelRow(Mail, 'Email')}
           <input
             className={inputClass()}
+            placeholder="Email"
             value={form.email}
             onChange={(e) => update('email', e.target.value)}
           />
@@ -491,57 +494,25 @@ function PersonalStep({
 
         <div>
           {labelRow(Calendar, 'Age')}
-          <input className={inputClass()} value={form.age} onChange={(e) => update('age', e.target.value)} />
+          <input
+            className={inputClass()}
+            placeholder="Age"
+            value={form.age}
+            onChange={(e) => update('age', e.target.value)}
+          />
         </div>
 
         <div>
-          {labelRow(Phone, 'Phone', <UseSame checked={form.useSamePhone} onChange={(v) => update('useSamePhone', v)} />)}
+          {labelRow(Phone, 'Phone')}
           <input
             className={inputClass()}
+            placeholder="Phone"
             value={form.phone}
             onChange={(e) => update('phone', e.target.value)}
           />
         </div>
-
-        <div className="lg:col-span-2">
-          {labelRow(UsersRound, 'Relation')}
-          <div className="grid max-w-[640px] grid-cols-3 gap-3">
-            {RELATIONS.map((r) => {
-              const rk = relationKey(r)
-              const selected = form.relation === rk
-              return (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => update('relation', rk)}
-                  className={[
-                    'h-[46px] rounded-[10px] text-sm transition',
-                    selected
-                      ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                      : 'bg-white/5 text-[#9a9a9a]',
-                  ].join(' ')}
-                >
-                  {r}
-                </button>
-              )
-            })}
-          </div>
-        </div>
       </div>
     </>
-  )
-}
-
-function UseSame({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className="ml-auto flex items-center gap-1 text-xs font-medium text-[#9a9a9a]"
-    >
-      Use Same
-      <CheckSquare className={`size-4 ${checked ? 'text-[#4b8d83]' : 'text-[#9a9a9a]/50'}`} />
-    </button>
   )
 }
 
@@ -558,16 +529,24 @@ function AddressStep({
 }) {
   return (
     <>
-      <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Address Details</h2>
-      <div className="grid flex-1 gap-6 lg:grid-cols-2 lg:gap-x-14 lg:gap-y-6">
+      <h2 className="mb-7 text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
+        Address Details
+      </h2>
+      <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
         <div>
           {labelRow(Home, 'House No./ Street')}
-          <input className={inputClass()} value={form.street} onChange={(e) => update('street', e.target.value)} />
+          <input
+            className={inputClass()}
+            placeholder="House No./ Street"
+            value={form.street}
+            onChange={(e) => update('street', e.target.value)}
+          />
         </div>
         <div>
           {labelRow(Building2, 'Landmark')}
           <input
             className={inputClass()}
+            placeholder="Landmark"
             value={form.landmark}
             onChange={(e) => update('landmark', e.target.value)}
           />
@@ -576,13 +555,19 @@ function AddressStep({
           {labelRow(MapPin, 'Pincode')}
           <input
             className={inputClass()}
+            placeholder="Pincode"
             value={form.pincode}
             onChange={(e) => update('pincode', e.target.value)}
           />
         </div>
         <div>
           {labelRow(MapPin, 'City')}
-          <input className={inputClass()} value={form.city} onChange={(e) => update('city', e.target.value)} />
+          <input
+            className={inputClass()}
+            placeholder="City"
+            value={form.city}
+            onChange={(e) => update('city', e.target.value)}
+          />
         </div>
       </div>
     </>
@@ -607,53 +592,55 @@ function PackageStep({
       <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Select Package</h2>
 
       <div className="flex flex-1 flex-col gap-6">
-        <div className="flex gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
-          {PACKAGES.map((p) => {
-            const selected = packageId === p.id
-            return (
-              <div
-                key={p.id}
-                className={[
-                  'relative flex min-w-[200px] flex-1 flex-col items-center rounded-xl border px-4 py-6 text-center transition lg:min-w-0',
-                  selected
-                    ? 'border-[#4b8d83]/60 bg-[radial-gradient(ellipse_at_50%_30%,_#11795f_0%,_#1c493d_55%,_#0d2520_100%)]'
-                    : 'border-white/[0.08] bg-white/5',
-                ].join(' ')}
-              >
-                <button
-                  type="button"
-                  onClick={() => setDetailId(p.id)}
-                  className="absolute right-2 top-2 rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white"
-                  aria-label={`About ${p.title}`}
+        {(!isLg || !detailId) && (
+          <div className="flex gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+            {PACKAGES.map((p) => {
+              const selected = packageId === p.id
+              return (
+                <div
+                  key={p.id}
+                  className={[
+                    'relative flex min-w-[200px] flex-1 flex-col items-center rounded-xl border px-4 py-6 text-center transition lg:min-w-0',
+                    selected
+                      ? 'border-[#4b8d83]/60 bg-[radial-gradient(ellipse_at_50%_30%,_#11795f_0%,_#1c493d_55%,_#0d2520_100%)]'
+                      : 'border-white/[0.08] bg-white/5',
+                  ].join(' ')}
                 >
-                  <Info className="size-3.5 lg:size-3.5" />
-                </button>
-                <button type="button" onClick={() => setPackageId(p.id)} className="flex w-full flex-col items-center gap-3">
-                  <div className="flex size-14 items-center justify-center rounded-full bg-black/20 lg:size-16">
-                    <p.Icon className="size-8 text-white/75" strokeWidth={1.2} />
-                  </div>
-                  <div className="text-sm font-semibold leading-snug text-white">
-                    {p.lines ? (
-                      <>
-                        {p.lines[0]}
-                        <br />
-                        {p.lines[1]}
-                      </>
-                    ) : (
-                      p.title
-                    )}
-                  </div>
-                  <p className="text-xs font-light text-white/80">{p.subtitle}</p>
-                  <div className="mt-1 flex flex-wrap justify-center gap-3 text-[11px] text-[#90df9e] lg:text-xs">
-                    <span className="flex items-center gap-1">✓ Bio-AI Report</span>
-                    <span className="flex items-center gap-1">✓ Blood Test</span>
-                  </div>
-                  <p className="mt-2 text-base font-semibold text-white">{p.price}</p>
-                </button>
-              </div>
-            )
-          })}
-        </div>
+                  <button
+                    type="button"
+                    onClick={() => setDetailId(p.id)}
+                    className="absolute right-2 top-2 rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white"
+                    aria-label={`About ${p.title}`}
+                  >
+                    <PackageInfoIcon />
+                  </button>
+                  <button type="button" onClick={() => setPackageId(p.id)} className="flex w-full flex-col items-center gap-3">
+                    <div className="flex size-14 items-center justify-center lg:size-16">
+                      <img src={p.iconSrc} alt="" className="h-16 w-16 object-contain" aria-hidden />
+                    </div>
+                    <div className="text-sm font-semibold leading-snug text-white">
+                      {p.lines ? (
+                        <>
+                          {p.lines[0]}
+                          <br />
+                          {p.lines[1]}
+                        </>
+                      ) : (
+                        p.title
+                      )}
+                    </div>
+                    <p className="text-xs font-light text-white/80">{p.subtitle}</p>
+                    <div className="mt-1 flex flex-wrap justify-center gap-3 text-[11px] text-[#90df9e] lg:text-xs">
+                      <span className="flex items-center gap-1">✓ Bio-AI Report</span>
+                      <span className="flex items-center gap-1">✓ Blood Test</span>
+                    </div>
+                    <p className="mt-2 text-base font-semibold text-white">{p.price}</p>
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {isLg && detailId && (
           <PackageDetailBody pkg={getPackage(detailId)} variant="desktop" onClose={() => setDetailId(null)} />

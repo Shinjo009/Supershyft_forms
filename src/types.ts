@@ -4,7 +4,7 @@ export type FormData = {
   phone: string
   email: string
   age: string
-  gender: 'male' | 'female'
+  gender: '' | 'male' | 'female'
   street: string
   landmark: string
   pincode: string
@@ -19,17 +19,17 @@ export type FormData = {
 export const defaultFormData: FormData = {
   firstName: '',
   lastName: '',
-  phone: '+91 999999999',
-  email: 'abc.xyz@gmail.com',
-  age: '29',
-  gender: 'female',
-  street: '350 A, Avenue Street',
-  landmark: 'opp. Pink Salt Cafe',
-  pincode: '402 201',
-  city: 'Mumbai',
+  phone: '',
+  email: '',
+  age: '',
+  gender: '',
+  street: '',
+  landmark: '',
+  pincode: '',
+  city: '',
   relation: 'spouse',
   useSamePhone: true,
   useSameEmail: true,
-  appointmentDate: 'Mon, 12 Aug',
-  appointmentTime: '08:00 - 09:00 AM',
+  appointmentDate: '',
+  appointmentTime: '',
 }

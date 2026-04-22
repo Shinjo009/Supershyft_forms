@@ -1,5 +1,7 @@
-import type { LucideIcon } from 'lucide-react'
-import { Activity, Mars, UserRound, Venus } from 'lucide-react'
+import scIcon from '../assets/SC.svg'
+import seIcon from '../assets/SE.svg'
+import spmIcon from '../assets/SPM.svg'
+import spwIcon from '../assets/SPW.svg'
 
 export type PackageId = 'fb-no-vit' | 'fb-vit' | 'men-peak' | 'women-peak'
 
@@ -11,7 +13,7 @@ export type HealthPackage = {
   price: string
   bioAi: string[]
   bloodColumns: [string[], string[]]
-  Icon: LucideIcon
+  iconSrc: string
 }
 
 export const PACKAGES: HealthPackage[] = [
@@ -25,7 +27,7 @@ export const PACKAGES: HealthPackage[] = [
       ['Lipid Profile', 'Liver Function Test', 'Kidney Function Test', 'Iron Profile'],
       ['Thyroid Profile', 'Complete Haemogram', 'FBS', 'HbA1C'],
     ],
-    Icon: UserRound,
+    iconSrc: scIcon,
   },
   {
     id: 'fb-vit',
@@ -38,7 +40,7 @@ export const PACKAGES: HealthPackage[] = [
       ['Lipid Profile', 'Liver Function Test', 'Kidney Function Test', 'Iron Profile'],
       ['Thyroid Profile', 'Complete Haemogram', 'FBS', 'HbA1C'],
     ],
-    Icon: Activity,
+    iconSrc: seIcon,
   },
   {
     id: 'men-peak',
@@ -51,7 +53,7 @@ export const PACKAGES: HealthPackage[] = [
       ['Lipid Profile', 'Liver Function Test', 'Kidney Function Test', 'Iron Profile'],
       ['Thyroid Profile', 'Complete Haemogram', 'FBS', 'HbA1C'],
     ],
-    Icon: Mars,
+    iconSrc: spmIcon,
   },
   {
     id: 'women-peak',
@@ -83,7 +85,7 @@ export const PACKAGES: HealthPackage[] = [
         'Magnesium',
       ],
     ],
-    Icon: Venus,
+    iconSrc: spwIcon,
   },
 ]
 
