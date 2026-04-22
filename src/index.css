@@ -1,0 +1,19 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Lato', ui-sans-serif, system-ui, sans-serif;
+  --color-teal-deep: #063533;
+  --color-teal-mid: #4b8d83;
+  --color-teal-glow: #90df9e;
+  --color-teal-grad-from: #296359;
+  --color-teal-grad-to: #41ab99;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+}
+
+#root {
+  min-height: 100svh;
+}
