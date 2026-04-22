@@ -6,10 +6,24 @@ type Props = {
   onYes: () => void
   onNo: () => void
   displayName?: string
+  /** Total members confirmed if the user picks "No" — includes the one just completed. */
+  memberCount?: number
 }
 
-export function AddMemberModal({ open, onClose, onYes, onNo, displayName = 'John Doe' }: Props) {
+export function AddMemberModal({
+  open,
+  onClose,
+  onYes,
+  onNo,
+  displayName = 'John Doe',
+  memberCount = 1,
+}: Props) {
   if (!open) return null
+
+  const noLabel =
+    memberCount === 1
+      ? 'No, continue with 1 person'
+      : `No, continue with ${memberCount} members`
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -62,7 +76,7 @@ export function AddMemberModal({ open, onClose, onYes, onNo, displayName = 'John
               onClick={onNo}
               className="w-full rounded-full border border-white/20 px-8 py-4 text-[15px] text-white transition hover:bg-white/5"
             >
-              No, continue with 1 person
+              {noLabel}
             </button>
           </div>
         </div>

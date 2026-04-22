@@ -9,6 +9,7 @@ import {
   Mars,
   Phone,
   User,
+  Users,
   Venus,
   X,
 } from 'lucide-react'
@@ -16,9 +17,19 @@ import { AddMemberModal } from './components/AddMemberModal'
 import { ContinueButton } from './components/ContinueButton'
 import { PackageDetailBody } from './components/PackageDetailBody'
 import { PageBackdrop } from './components/PageBackdrop'
+import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
 import { getPackage, PACKAGES, type PackageId } from './data/packages'
 import { defaultFormData, type FormData } from './types'
+
+const RELATION_OPTIONS = [
+  'Parent',
+  'Sibling',
+  'Spouse',
+  'Grandparent',
+  'Child',
+  'In-Laws',
+] as const
 
 function useIsLg() {
   const [lg, setLg] = useState(false)
@@ -78,6 +89,9 @@ export default function BookAppointment() {
   const [packageId, setPackageId] = useState<PackageId>('fb-no-vit')
   const [detailId, setDetailId] = useState<PackageId | null>(null)
   const [addMemberOpen, setAddMemberOpen] = useState(false)
+  const [savedMembers, setSavedMembers] = useState<FormData[]>([])
+  const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
+  const [bookingId, setBookingId] = useState<string>('')
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
@@ -89,22 +103,64 @@ export default function BookAppointment() {
   )
 
   const selectedPkg = getPackage(packageId)
+  const primaryMember = savedMembers[0]
 
+  /** Popup only fires after Schedule — every member (first or subsequent) walks the full 4 steps. */
   const goNextFromPersonal = () => {
-    if (isLg) setAddMemberOpen(true)
-    else setStep(2)
+    setStep(2)
+  }
+
+  const goNextFromSchedule = () => {
+    setAddMemberOpen(true)
+  }
+
+  const allMembers = useMemo(() => [...savedMembers, form], [savedMembers, form])
+
+  const handleProceedToPayment = () => {
+    setBookingId((prev) => prev || generateBookingId())
+    setStep(6)
+  }
+
+  /** Load the chosen member into the editable `form` (swapping with whoever was current)
+   *  and send the user back to Personal. After they walk the flow + say "No" on the
+   *  add-member popup, they'll land back on Confirm with the updated data. */
+  const editMember = (index: number) => {
+    if (index >= 0 && index < savedMembers.length) {
+      const next = [...savedMembers]
+      const toEdit = next[index]
+      next[index] = form
+      setSavedMembers(next)
+      setForm(toEdit)
+    }
+    setExpandedMemberIndex(null)
+    setStep(1)
   }
 
   const resolveAddMember = (another: boolean) => {
     setAddMemberOpen(false)
     if (another) {
+      setSavedMembers((prev) => [...prev, form])
+      setExpandedMemberIndex(null)
       setForm((f) => ({
-        ...f,
-        firstName: '',
-        lastName: '',
+        ...defaultFormData,
+        // Re-use household-level info the new member inherits
+        street: f.street,
+        landmark: f.landmark,
+        pincode: f.pincode,
+        city: f.city,
+        appointmentDate: f.appointmentDate,
+        appointmentTime: f.appointmentTime,
+        // Default "use same" toggles to true so the new member inherits contact info
+        useSamePhone: true,
+        useSameEmail: true,
+        phone: f.phone,
+        email: f.email,
+        relation: 'spouse',
       }))
+      setStep(1)
+    } else {
+      setStep(5)
     }
-    setStep(2)
   }
 
   const headerTitle = 'Book Appointment'
@@ -115,11 +171,12 @@ export default function BookAppointment() {
   const mobileStep1Shell =
     'mx-auto w-full max-w-[360px] flex-1 overflow-hidden rounded-[18px] border-4 border-[rgba(116,119,117,0.5)] bg-transparent shadow-none ring-0'
 
-  const showBack = isLg ? step > 1 : true
+  const showBack = step === 6 ? false : isLg ? step > 1 : true
   const mobilePersonal = !isLg && step === 1
-  const stretchStepBody = !isLg || step === 4
-  const hideGlobalContinue = mobilePersonal
+  const stretchStepBody = !isLg || step === 5 || step === 6
+  const hideGlobalContinue = mobilePersonal || step === 6
   const mobileHeader = !isLg
+  const hideStepper = step === 6
 
   return (
     <PageBackdrop>
@@ -187,9 +244,11 @@ export default function BookAppointment() {
             )}
           </header>
 
-          <div className={mobilePersonal ? 'mb-4 shrink-0 px-5' : 'mb-8 px-1 lg:mx-auto lg:w-[600px] lg:px-0'}>
-            <Stepper current={step === 4 ? 5 : step} compact={!isLg} />
-          </div>
+          {!hideStepper && (
+            <div className={mobilePersonal ? 'mb-4 shrink-0 px-5' : 'mb-8 px-1 lg:mx-auto lg:w-[600px] lg:px-0'}>
+              <Stepper current={step === 5 ? 5 : step} compact={!isLg} />
+            </div>
+          )}
 
           <div
             className={`flex min-h-0 flex-col ${stretchStepBody ? 'flex-1' : 'flex-none'} ${mobilePersonal ? 'min-h-0 overflow-hidden' : ''}`}
@@ -206,6 +265,12 @@ export default function BookAppointment() {
                       labelRow={labelRow}
                       onContinue={goNextFromPersonal}
                       showMobileContinue={false}
+                      savedMembers={savedMembers}
+                      expandedMemberIndex={expandedMemberIndex}
+                      onToggleMember={(i) =>
+                        setExpandedMemberIndex((cur) => (cur === i ? null : i))
+                      }
+                      primaryMember={primaryMember}
                     />
                   </div>
                 ) : (
@@ -217,6 +282,12 @@ export default function BookAppointment() {
                     labelRow={labelRow}
                     onContinue={goNextFromPersonal}
                     showMobileContinue={false}
+                    savedMembers={savedMembers}
+                    expandedMemberIndex={expandedMemberIndex}
+                    onToggleMember={(i) =>
+                      setExpandedMemberIndex((cur) => (cur === i ? null : i))
+                    }
+                    primaryMember={primaryMember}
                   />
                 )}
               </>
@@ -234,11 +305,24 @@ export default function BookAppointment() {
               />
             )}
             {step === 4 && (
+              <ScheduleStep form={form} update={update} />
+            )}
+            {step === 5 && (
               <ConfirmStep
                 form={form}
-                fullName={fullName}
+                members={allMembers}
                 packageTitle={selectedPkg.title}
                 onEdit={(s) => setStep(s)}
+                onEditMember={editMember}
+                onProceed={handleProceedToPayment}
+              />
+            )}
+            {step === 6 && (
+              <BookingConfirmedStep
+                bookingId={bookingId}
+                form={form}
+                members={allMembers}
+                packageTitle={selectedPkg.title}
               />
             )}
           </div>
@@ -255,16 +339,17 @@ export default function BookAppointment() {
           {!hideGlobalContinue && (
             <div
               className={[
-                step < 4 ? 'mt-6 flex' : 'mt-auto flex pt-8',
-                step === 4 && isLg ? 'justify-end' : 'justify-end lg:justify-end',
+                step < 5 ? 'mt-6 flex' : 'mt-auto flex pt-8',
+                step === 5 && isLg ? 'justify-end' : 'justify-end lg:justify-end',
               ].join(' ')}
             >
-              {step < 4 && (
+              {step < 5 && (
                 <ContinueButton
                   onClick={() => {
                     if (step === 1) goNextFromPersonal()
                     else if (step === 2) setStep(3)
-                    else setStep(4)
+                    else if (step === 3) setStep(4)
+                    else goNextFromSchedule()
                   }}
                 >
                   Continue
@@ -294,6 +379,7 @@ export default function BookAppointment() {
         onYes={() => resolveAddMember(true)}
         onNo={() => resolveAddMember(false)}
         displayName={fullName}
+        memberCount={savedMembers.length + 1}
       />
     </PageBackdrop>
   )
@@ -312,6 +398,10 @@ function PersonalStep({
   labelRow,
   onContinue,
   showMobileContinue,
+  savedMembers,
+  expandedMemberIndex,
+  onToggleMember,
+  primaryMember,
 }: {
   form: FormData
   update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
@@ -325,7 +415,25 @@ function PersonalStep({
   ) => React.ReactNode
   onContinue: () => void
   showMobileContinue: boolean
+  savedMembers: FormData[]
+  expandedMemberIndex: number | null
+  onToggleMember: (index: number) => void
+  primaryMember?: FormData
 }) {
+  const hasSavedMembers = savedMembers.length > 0
+
+  const phoneValue = hasSavedMembers && form.useSamePhone && primaryMember ? primaryMember.phone : form.phone
+  const emailValue = hasSavedMembers && form.useSameEmail && primaryMember ? primaryMember.email : form.email
+
+  const toggleUseSamePhone = (next: boolean) => {
+    update('useSamePhone', next)
+    if (next && primaryMember) update('phone', primaryMember.phone)
+  }
+  const toggleUseSameEmail = (next: boolean) => {
+    update('useSameEmail', next)
+    if (next && primaryMember) update('email', primaryMember.email)
+  }
+
   if (!isLg) {
     return (
       <div className="flex min-h-0 flex-col gap-5 pt-4 pb-2">
@@ -429,6 +537,154 @@ function PersonalStep({
     )
   }
 
+  const genderButtons = (
+    <div className="flex gap-3">
+      <button
+        type="button"
+        onClick={() => update('gender', 'male')}
+        className={[
+          'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm text-[#9a9a9a]',
+          form.gender === 'male'
+            ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
+            : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)]',
+        ].join(' ')}
+      >
+        <Mars className="size-4" />
+        <span>Male</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => update('gender', 'female')}
+        className={[
+          'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm',
+          form.gender === 'female'
+            ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
+            : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#9a9a9a]',
+        ].join(' ')}
+      >
+        <Venus className="size-4" />
+        <span>Female</span>
+      </button>
+    </div>
+  )
+
+  if (hasSavedMembers) {
+    return (
+      <>
+        <h2 className="mb-5 text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
+          Personal Information
+        </h2>
+
+        <div className="mb-6 flex flex-col gap-3">
+          {savedMembers.map((m, i) => (
+            <SavedMemberCard
+              key={i}
+              member={m}
+              expanded={expandedMemberIndex === i}
+              onToggle={() => onToggleMember(i)}
+            />
+          ))}
+        </div>
+
+        <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
+          <div>
+            {labelRow(User, 'Full Name')}
+            <input
+              className={inputClass()}
+              placeholder="Full Name"
+              value={[form.firstName, form.lastName].filter(Boolean).join(' ')}
+              onChange={(e) => {
+                const parts = e.target.value.split(' ')
+                update('firstName', parts[0] ?? '')
+                update('lastName', parts.slice(1).join(' '))
+              }}
+            />
+          </div>
+
+          <div>
+            {labelRow(
+              Phone,
+              'Phone',
+              <UseSameToggle
+                checked={form.useSamePhone}
+                onChange={toggleUseSamePhone}
+              />,
+            )}
+            <input
+              className={inputClass()}
+              placeholder="+91 999999999"
+              inputMode="tel"
+              disabled={form.useSamePhone}
+              value={phoneValue}
+              onChange={(e) => update('phone', e.target.value)}
+            />
+          </div>
+
+          <div>
+            {labelRow(
+              Mail,
+              'Email',
+              <UseSameToggle
+                checked={form.useSameEmail}
+                onChange={toggleUseSameEmail}
+              />,
+            )}
+            <input
+              className={inputClass()}
+              placeholder="Email"
+              type="email"
+              disabled={form.useSameEmail}
+              value={emailValue}
+              onChange={(e) => update('email', e.target.value)}
+            />
+          </div>
+
+          <div>
+            {labelRow(Calendar, 'Age')}
+            <input
+              className={inputClass()}
+              placeholder="Age"
+              inputMode="numeric"
+              value={form.age}
+              onChange={(e) => update('age', e.target.value)}
+            />
+          </div>
+
+          <div>
+            {labelRow(Users, 'Relation')}
+            <div className="grid grid-cols-3 gap-3">
+              {RELATION_OPTIONS.map((opt) => {
+                const id = opt.toLowerCase()
+                const selected = form.relation === id
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => update('relation', id)}
+                    className={[
+                      'flex h-[44px] items-center justify-center gap-2 rounded-[6px] text-sm transition',
+                      selected
+                        ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
+                        : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#9a9a9a]',
+                    ].join(' ')}
+                  >
+                    <User className="size-3.5 opacity-80" strokeWidth={1.75} />
+                    <span>{opt}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
+            {labelRow(User, 'Gender')}
+            {genderButtons}
+          </div>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <h2 className="mb-7 text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
@@ -452,34 +708,7 @@ function PersonalStep({
 
         <div>
           {labelRow(User, 'Gender')}
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => update('gender', 'male')}
-              className={[
-                'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm text-[#9a9a9a]',
-                form.gender === 'male'
-                  ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-                  : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)]',
-              ].join(' ')}
-            >
-              <Mars className="size-4" />
-              <span>Male</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => update('gender', 'female')}
-              className={[
-                'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm',
-                form.gender === 'female'
-                  ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-                  : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#9a9a9a]',
-              ].join(' ')}
-            >
-              <Venus className="size-4" />
-              <span>Female</span>
-            </button>
-          </div>
+          {genderButtons}
         </div>
 
         <div>
@@ -513,6 +742,47 @@ function PersonalStep({
         </div>
       </div>
     </>
+  )
+}
+
+function UseSameToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean
+  onChange: (next: boolean) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      aria-pressed={checked}
+      className="ml-auto flex items-center gap-1.5 text-[12px] font-medium text-[#9a9a9a] transition hover:text-white/90"
+    >
+      <span>Use Same</span>
+      {checked ? (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          aria-hidden
+        >
+          <path
+            fillRule="evenodd"
+            clipRule="evenodd"
+            d="M3.33333 2C2.97971 2 2.64057 2.14048 2.39052 2.39052C2.14048 2.64057 2 2.97971 2 3.33333V12.6667C2 13.0203 2.14048 13.3594 2.39052 13.6095C2.64057 13.8595 2.97971 14 3.33333 14H12.6667C13.0203 14 13.3594 13.8595 13.6095 13.6095C13.8595 13.3594 14 13.0203 14 12.6667V3.33333C14 2.97971 13.8595 2.64057 13.6095 2.39052C13.3594 2.14048 13.0203 2 12.6667 2H3.33333ZM3.33333 3.33333H12.6667V12.6667H3.33333V3.33333ZM11.3 6.53C11.3637 6.4685 11.4145 6.39494 11.4494 6.3136C11.4843 6.23227 11.5027 6.14479 11.5035 6.05627C11.5043 5.96775 11.4874 5.87996 11.4539 5.79803C11.4204 5.7161 11.3709 5.64166 11.3083 5.57907C11.2457 5.51647 11.1712 5.46697 11.0893 5.43345C11.0074 5.39993 10.9196 5.38306 10.8311 5.38383C10.7425 5.3846 10.6551 5.40299 10.5737 5.43793C10.4924 5.47287 10.4188 5.52366 10.3573 5.58733L7.05733 8.88733L5.64333 7.47333C5.58144 7.41139 5.50795 7.36225 5.42706 7.32871C5.34617 7.29517 5.25947 7.2779 5.1719 7.27787C4.99506 7.2778 4.82543 7.34799 4.70033 7.473C4.57524 7.59801 4.50493 7.76758 4.50487 7.94443C4.5048 8.12128 4.57499 8.29091 4.7 8.416L6.53867 10.2547C6.60677 10.3228 6.68763 10.3768 6.77662 10.4137C6.86561 10.4506 6.961 10.4696 7.05733 10.4696C7.15367 10.4696 7.24905 10.4506 7.33805 10.4137C7.42704 10.3768 7.5079 10.3228 7.576 10.2547L11.3 6.53Z"
+            fill="#9A9A9A"
+          />
+        </svg>
+      ) : (
+        <span
+          className="size-4 rounded-[2px] border border-[#9A9A9A]/70"
+          aria-hidden
+        />
+      )}
+    </button>
   )
 }
 
@@ -652,48 +922,40 @@ function PackageStep({
 
 function ConfirmStep({
   form,
-  fullName,
+  members,
   packageTitle,
   onEdit,
+  onEditMember,
+  onProceed,
 }: {
   form: FormData
-  fullName: string
+  members: FormData[]
   packageTitle: string
   onEdit: (step: number) => void
+  onEditMember: (index: number) => void
+  onProceed: () => void
 }) {
   return (
     <>
       <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Confirm Details</h2>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-8">
         <section className="flex-1 rounded-lg bg-white/5 p-5">
-          <div className="mb-4 flex items-center justify-between border-b border-white/20 pb-2">
-            <h3 className="text-[15px] font-semibold text-white">Personal Information</h3>
-            <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(1)}>
-              Edit
-            </button>
-          </div>
-          <ul className="space-y-4 text-sm text-[#ccc]">
-            <li className="flex gap-2">
-              <User className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {fullName}
-            </li>
-            <li className="flex gap-2">
-              <Calendar className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.age} Years
-            </li>
-            <li className="flex gap-2 capitalize">
-              <User className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.gender}
-            </li>
-            <li className="flex gap-2">
-              <Phone className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.phone}
-            </li>
-            <li className="flex gap-2">
-              <Mail className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.email}
-            </li>
-          </ul>
+          <h3 className="mb-5 text-[15px] font-semibold text-white">Personal Information</h3>
+          {members.map((m, i) => (
+            <div key={i}>
+              {i > 0 && (
+                <div
+                  className="my-5 h-px w-full bg-gradient-to-r from-transparent via-[#4b8d83]/60 to-transparent"
+                  aria-hidden
+                />
+              )}
+              <MemberSummary
+                member={m}
+                showRelation={i > 0}
+                onEdit={() => onEditMember(i)}
+              />
+            </div>
+          ))}
         </section>
 
         <section className="flex-1 rounded-lg bg-white/5 p-5">
@@ -727,7 +989,7 @@ function ConfirmStep({
           <div className="rounded-lg bg-white/5 p-5">
             <div className="mb-4 flex items-center justify-between border-b border-white/20 pb-2">
               <h3 className="text-[15px] font-semibold text-white">Sample Collection</h3>
-              <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(3)}>
+              <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(4)}>
                 Edit
               </button>
             </div>
@@ -746,12 +1008,371 @@ function ConfirmStep({
           <ContinueButton
             className="w-full max-w-none"
             showChevron={false}
-            onClick={() => alert('Proceed to payment (demo)')}
+            onClick={onProceed}
           >
             Proceed to Payment
           </ContinueButton>
         </section>
       </div>
     </>
+  )
+}
+
+function MemberSummary({
+  member,
+  showRelation,
+  onEdit,
+}: {
+  member: FormData
+  showRelation: boolean
+  onEdit: () => void
+}) {
+  const name = [member.firstName, member.lastName].filter(Boolean).join(' ') || '—'
+  const GenderIcon = member.gender === 'female' ? Venus : Mars
+  const genderLabel = member.gender
+    ? member.gender.charAt(0).toUpperCase() + member.gender.slice(1)
+    : '—'
+  const relationLabel =
+    RELATION_OPTIONS.find((o) => o.toLowerCase() === member.relation) ?? member.relation
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onEdit}
+        className="absolute right-0 top-0 text-[13px] font-medium text-[#4b8d83] hover:text-[#90df9e]"
+      >
+        Edit
+      </button>
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-4 pr-10 text-sm text-[#cccccc]">
+        {showRelation ? (
+          <>
+            <SummaryItem Icon={User} label={name} />
+            <SummaryItem Icon={User} label={relationLabel || '—'} capitalize />
+          </>
+        ) : (
+          <div className="col-span-2">
+            <SummaryItem Icon={User} label={name} />
+          </div>
+        )}
+        <SummaryItem Icon={Calendar} label={member.age ? `${member.age} Years` : '—'} />
+        <SummaryItem Icon={GenderIcon} label={genderLabel} />
+        <div className="col-span-2">
+          <SummaryItem Icon={Phone} label={member.phone || '—'} />
+        </div>
+        <div className="col-span-2">
+          <SummaryItem Icon={Mail} label={member.email || '—'} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SummaryItem({
+  Icon,
+  label,
+  capitalize,
+}: {
+  Icon: typeof User
+  label: string
+  capitalize?: boolean
+}) {
+  return (
+    <div className="flex items-start gap-2 leading-snug">
+      <Icon className="mt-0.5 size-[18px] shrink-0 opacity-70" strokeWidth={1.75} />
+      <span className={['truncate', capitalize ? 'capitalize' : ''].join(' ')}>{label}</span>
+    </div>
+  )
+}
+
+const TIME_SLOTS = [
+  '06:00 AM', '06:30 AM', '07:00 AM', '07:30 AM', '08:00 AM',
+  '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
+  '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM',
+  '01:30 PM',
+] as const
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+
+type UpcomingDate = { iso: string; day: string; date: number }
+
+function getUpcomingDates(count: number): UpcomingDate[] {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const today = new Date()
+  const out: UpcomingDate[] = []
+  for (let i = 0; i < count; i++) {
+    const d = new Date(today)
+    d.setDate(today.getDate() + i)
+    out.push({
+      iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+      day: DAY_LABELS[d.getDay()],
+      date: d.getDate(),
+    })
+  }
+  return out
+}
+
+function ScheduleStep({
+  form,
+  update,
+}: {
+  form: FormData
+  update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
+}) {
+  const dates = useMemo(() => getUpcomingDates(4), [])
+
+  const selectedDateClass =
+    'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
+  const idleDateClass = 'border-white/[0.08] bg-white/5'
+
+  const selectedPillClass =
+    'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
+  const idlePillClass = 'bg-white/5 text-[#9A9A9A]'
+
+  return (
+    <div className="flex flex-col items-start gap-9 self-stretch">
+      <section className="flex flex-col items-start gap-6 self-stretch">
+        <h2 className="text-[24px] font-medium leading-none text-white">Preferred Date</h2>
+        <div className="flex h-[79px] items-center gap-6 self-stretch overflow-x-auto lg:overflow-visible">
+          {dates.map((d) => {
+            const selected = form.appointmentDate === d.iso
+            return (
+              <button
+                key={d.iso}
+                type="button"
+                onClick={() => update('appointmentDate', d.iso)}
+                aria-pressed={selected}
+                className={[
+                  'flex aspect-[85/78] h-[78px] w-[85px] shrink-0 flex-col items-center justify-center gap-1 rounded-[6px] border px-[18.39px] transition',
+                  selected ? selectedDateClass : idleDateClass,
+                ].join(' ')}
+              >
+                <span
+                  className={[
+                    'font-sans text-[12px] font-medium leading-none',
+                    selected ? 'text-white' : 'text-[#cccccc]/80',
+                  ].join(' ')}
+                >
+                  {d.day}
+                </span>
+                <span
+                  className={[
+                    'font-sans text-[18px] font-semibold leading-none',
+                    selected ? 'text-white' : 'text-[#cccccc]/80',
+                  ].join(' ')}
+                >
+                  {d.date}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="flex flex-col items-start gap-6 self-stretch">
+        <div className="flex flex-col items-start gap-2">
+          <h2 className="text-[24px] font-medium leading-none text-white">Preferred Time Slot</h2>
+          <p className="text-[15px] font-light leading-none text-[#999]">
+            Collection window is of 1 hour
+          </p>
+        </div>
+        <div className="grid w-full grid-cols-3 gap-3 self-stretch sm:grid-cols-4 lg:grid-cols-5">
+          {TIME_SLOTS.map((slot) => {
+            const selected = form.appointmentTime === slot
+            return (
+              <button
+                key={slot}
+                type="button"
+                onClick={() => update('appointmentTime', slot)}
+                aria-pressed={selected}
+                className={[
+                  'flex h-[39px] flex-col items-center justify-center rounded-[20px] border border-transparent px-4 text-center text-[14px] font-normal leading-none transition',
+                  selected ? selectedPillClass : idlePillClass,
+                ].join(' ')}
+              >
+                {slot}
+              </button>
+            )
+          })}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function generateBookingId(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let out = ''
+  for (let i = 0; i < 6; i++) {
+    out += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return out
+}
+
+const MONTH_LABELS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+] as const
+
+function formatBookingDate(iso: string): string {
+  if (!iso) return '—'
+  const d = new Date(`${iso}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return iso
+  return `${DAY_LABELS[d.getDay()]}, ${d.getDate()} ${MONTH_LABELS[d.getMonth()]}`
+}
+
+function formatTimeWindow(slot: string): string {
+  if (!slot) return '—'
+  const match = slot.match(/^(\d{1,2}):(\d{2}) (AM|PM)$/)
+  if (!match) return slot
+  const startH12 = parseInt(match[1], 10)
+  const minutes = match[2]
+  const startPeriod = match[3]
+  const h24 = (startH12 % 12) + (startPeriod === 'PM' ? 12 : 0)
+  const endH24 = (h24 + 1) % 24
+  const endPeriod = endH24 >= 12 ? 'PM' : 'AM'
+  const endH12 = endH24 % 12 === 0 ? 12 : endH24 % 12
+  if (startPeriod === endPeriod) {
+    return `${startH12}:${minutes}-${endH12}:${minutes} ${startPeriod}`
+  }
+  return `${startH12}:${minutes} ${startPeriod}-${endH12}:${minutes} ${endPeriod}`
+}
+
+function BookingConfirmedStep({
+  bookingId,
+  form,
+  members,
+  packageTitle,
+}: {
+  bookingId: string
+  form: FormData
+  members: FormData[]
+  packageTitle: string
+}) {
+  const memberNames = members
+    .map((m) => [m.firstName, m.lastName].filter(Boolean).join(' '))
+    .filter(Boolean)
+    .join(', ')
+  const location =
+    [form.landmark, form.city].filter(Boolean).join(', ') || form.city || form.street || '—'
+  const dateTime = `${formatBookingDate(form.appointmentDate)}  |  ${formatTimeWindow(form.appointmentTime)}`
+
+  return (
+    <div className="flex flex-col items-center self-stretch">
+      <div className="flex flex-col items-center gap-6 pb-10">
+        <div
+          className="flex size-[100px] items-center justify-center rounded-full border border-[#90DF9E] bg-black/20 shadow-[0_1px_10px_0_#90DF9E]"
+          aria-hidden
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="45" height="32" viewBox="0 0 45 32" fill="none">
+            <path
+              d="M42.9998 1.66699L14.5832 30.0837L1.6665 17.167"
+              stroke="#4B8D83"
+              strokeWidth="3.33333"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+
+        <h2 className="text-center font-sans text-[24px] font-semibold leading-none text-[#4B8D83]">
+          Booking Confirmed!
+        </h2>
+
+        <div className="flex w-[517px] max-w-full flex-col items-center gap-[30px] rounded-[8px] border border-[#90DF9E]/20 bg-[#4B8D83]/10 p-6">
+          <div className="flex flex-col items-center">
+            <span className="text-center text-[20px] font-normal leading-[40px] text-[#9A9A9A]">
+              Booking ID
+            </span>
+            <span className="text-[30px] font-bold leading-[40px] text-white">
+              {bookingId || '—'}
+            </span>
+          </div>
+
+          <div className="flex flex-col items-start gap-5 self-stretch">
+            <InfoRow icon={<CalendarIcon />} label="Date & Time" value={dateTime} />
+            <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} />
+            <InfoRow icon={<PackageIcon />} label="Package" value={packageTitle} />
+            <InfoRow icon={<LocationIcon />} label="Location" value={location} />
+          </div>
+        </div>
+      </div>
+
+      <a
+        href="https://app.supershyft.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-[10px] flex h-[49px] w-[231.53px] items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[15px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
+      >
+        Download the App
+      </a>
+
+      <p className="mt-3 text-center text-[14px] font-medium leading-[22.5px] text-[#999]">OR</p>
+      <p className="text-center text-[15px] font-medium leading-[22.5px] text-[#999]">
+        We will get in touch with you on Whatsapp/ Email
+      </p>
+    </div>
+  )
+}
+
+function InfoRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex items-start gap-3 self-stretch">
+      <span className="mt-[18px] flex size-5 shrink-0 items-center justify-center" aria-hidden>
+        {icon}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="text-[12px] font-normal leading-none text-[#9A9A9A]">{label}</span>
+        <span className="mt-1 truncate text-[20px] font-medium leading-none text-[#CCC]">
+          {value}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function CalendarIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M6.6665 1.66699V5.00033M13.3332 1.66699V5.00033" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4.16667 3.33398H15.8333C16.7538 3.33398 17.5 4.08018 17.5 5.00065V16.6673C17.5 17.5878 16.7538 18.334 15.8333 18.334H4.16667C3.24619 18.334 2.5 17.5878 2.5 16.6673V5.00065C2.5 4.08018 3.24619 3.33398 4.16667 3.33398V3.33398" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.5 8.33398H17.5" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function UserIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M15.8332 17.5V15.8333C15.8332 13.9924 14.3408 12.5 12.4998 12.5H7.49984C5.65889 12.5 4.1665 13.9924 4.1665 15.8333V17.5" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6.6665 5.83333C6.6665 7.67305 8.16012 9.16667 9.99984 9.16667C11.8396 9.16667 13.3332 7.67305 13.3332 5.83333C13.3332 3.99362 11.8396 2.5 9.99984 2.5C8.16012 2.5 6.6665 3.99362 6.6665 5.83333V5.83333" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function PackageIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M10.5 19.4439V10.555M9.61111 19.2039C9.88137 19.36 10.1879 19.4421 10.5 19.4421C10.8121 19.4421 11.1186 19.36 11.3889 19.2039L17.6111 15.6484C17.8811 15.4925 18.1054 15.2684 18.2614 14.9984C18.4174 14.7285 18.4997 14.4223 18.5 14.1106V6.99948C18.4997 6.68772 18.4174 6.38153 18.2614 6.11162C18.1054 5.84172 17.8811 5.61758 17.6111 5.4617L11.3889 1.90615C11.1186 1.75011 10.8121 1.66797 10.5 1.66797C10.1879 1.66797 9.88137 1.75011 9.61111 1.90615L3.38889 5.4617C3.1189 5.61758 2.89465 5.84172 2.73863 6.11162C2.58262 6.38153 2.50032 6.68772 2.5 6.99948V14.1106C2.50032 14.4223 2.58262 14.7285 2.73863 14.9984C2.89465 15.2684 3.1189 15.4925 3.38889 15.6484L9.61111 19.2039Z" stroke="#4B8D83" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.7583 6.11026L10.5005 10.5547L18.2427 6.11026M6.50052 3.68359L14.5005 8.26137" stroke="#4B8D83" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function LocationIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M16.6668 8.33366C16.6668 12.4945 12.051 16.8278 10.501 18.1662C10.2044 18.3892 9.79596 18.3892 9.49933 18.1662C7.94933 16.8278 3.3335 12.4945 3.3335 8.33366C3.3335 4.65423 6.32073 1.66699 10.0002 1.66699C13.6796 1.66699 16.6668 4.65423 16.6668 8.33366" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7.5 8.33398C7.5 9.71377 8.62021 10.834 10 10.834C11.3798 10.834 12.5 9.71377 12.5 8.33398C12.5 6.9542 11.3798 5.83398 10 5.83398C8.62021 5.83398 7.5 6.9542 7.5 8.33398V8.33398" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }
