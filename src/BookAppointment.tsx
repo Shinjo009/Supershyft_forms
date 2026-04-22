@@ -11,7 +11,6 @@ import {
   User,
   Users,
   Venus,
-  X,
 } from 'lucide-react'
 import { AddMemberModal } from './components/AddMemberModal'
 import { ContinueButton } from './components/ContinueButton'
@@ -26,9 +25,9 @@ const RELATION_OPTIONS = [
   'Parent',
   'Sibling',
   'Spouse',
-  'Grandparent',
   'Child',
-  'In-Laws',
+  'Grandparent',
+  'Other',
 ] as const
 
 function useIsLg() {
@@ -85,6 +84,7 @@ function PackageInfoIcon() {
 export default function BookAppointment() {
   const isLg = useIsLg()
   const [step, setStep] = useState(1)
+  const [maxReachedStep, setMaxReachedStep] = useState(1)
   const [form, setForm] = useState<FormData>(defaultFormData)
   const [packageId, setPackageId] = useState<PackageId>('fb-no-vit')
   const [detailId, setDetailId] = useState<PackageId | null>(null)
@@ -96,6 +96,10 @@ export default function BookAppointment() {
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
   }, [])
+
+  useEffect(() => {
+    setMaxReachedStep((prev) => Math.max(prev, step))
+  }, [step])
 
   const fullName = useMemo(
     () => [form.firstName, form.lastName].filter(Boolean).join(' '),
@@ -157,6 +161,7 @@ export default function BookAppointment() {
         email: f.email,
         relation: 'spouse',
       }))
+      setMaxReachedStep(1)
       setStep(1)
     } else {
       setStep(5)
@@ -167,15 +172,15 @@ export default function BookAppointment() {
 
   const glassPanel =
     'rounded-[18px] border border-white/12 bg-black/18 shadow-[0_26px_70px_rgba(0,0,0,0.35)] backdrop-blur-[2px]'
-  /** Thick rounded stroke only — no inner tint/blur so the page background shows through */
-  const mobileStep1Shell =
-    'mx-auto w-full max-w-[360px] flex-1 overflow-hidden rounded-[18px] border-4 border-[rgba(116,119,117,0.5)] bg-transparent shadow-none ring-0'
+  /** Mobile step 1: full-bleed on backdrop — no framed card/border (matches Figma). */
+  const mobileStep1Layout = 'flex w-full min-h-0 flex-1 flex-col overflow-hidden'
 
-  const showBack = step === 6 ? false : isLg ? step > 1 : true
-  const mobilePersonal = !isLg && step === 1
+  const isMobile = !isLg
+  const mobilePersonal = isMobile && step === 1
+  const showBack = step === 6 ? false : isLg ? step > 1 : step > 1
   const stretchStepBody = !isLg || step === 5 || step === 6
   const hideGlobalContinue = mobilePersonal || step === 6
-  const mobileHeader = !isLg
+  const mobileHeader = isMobile
   const hideStepper = step === 6
 
   return (
@@ -183,45 +188,47 @@ export default function BookAppointment() {
       <div
         className={`mx-auto flex flex-col lg:max-w-none lg:min-h-svh lg:px-10 lg:py-14 ${
           mobilePersonal
-            ? 'h-dvh max-h-dvh min-h-0 overflow-hidden px-0 py-2'
-            : 'min-h-svh max-w-[980px] px-4 py-6 pb-24'
+            ? 'h-dvh max-h-dvh min-h-0 overflow-hidden px-0 py-0'
+            : isMobile
+              ? 'min-h-svh px-0 py-0'
+              : 'min-h-svh max-w-[980px] px-4 py-6 pb-24'
         }`}
       >
         <div
-          className={`flex min-h-0 flex-col ${mobilePersonal ? 'flex-1' : 'flex-1 lg:flex-none'} ${mobilePersonal ? mobileStep1Shell : `${glassPanel} p-5 lg:relative lg:mx-auto lg:w-full lg:max-w-[970px] lg:p-7`}`}
+          className={`flex min-h-0 flex-col ${mobilePersonal ? 'flex-1' : 'flex-1 lg:flex-none'} ${
+            mobilePersonal
+              ? mobileStep1Layout
+              : isMobile
+                ? 'w-full'
+                : `${glassPanel} p-5 lg:relative lg:mx-auto lg:w-full lg:max-w-[970px] lg:p-7`
+          }`}
         >
           {/* Header — Figma mobile: back | centered title | close */}
           <header
             className={
               mobileHeader
-                ? 'mb-2 grid grid-cols-[44px_1fr_44px] items-center gap-1 px-5 pt-5'
+                ? 'grid grid-cols-[44px_1fr_44px] items-center gap-1 px-5 pt-5'
                 : 'mb-6 flex items-center gap-3 lg:mb-6 lg:gap-4'
             }
           >
             {mobileHeader ? (
               <>
-                <button
-                  type="button"
-                  onClick={() =>
-                    step > 1 ? setStep((s) => Math.max(1, s - 1)) : window.history.length > 1
-                      ? window.history.back()
-                      : undefined
-                  }
-                  className="flex size-9 items-center justify-center rounded-lg text-white hover:bg-white/10"
-                  aria-label="Back"
-                >
-                  <ArrowLeft className="size-5" strokeWidth={2.2} />
-                </button>
-                <h1 className="text-center text-[20px] font-semibold leading-none text-white">
+                {showBack ? (
+                  <button
+                    type="button"
+                    onClick={() => setStep((s) => Math.max(1, s - 1))}
+                    className="flex size-9 items-center justify-center rounded-lg text-white hover:bg-white/10"
+                    aria-label="Back"
+                  >
+                    <ArrowLeft className="size-5" />
+                  </button>
+                ) : (
+                  <span aria-hidden />
+                )}
+                <h1 className="text-center font-sans text-[20px] font-semibold leading-normal text-white">
                   {headerTitle}
                 </h1>
-                <button
-                  type="button"
-                  className="flex size-9 items-center justify-center rounded-lg text-white/90 hover:bg-white/10 lg:hidden"
-                  aria-label="Close"
-                >
-                  <X className="size-6" strokeWidth={2} />
-                </button>
+                <span aria-hidden />
               </>
             ) : (
               <>
@@ -245,13 +252,34 @@ export default function BookAppointment() {
           </header>
 
           {!hideStepper && (
-            <div className={mobilePersonal ? 'mb-4 shrink-0 px-5' : 'mb-8 px-1 lg:mx-auto lg:w-[600px] lg:px-0'}>
-              <Stepper current={step === 5 ? 5 : step} compact={!isLg} />
+            <div
+              className={
+                mobilePersonal
+                  ? 'mt-6 mb-[45px] shrink-0 px-5'
+                  : isMobile
+                    ? 'mt-6 mb-8 shrink-0 px-5'
+                    : 'mb-8 px-1 lg:mx-auto lg:w-[600px] lg:px-0'
+              }
+            >
+              <Stepper
+                current={step === 5 ? 5 : step}
+                compact={!isLg}
+                maxReachable={maxReachedStep}
+                onStepClick={(target) => setStep(target)}
+              />
             </div>
           )}
 
           <div
-            className={`flex min-h-0 flex-col ${stretchStepBody ? 'flex-1' : 'flex-none'} ${mobilePersonal ? 'min-h-0 overflow-hidden' : ''}`}
+            className={`flex min-h-0 flex-col ${stretchStepBody ? 'flex-1' : 'flex-none'} ${
+              mobilePersonal
+                ? 'min-h-0 overflow-hidden'
+                : isMobile
+                  ? step === 6
+                    ? 'px-5'
+                    : 'px-5 pt-1'
+                  : ''
+            }`}
           >
             {step === 1 && (
               <>
@@ -293,7 +321,13 @@ export default function BookAppointment() {
               </>
             )}
             {step === 2 && (
-              <AddressStep form={form} update={update} inputClass={inputClass} labelRow={labelRow} />
+              <AddressStep
+                form={form}
+                update={update}
+                inputClass={inputClass}
+                labelRow={labelRow}
+                isMobile={isMobile}
+              />
             )}
             {step === 3 && (
               <PackageStep
@@ -302,10 +336,11 @@ export default function BookAppointment() {
                 detailId={detailId}
                 setDetailId={setDetailId}
                 isLg={isLg}
+                isMobile={isMobile}
               />
             )}
             {step === 4 && (
-              <ScheduleStep form={form} update={update} />
+              <ScheduleStep form={form} update={update} isMobile={isMobile} />
             )}
             {step === 5 && (
               <ConfirmStep
@@ -323,55 +358,61 @@ export default function BookAppointment() {
                 form={form}
                 members={allMembers}
                 packageTitle={selectedPkg.title}
+                isMobile={isMobile}
               />
             )}
           </div>
 
           {mobilePersonal && step === 1 && (
-            <div className="shrink-0 px-6 pb-3 pt-2">
+            <div className="shrink-0 px-6 pt-2 pb-[30px]">
               <ContinueButton variant="mobileBar" onClick={goNextFromPersonal}>
                 Continue
               </ContinueButton>
             </div>
           )}
 
-          {/* Footer CTA — Figma mobile step 1: full-width bar inside form column */}
+          {/* Footer CTA — mobile: full-width bar pinned to bottom with 30px safe-area; desktop: right-aligned pill */}
           {!hideGlobalContinue && (
-            <div
-              className={[
-                step < 5 ? 'mt-6 flex' : 'mt-auto flex pt-8',
-                step === 5 && isLg ? 'justify-end' : 'justify-end lg:justify-end',
-              ].join(' ')}
-            >
-              {step < 5 && (
-                <ContinueButton
-                  onClick={() => {
-                    if (step === 1) goNextFromPersonal()
-                    else if (step === 2) setStep(3)
-                    else if (step === 3) setStep(4)
-                    else goNextFromSchedule()
-                  }}
-                >
-                  Continue
-                </ContinueButton>
-              )}
-            </div>
+            isMobile ? (
+              step < 5 ? (
+                <div className="mt-auto shrink-0 px-6 pt-4 pb-[30px]">
+                  <ContinueButton
+                    variant="mobileBar"
+                    onClick={() => {
+                      if (step === 1) goNextFromPersonal()
+                      else if (step === 2) setStep(3)
+                      else if (step === 3) setStep(4)
+                      else goNextFromSchedule()
+                    }}
+                  >
+                    Continue
+                  </ContinueButton>
+                </div>
+              ) : null
+            ) : (
+              <div
+                className={[
+                  step < 5 ? 'mt-6 flex' : 'mt-auto flex pt-8',
+                  'justify-end',
+                ].join(' ')}
+              >
+                {step < 5 && (
+                  <ContinueButton
+                    onClick={() => {
+                      if (step === 1) goNextFromPersonal()
+                      else if (step === 2) setStep(3)
+                      else if (step === 3) setStep(4)
+                      else goNextFromSchedule()
+                    }}
+                  >
+                    Continue
+                  </ContinueButton>
+                )}
+              </div>
+            )
           )}
         </div>
       </div>
-
-      {/* Mobile package detail overlay */}
-      {detailId && !isLg && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-10 backdrop-blur-sm">
-          <div className="relative w-full max-w-[360px]">
-            <PackageDetailBody
-              pkg={getPackage(detailId)}
-              variant="mobile"
-              onClose={() => setDetailId(null)}
-            />
-          </div>
-        </div>
-      )}
 
       <AddMemberModal
         open={addMemberOpen}
@@ -388,7 +429,6 @@ export default function BookAppointment() {
 const mobileFieldInput =
   'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
 const mobileFieldInput14 = `${mobileFieldInput} text-sm`
-const mobileFieldInput12 = `${mobileFieldInput} text-xs`
 
 function PersonalStep({
   form,
@@ -434,9 +474,159 @@ function PersonalStep({
     if (next && primaryMember) update('email', primaryMember.email)
   }
 
+  if (!isLg && hasSavedMembers) {
+    const relationPillBase =
+      'flex h-10 items-center justify-center rounded-full px-2 text-[13px] leading-none transition'
+    const relationPillSelected =
+      'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
+    const relationPillIdle = 'bg-white/5 text-[#9A9A9A]'
+
+    return (
+      <div className="flex min-h-0 flex-col gap-5 pb-2">
+        <div className="flex flex-col gap-3">
+          {savedMembers.map((m, i) => (
+            <SavedMemberCard
+              key={i}
+              member={m}
+              expanded={expandedMemberIndex === i}
+              onToggle={() => onToggleMember(i)}
+            />
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-1">
+            {labelRow(User, 'Full Name', undefined, true)}
+            <div className="flex gap-2">
+              <input
+                className={`${mobileFieldInput14} min-w-0 flex-1`}
+                placeholder="First name"
+                autoComplete="given-name"
+                value={form.firstName}
+                onChange={(e) => update('firstName', e.target.value)}
+              />
+              <input
+                className={`${mobileFieldInput14} min-w-0 flex-1`}
+                placeholder="Last Name"
+                autoComplete="family-name"
+                value={form.lastName}
+                onChange={(e) => update('lastName', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(User, 'Gender', undefined, true)}
+            <div className="flex h-10 gap-6">
+              <button
+                type="button"
+                onClick={() => update('gender', 'male')}
+                className={[
+                  'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs leading-4 transition',
+                  form.gender === 'male'
+                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
+                    : 'bg-white/5 text-[#999]',
+                ].join(' ')}
+              >
+                <Mars className="size-3.5 shrink-0 opacity-90" strokeWidth={2} />
+                Male
+              </button>
+              <button
+                type="button"
+                onClick={() => update('gender', 'female')}
+                className={[
+                  'flex flex-1 items-center justify-center gap-2 rounded-full px-2.5 py-1 text-xs leading-4 transition',
+                  form.gender === 'female'
+                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
+                    : 'bg-white/5 text-[#999]',
+                ].join(' ')}
+              >
+                <Venus className="size-4 shrink-0 opacity-90" strokeWidth={2} />
+                Female
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(Users, 'Relation', undefined, true)}
+            <div className="grid grid-cols-3 gap-2">
+              {RELATION_OPTIONS.map((opt) => {
+                const id = opt.toLowerCase()
+                const selected = form.relation === id
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => update('relation', id)}
+                    className={[
+                      relationPillBase,
+                      selected ? relationPillSelected : relationPillIdle,
+                    ].join(' ')}
+                  >
+                    {opt}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(Calendar, 'Age', undefined, true)}
+            <input
+              className={mobileFieldInput14}
+              inputMode="numeric"
+              placeholder="Age"
+              value={form.age}
+              onChange={(e) => update('age', e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(
+              Phone,
+              'Phone',
+              <UseSameToggle
+                checked={form.useSamePhone}
+                onChange={toggleUseSamePhone}
+                label="Same as before"
+              />,
+              true,
+            )}
+            <input
+              className={mobileFieldInput14}
+              inputMode="tel"
+              placeholder="+91 999999999"
+              disabled={form.useSamePhone}
+              value={phoneValue}
+              onChange={(e) => update('phone', e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(
+              Mail,
+              'Email',
+              <UseSameToggle checked={form.useSameEmail} onChange={toggleUseSameEmail} />,
+              true,
+            )}
+            <input
+              className={mobileFieldInput14}
+              type="email"
+              inputMode="email"
+              placeholder="Email"
+              disabled={form.useSameEmail}
+              value={emailValue}
+              onChange={(e) => update('email', e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (!isLg) {
     return (
-      <div className="flex min-h-0 flex-col gap-5 pt-4 pb-2">
+      <div className="flex min-h-0 flex-col gap-5 pb-2">
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
             {labelRow(User, 'Full Name', undefined, true)}
@@ -461,7 +651,7 @@ function PersonalStep({
           <div className="flex flex-col gap-1">
             {labelRow(Phone, 'Phone', undefined, true)}
             <input
-              className={mobileFieldInput12}
+              className={mobileFieldInput14}
               inputMode="tel"
               placeholder="Phone"
               value={form.phone}
@@ -472,7 +662,7 @@ function PersonalStep({
           <div className="flex flex-col gap-1">
             {labelRow(Mail, 'Email', undefined, true)}
             <input
-              className={mobileFieldInput12}
+              className={mobileFieldInput14}
               type="email"
               inputMode="email"
               placeholder="Email"
@@ -485,7 +675,7 @@ function PersonalStep({
           <div className="flex flex-col gap-1">
             {labelRow(Calendar, 'Age', undefined, true)}
             <input
-              className={mobileFieldInput12}
+              className={mobileFieldInput14}
               inputMode="numeric"
               placeholder="Age"
               value={form.age}
@@ -748,9 +938,11 @@ function PersonalStep({
 function UseSameToggle({
   checked,
   onChange,
+  label = 'Use Same',
 }: {
   checked: boolean
   onChange: (next: boolean) => void
+  label?: string
 }) {
   return (
     <button
@@ -759,7 +951,7 @@ function UseSameToggle({
       aria-pressed={checked}
       className="ml-auto flex items-center gap-1.5 text-[12px] font-medium text-[#9a9a9a] transition hover:text-white/90"
     >
-      <span>Use Same</span>
+      <span>{label}</span>
       {checked ? (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -791,12 +983,63 @@ function AddressStep({
   update,
   inputClass,
   labelRow,
+  isMobile,
 }: {
   form: FormData
   update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
   inputClass: (short?: boolean) => string
-  labelRow: (Icon: typeof User, label: string, extra?: React.ReactNode) => React.ReactNode
+  labelRow: (
+    Icon: typeof User,
+    label: string,
+    extra?: React.ReactNode,
+    mobile?: boolean,
+  ) => React.ReactNode
+  isMobile: boolean
 }) {
+  if (isMobile) {
+    return (
+      <div className="flex flex-col gap-5 pb-2">
+        <div className="flex flex-col gap-1">
+          {labelRow(Home, 'House No./ Street', undefined, true)}
+          <input
+            className={mobileFieldInput14}
+            placeholder="House No./ Street"
+            value={form.street}
+            onChange={(e) => update('street', e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          {labelRow(Building2, 'Landmark', undefined, true)}
+          <input
+            className={mobileFieldInput14}
+            placeholder="Landmark"
+            value={form.landmark}
+            onChange={(e) => update('landmark', e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          {labelRow(MapPin, 'Pincode', undefined, true)}
+          <input
+            className={mobileFieldInput14}
+            inputMode="numeric"
+            placeholder="Pincode"
+            value={form.pincode}
+            onChange={(e) => update('pincode', e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          {labelRow(MapPin, 'City', undefined, true)}
+          <input
+            className={mobileFieldInput14}
+            placeholder="City"
+            value={form.city}
+            onChange={(e) => update('city', e.target.value)}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       <h2 className="mb-7 text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
@@ -850,27 +1093,40 @@ function PackageStep({
   detailId,
   setDetailId,
   isLg,
+  isMobile,
 }: {
   packageId: PackageId
   setPackageId: (id: PackageId) => void
   detailId: PackageId | null
   setDetailId: (id: PackageId | null) => void
   isLg: boolean
+  isMobile: boolean
 }) {
   return (
     <>
-      <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Select Package</h2>
+      {!isMobile && (
+        <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Select Package</h2>
+      )}
 
       <div className="flex flex-1 flex-col gap-6">
-        {(!isLg || !detailId) && (
-          <div className="flex gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+        {!detailId && (
+          <div
+            className={
+              isMobile
+                ? 'grid grid-cols-2 gap-3'
+                : 'flex gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0'
+            }
+          >
             {PACKAGES.map((p) => {
               const selected = packageId === p.id
               return (
                 <div
                   key={p.id}
                   className={[
-                    'relative flex min-w-[200px] flex-1 flex-col items-center rounded-xl border px-4 py-6 text-center transition lg:min-w-0',
+                    'relative flex flex-col items-center overflow-hidden rounded-xl border text-center transition',
+                    isMobile
+                      ? 'h-[260px] w-full px-3 py-4'
+                      : 'max-h-[260px] min-w-[200px] flex-1 px-4 py-5 lg:min-w-0',
                     selected
                       ? 'border-[#4b8d83]/60 bg-[radial-gradient(ellipse_at_50%_30%,_#11795f_0%,_#1c493d_55%,_#0d2520_100%)]'
                       : 'border-white/[0.08] bg-white/5',
@@ -884,11 +1140,32 @@ function PackageStep({
                   >
                     <PackageInfoIcon />
                   </button>
-                  <button type="button" onClick={() => setPackageId(p.id)} className="flex w-full flex-col items-center gap-3">
-                    <div className="flex size-14 items-center justify-center lg:size-16">
-                      <img src={p.iconSrc} alt="" className="h-16 w-16 object-contain" aria-hidden />
+                  <button
+                    type="button"
+                    onClick={() => setPackageId(p.id)}
+                    className={`flex w-full flex-col items-center ${isMobile ? 'h-full gap-1.5' : 'gap-3'}`}
+                  >
+                    <div
+                      className={
+                        isMobile
+                          ? 'flex size-12 items-center justify-center'
+                          : 'flex size-14 items-center justify-center lg:size-16'
+                      }
+                    >
+                      <img
+                        src={p.iconSrc}
+                        alt=""
+                        className={isMobile ? 'size-12 object-contain' : 'h-16 w-16 object-contain'}
+                        aria-hidden
+                      />
                     </div>
-                    <div className="text-sm font-semibold leading-snug text-white">
+                    <div
+                      className={
+                        isMobile
+                          ? 'text-sm font-semibold leading-tight text-white'
+                          : 'text-sm font-semibold leading-snug text-white'
+                      }
+                    >
                       {p.lines ? (
                         <>
                           {p.lines[0]}
@@ -899,12 +1176,35 @@ function PackageStep({
                         p.title
                       )}
                     </div>
-                    <p className="text-xs font-light text-white/80">{p.subtitle}</p>
-                    <div className="mt-1 flex flex-wrap justify-center gap-3 text-[11px] text-[#90df9e] lg:text-xs">
-                      <span className="flex items-center gap-1">✓ Bio-AI Report</span>
-                      <span className="flex items-center gap-1">✓ Blood Test</span>
+                    <p
+                      className={
+                        isMobile
+                          ? 'text-[11px] font-light leading-snug text-white/80'
+                          : 'text-xs font-light text-white/80'
+                      }
+                    >
+                      {p.subtitle}
+                    </p>
+                    <div
+                      className={[
+                        'flex flex-wrap justify-center text-[#90df9e]',
+                        isMobile
+                          ? 'gap-x-3 gap-y-0.5 text-[11px]'
+                          : 'mt-1 gap-x-3 gap-y-1 text-[11px] lg:text-xs',
+                      ].join(' ')}
+                    >
+                      <span className="flex items-center gap-1">✓ Bio-AI Reports</span>
+                      <span className="flex items-center gap-1">✓ Blood Tests</span>
                     </div>
-                    <p className="mt-2 text-base font-semibold text-white">{p.price}</p>
+                    <p
+                      className={
+                        isMobile
+                          ? 'mt-auto text-[15px] font-semibold text-white'
+                          : 'mt-2 text-base font-semibold text-white'
+                      }
+                    >
+                      {p.price}
+                    </p>
                   </button>
                 </div>
               )
@@ -912,8 +1212,12 @@ function PackageStep({
           </div>
         )}
 
-        {isLg && detailId && (
-          <PackageDetailBody pkg={getPackage(detailId)} variant="desktop" onClose={() => setDetailId(null)} />
+        {detailId && (
+          <PackageDetailBody
+            pkg={getPackage(detailId)}
+            variant={isMobile ? 'mobile' : 'desktop'}
+            onClose={() => setDetailId(null)}
+          />
         )}
       </div>
     </>
@@ -1113,12 +1417,33 @@ function getUpcomingDates(count: number): UpcomingDate[] {
   return out
 }
 
+function PreferredDateIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+      <path d="M6.66699 1.66699V5.00033M13.3337 1.66699V5.00033" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4.16667 3.33398H15.8333C16.7538 3.33398 17.5 4.08018 17.5 5.00065V16.6673C17.5 17.5878 16.7538 18.334 15.8333 18.334H4.16667C3.24619 18.334 2.5 17.5878 2.5 16.6673V5.00065C2.5 4.08018 3.24619 3.33398 4.16667 3.33398V3.33398" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.5 8.33398H17.5" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function PreferredTimeIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+      <path d="M10.5932 19.4902L10.5822 19.492L10.5112 19.5241L10.4912 19.5278L10.4772 19.5241L10.4062 19.492C10.3955 19.4889 10.3875 19.4905 10.3822 19.4966L10.3782 19.5057L10.3612 19.8981L10.3662 19.9165L10.3762 19.9284L10.4802 19.9962L10.4952 19.9999L10.5072 19.9962L10.6112 19.9284L10.6232 19.9137L10.6272 19.8981L10.6102 19.5067C10.6075 19.4969 10.6018 19.4914 10.5932 19.4902ZM10.8582 19.3866L10.8452 19.3884L10.6602 19.4737L10.6502 19.4828L10.6472 19.4929L10.6652 19.8871L10.6702 19.8981L10.6782 19.9046L10.8792 19.9898C10.8918 19.9929 10.9015 19.9904 10.9082 19.9825L10.9122 19.9696L10.8782 19.4067C10.8748 19.3957 10.8682 19.389 10.8582 19.3866ZM10.1432 19.3884C10.1388 19.3859 10.1335 19.3852 10.1285 19.3862C10.1234 19.3872 10.119 19.39 10.1162 19.3939L10.1102 19.4067L10.0762 19.9696C10.0768 19.9806 10.0825 19.988 10.0932 19.9917L10.1082 19.9898L10.3092 19.9046L10.3192 19.8972L10.3232 19.8871L10.3402 19.4929L10.3372 19.4819L10.3272 19.4727L10.1432 19.3884Z" fill="#9A9A9A" />
+      <path d="M10 0C15.523 0 20 4.1045 20 9.16798C20 14.2315 15.523 18.336 10 18.336C4.477 18.336 0 14.2315 0 9.16798C0 4.1045 4.477 0 10 0ZM10 1.8336C7.87827 1.8336 5.84344 2.60632 4.34315 3.98179C2.84285 5.35725 2 7.22278 2 9.16798C2 11.1132 2.84285 12.9787 4.34315 14.3542C5.84344 15.7296 7.87827 16.5024 10 16.5024C12.1217 16.5024 14.1566 15.7296 15.6569 14.3542C17.1571 12.9787 18 11.1132 18 9.16798C18 7.22278 17.1571 5.35725 15.6569 3.98179C14.1566 2.60632 12.1217 1.8336 10 1.8336ZM10 3.66719C10.2449 3.66722 10.4813 3.74966 10.6644 3.89888C10.8474 4.0481 10.9643 4.25371 10.993 4.47672L11 4.58399V8.78842L13.707 11.2702C13.8863 11.4352 13.9905 11.6566 13.9982 11.8894C14.006 12.1222 13.9168 12.349 13.7488 12.5237C13.5807 12.6984 13.3464 12.8079 13.0935 12.83C12.8406 12.8521 12.588 12.7851 12.387 12.6426L12.293 12.5665L9.293 9.81615C9.13758 9.67354 9.03776 9.48794 9.009 9.28808L9 9.16798V4.58399C9 4.34084 9.10536 4.10765 9.29289 3.93571C9.48043 3.76378 9.73478 3.66719 10 3.66719Z" fill="#9A9A9A" />
+    </svg>
+  )
+}
+
 function ScheduleStep({
   form,
   update,
+  isMobile,
 }: {
   form: FormData
   update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
+  isMobile: boolean
 }) {
   const dates = useMemo(() => getUpcomingDates(4), [])
 
@@ -1130,11 +1455,28 @@ function ScheduleStep({
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
   const idlePillClass = 'bg-white/5 text-[#9A9A9A]'
 
+  const sectionLabelClass = isMobile
+    ? 'font-sans text-[14px] font-medium leading-normal text-[#9A9A9A]'
+    : 'text-[24px] font-medium leading-none text-white'
+
   return (
-    <div className="flex flex-col items-start gap-9 self-stretch">
-      <section className="flex flex-col items-start gap-6 self-stretch">
-        <h2 className="text-[24px] font-medium leading-none text-white">Preferred Date</h2>
-        <div className="flex h-[79px] items-center gap-6 self-stretch overflow-x-auto lg:overflow-visible">
+    <div className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-6' : 'gap-9'}`}>
+      <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
+        {isMobile ? (
+          <div className="flex items-center gap-2">
+            <PreferredDateIcon />
+            <h2 className={sectionLabelClass}>Preferred Date</h2>
+          </div>
+        ) : (
+          <h2 className={sectionLabelClass}>Preferred Date</h2>
+        )}
+        <div
+          className={
+            isMobile
+              ? 'grid w-full grid-cols-4 gap-3 self-stretch'
+              : 'flex h-[79px] items-center gap-6 self-stretch overflow-x-auto lg:overflow-visible'
+          }
+        >
           {dates.map((d) => {
             const selected = form.appointmentDate === d.iso
             return (
@@ -1144,7 +1486,9 @@ function ScheduleStep({
                 onClick={() => update('appointmentDate', d.iso)}
                 aria-pressed={selected}
                 className={[
-                  'flex aspect-[85/78] h-[78px] w-[85px] shrink-0 flex-col items-center justify-center gap-1 rounded-[6px] border px-[18.39px] transition',
+                  isMobile
+                    ? 'flex h-[78px] w-full flex-col items-center justify-center gap-1 rounded-[8px] border transition'
+                    : 'flex aspect-[85/78] h-[78px] w-[85px] shrink-0 flex-col items-center justify-center gap-1 rounded-[6px] border px-[18.39px] transition',
                   selected ? selectedDateClass : idleDateClass,
                 ].join(' ')}
               >
@@ -1170,13 +1514,25 @@ function ScheduleStep({
         </div>
       </section>
 
-      <section className="flex flex-col items-start gap-6 self-stretch">
-        <div className="flex flex-col items-start gap-2">
-          <h2 className="text-[24px] font-medium leading-none text-white">Preferred Time Slot</h2>
-          <p className="text-[15px] font-light leading-none text-[#999]">
-            Collection window is of 1 hour
-          </p>
-        </div>
+      <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
+        {isMobile ? (
+          <div className="flex flex-col items-start gap-0.5">
+            <div className="flex items-center gap-2">
+              <PreferredTimeIcon />
+              <h2 className={sectionLabelClass}>Preferred Time Slot</h2>
+            </div>
+            <p className="pl-[28px] font-sans text-[10px] font-light leading-normal text-[#CCC]">
+              Collection window is of 1 hour
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-start gap-2">
+            <h2 className={sectionLabelClass}>Preferred Time Slot</h2>
+            <p className="text-[15px] font-light leading-none text-[#999]">
+              Collection window is of 1 hour
+            </p>
+          </div>
+        )}
         <div className="grid w-full grid-cols-3 gap-3 self-stretch sm:grid-cols-4 lg:grid-cols-5">
           {TIME_SLOTS.map((slot) => {
             const selected = form.appointmentTime === slot
@@ -1244,11 +1600,13 @@ function BookingConfirmedStep({
   form,
   members,
   packageTitle,
+  isMobile,
 }: {
   bookingId: string
   form: FormData
   members: FormData[]
   packageTitle: string
+  isMobile: boolean
 }) {
   const memberNames = members
     .map((m) => [m.firstName, m.lastName].filter(Boolean).join(' '))
@@ -1257,6 +1615,68 @@ function BookingConfirmedStep({
   const location =
     [form.landmark, form.city].filter(Boolean).join(', ') || form.city || form.street || '—'
   const dateTime = `${formatBookingDate(form.appointmentDate)}  |  ${formatTimeWindow(form.appointmentTime)}`
+
+  if (isMobile) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col items-center self-stretch">
+        <div className="flex w-full flex-col items-center gap-6 pt-[60px]">
+          <div
+            className="flex size-[80px] items-center justify-center rounded-full border border-[#90DF9E] bg-black/20 shadow-[0_1px_10px_0_#90DF9E]"
+            aria-hidden
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="26" viewBox="0 0 45 32" fill="none">
+              <path
+                d="M42.9998 1.66699L14.5832 30.0837L1.6665 17.167"
+                stroke="#4B8D83"
+                strokeWidth="3.33333"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+
+          <h2 className="text-center font-sans text-[16px] font-medium leading-normal text-[#90DF9E]">
+            Booking Confirmed!
+          </h2>
+
+          <div className="flex w-full flex-col items-center gap-5 self-stretch rounded-[8px] border border-[#90DF9E]/20 bg-[#4B8D83]/10 p-6">
+            <div className="flex flex-col items-center self-stretch">
+              <span className="text-center font-sans text-[14px] font-normal leading-[24px] text-[#9A9A9A]">
+                Booking ID
+              </span>
+              <span className="font-sans text-[20px] font-bold leading-[28px] text-white">
+                {bookingId || '—'}
+              </span>
+            </div>
+
+            <div className="flex w-full flex-col items-start gap-3.5">
+              <InfoRow icon={<CalendarIcon />} label="Date & Time" value={dateTime} isMobile />
+              <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} isMobile />
+              <InfoRow icon={<PackageIcon />} label="Package" value={packageTitle} isMobile />
+              <InfoRow icon={<LocationIcon />} label="Location" value={location} isMobile />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-auto flex w-full flex-col items-center gap-3 pb-[50px] pt-6">
+          <a
+            href="https://app.supershyft.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[16px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
+          >
+            Download the App
+          </a>
+          <p className="text-center font-sans text-[13px] font-medium leading-normal text-[#999]">
+            OR
+          </p>
+          <p className="text-center font-sans text-[13px] font-medium leading-normal text-[#999]">
+            We will get in touch with you on Whatsapp/ Email
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col items-center self-stretch">
@@ -1320,19 +1740,42 @@ function InfoRow({
   icon,
   label,
   value,
+  isMobile = false,
 }: {
   icon: React.ReactNode
   label: string
   value: string
+  isMobile?: boolean
 }) {
   return (
     <div className="flex items-start gap-3 self-stretch">
-      <span className="mt-[18px] flex size-5 shrink-0 items-center justify-center" aria-hidden>
+      <span
+        className={
+          isMobile
+            ? 'mt-[6px] flex size-[18px] shrink-0 items-center justify-center'
+            : 'mt-[18px] flex size-5 shrink-0 items-center justify-center'
+        }
+        aria-hidden
+      >
         {icon}
       </span>
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className="text-[12px] font-normal leading-none text-[#9A9A9A]">{label}</span>
-        <span className="mt-1 truncate text-[20px] font-medium leading-none text-[#CCC]">
+        <span
+          className={
+            isMobile
+              ? 'font-sans text-[10px] font-normal leading-normal text-[#9A9A9A]'
+              : 'text-[12px] font-normal leading-none text-[#9A9A9A]'
+          }
+        >
+          {label}
+        </span>
+        <span
+          className={
+            isMobile
+              ? 'mt-1 font-sans text-[15px] font-medium leading-normal text-[#CCC]'
+              : 'mt-1 truncate text-[20px] font-medium leading-none text-[#CCC]'
+          }
+        >
           {value}
         </span>
       </div>

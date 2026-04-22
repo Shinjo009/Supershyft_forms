@@ -44,11 +44,8 @@ export function SavedMemberCard({ member, expanded, onToggle }: Props) {
 
       {expanded && (
         <div className="border-t border-white/10 px-5 pb-5 pt-4">
-          <dl className="grid grid-cols-1 gap-x-10 gap-y-3 text-[13px] text-[#cccccc]/80 sm:grid-cols-3">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] text-[#cccccc]/80 sm:grid-cols-3 sm:gap-x-10">
             <DetailItem Icon={User} label={fullName} />
-            <DetailItem Icon={Mail} label={member.email || '—'} />
-            <DetailItem Icon={Phone} label={member.phone || '—'} />
-            <DetailItem Icon={Calendar} label={member.age ? `${member.age} Years` : '—'} />
             <DetailItem
               Icon={GenderIcon}
               label={
@@ -57,6 +54,11 @@ export function SavedMemberCard({ member, expanded, onToggle }: Props) {
                   : '—'
               }
             />
+            <DetailItem Icon={Phone} label={member.phone || '—'} />
+            <DetailItem Icon={Calendar} label={member.age ? `${member.age} Years` : '—'} />
+            <div className="col-span-2 sm:col-span-1">
+              <DetailItem Icon={Mail} label={member.email || '—'} />
+            </div>
           </dl>
         </div>
       )}

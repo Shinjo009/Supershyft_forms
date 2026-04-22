@@ -15,7 +15,7 @@ export function PackageDetailBody({ pkg, onClose, variant }: Props) {
     <div
       className={[
         isMobile
-          ? 'relative mx-auto w-full max-w-[320px] rounded-xl border border-white/10 bg-white/5 p-6'
+          ? 'relative w-full rounded-[16px] border border-white/10 bg-white/[0.04] p-6'
           : 'relative w-full rounded-[8px] border border-white/10 bg-white/5 pb-12 pl-[61px] pr-6 pt-12',
       ].join(' ')}
     >
@@ -40,11 +40,11 @@ export function PackageDetailBody({ pkg, onClose, variant }: Props) {
         <div
           className={
             isMobile
-              ? 'flex gap-5'
+              ? 'flex items-center gap-5'
               : 'flex min-w-[190px] flex-col items-center justify-center gap-6 text-center'
           }
         >
-          <div className="flex size-16 items-center justify-center">
+          <div className="flex size-16 shrink-0 items-center justify-center">
             <img
               src={pkg.iconSrc}
               alt=""
@@ -57,7 +57,7 @@ export function PackageDetailBody({ pkg, onClose, variant }: Props) {
               className={[
                 'font-bold text-white',
                 isMobile
-                  ? 'max-w-[140px] text-[15px] leading-snug'
+                  ? 'text-[18px] leading-snug'
                   : 'max-w-[220px] text-center text-[20px] font-bold leading-normal',
               ].join(' ')}
             >
@@ -77,22 +77,38 @@ export function PackageDetailBody({ pkg, onClose, variant }: Props) {
           </div>
         </div>
 
-        <div className={isMobile ? 'w-full space-y-3' : 'flex flex-1 items-stretch gap-4'}>
+        <div className={isMobile ? 'w-full space-y-5' : 'flex flex-1 items-stretch gap-4'}>
           <section
             className={
               isMobile ? '' : 'flex min-w-[185px] flex-[0.8] flex-col justify-center'
             }
           >
-            <h4 className="mb-3 text-center text-xs font-semibold text-white lg:text-left lg:text-[15px]">
+            <h4
+              className={
+                isMobile
+                  ? 'mb-3 text-[15px] font-semibold text-white'
+                  : 'mb-3 text-center text-xs font-semibold text-white lg:text-left lg:text-[15px]'
+              }
+            >
               Bio-AI Insights Covered
             </h4>
             <ul className="space-y-2">
               {pkg.bioAi.map((item) => (
                 <li
                   key={item}
-                  className="flex gap-2 text-[11px] leading-relaxed text-[#9a9a9a] lg:text-[15px] lg:text-[#ccc]"
+                  className={
+                    isMobile
+                      ? 'flex gap-2 text-[13px] leading-relaxed text-[#cccccc]/80'
+                      : 'flex gap-2 text-[11px] leading-relaxed text-[#9a9a9a] lg:text-[15px] lg:text-[#ccc]'
+                  }
                 >
-                  <span className="mt-1.5 size-1 shrink-0 rounded-full bg-[#4b8d83] lg:size-1.5" />
+                  <span
+                    className={
+                      isMobile
+                        ? 'mt-[7px] size-1.5 shrink-0 rounded-full bg-[#4b8d83]'
+                        : 'mt-1.5 size-1 shrink-0 rounded-full bg-[#4b8d83] lg:size-1.5'
+                    }
+                  />
                   {item}
                 </li>
               ))}
@@ -106,17 +122,33 @@ export function PackageDetailBody({ pkg, onClose, variant }: Props) {
           )}
 
           <section className={isMobile ? '' : 'min-w-[360px] flex-[1.45]'}>
-            <h4 className="mb-3 text-center text-xs font-semibold text-white lg:text-left lg:text-[15px]">
+            <h4
+              className={
+                isMobile
+                  ? 'mb-3 text-[15px] font-semibold text-white'
+                  : 'mb-3 text-center text-xs font-semibold text-white lg:text-left lg:text-[15px]'
+              }
+            >
               Blood Markers Covered
             </h4>
-            <div className={isMobile ? 'flex justify-between gap-4' : 'flex gap-6'}>
+            <div className={isMobile ? 'grid grid-cols-2 gap-x-4 gap-y-2' : 'flex gap-6'}>
               <ul className="space-y-2">
                 {left.map((item) => (
                   <li
                     key={item}
-                    className="flex gap-2 text-[11px] leading-relaxed text-[#9a9a9a] lg:whitespace-nowrap lg:text-[15px] lg:text-[#ccc]"
+                    className={
+                      isMobile
+                        ? 'flex gap-2 text-[13px] leading-relaxed text-[#cccccc]/80'
+                        : 'flex gap-2 text-[11px] leading-relaxed text-[#9a9a9a] lg:whitespace-nowrap lg:text-[15px] lg:text-[#ccc]'
+                    }
                   >
-                    <span className="mt-1.5 size-1 shrink-0 rounded-full bg-[#4b8d83] lg:size-1.5" />
+                    <span
+                      className={
+                        isMobile
+                          ? 'mt-[7px] size-1.5 shrink-0 rounded-full bg-[#4b8d83]'
+                          : 'mt-1.5 size-1 shrink-0 rounded-full bg-[#4b8d83] lg:size-1.5'
+                      }
+                    />
                     {item}
                   </li>
                 ))}
@@ -125,9 +157,19 @@ export function PackageDetailBody({ pkg, onClose, variant }: Props) {
                 {right.map((item) => (
                   <li
                     key={item}
-                    className="flex gap-2 text-[11px] leading-relaxed text-[#9a9a9a] lg:whitespace-nowrap lg:text-[15px] lg:text-[#ccc]"
+                    className={
+                      isMobile
+                        ? 'flex gap-2 text-[13px] leading-relaxed text-[#cccccc]/80'
+                        : 'flex gap-2 text-[11px] leading-relaxed text-[#9a9a9a] lg:whitespace-nowrap lg:text-[15px] lg:text-[#ccc]'
+                    }
                   >
-                    <span className="mt-1.5 size-1 shrink-0 rounded-full bg-[#4b8d83] lg:size-1.5" />
+                    <span
+                      className={
+                        isMobile
+                          ? 'mt-[7px] size-1.5 shrink-0 rounded-full bg-[#4b8d83]'
+                          : 'mt-1.5 size-1 shrink-0 rounded-full bg-[#4b8d83] lg:size-1.5'
+                      }
+                    />
                     {item}
                   </li>
                 ))}
@@ -138,7 +180,9 @@ export function PackageDetailBody({ pkg, onClose, variant }: Props) {
       </div>
 
       {isMobile && (
-        <p className="mt-6 text-center text-[15px] font-bold text-white">Total Value: {pkg.price}</p>
+        <p className="mt-6 text-center text-[16px] font-bold text-white">
+          Total Value: {pkg.price}
+        </p>
       )}
     </div>
   )

@@ -19,8 +19,9 @@ export type HealthPackage = {
 export const PACKAGES: HealthPackage[] = [
   {
     id: 'fb-no-vit',
-    title: 'Full Body Without Vitamins',
-    subtitle: 'Includes Bio-AI Health Insights',
+    title: 'Supershyft Core',
+    lines: ['Supershyft', 'Core'],
+    subtitle: 'Your foundation for metabolic intelligence',
     price: 'Rs. 2,999/-',
     bioAi: ['Metabolic Age Score', 'Early Detection', 'Oxidative Stress Analysis'],
     bloodColumns: [
@@ -31,9 +32,9 @@ export const PACKAGES: HealthPackage[] = [
   },
   {
     id: 'fb-vit',
-    title: 'Full Body With Vitamins',
-    lines: ['Full Body With', 'Vitamins'],
-    subtitle: 'Includes Bio-AI Health Insights',
+    title: 'Supershyft Elite',
+    lines: ['Supershyft', 'Elite'],
+    subtitle: 'The ultimate blueprint for longevity.',
     price: 'Rs. 2,999/-',
     bioAi: ['Metabolic Age Score', 'Early Detection', 'Oxidative Stress Analysis'],
     bloodColumns: [
@@ -44,9 +45,9 @@ export const PACKAGES: HealthPackage[] = [
   },
   {
     id: 'men-peak',
-    title: 'Men Peak Performance',
-    lines: ['Men Peak', 'Performance'],
-    subtitle: 'Includes Bio-AI Health Insights',
+    title: 'Supershyft Peak (Men)',
+    lines: ['Supershyft Peak', '(Men)'],
+    subtitle: 'Turn biomarker insights into performance optimisation.',
     price: 'Rs. 2,999/-',
     bioAi: ['Metabolic Age Score', 'Early Detection', 'Oxidative Stress Analysis'],
     bloodColumns: [
@@ -57,9 +58,9 @@ export const PACKAGES: HealthPackage[] = [
   },
   {
     id: 'women-peak',
-    title: 'Women Peak Performance',
-    lines: ['Women Peak', 'Performance'],
-    subtitle: 'Includes Bio-AI Health Insights',
+    title: 'Supershyft Peak (Women)',
+    lines: ['Supershyft Peak', '(Women)'],
+    subtitle: 'Turn biomarker insights into performance optimisation.',
     price: 'Rs. 2,999/-',
     bioAi: ['Metabolic Age Score', 'Early Detection', 'Oxidative Stress Analysis'],
     bloodColumns: [

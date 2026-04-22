@@ -3,6 +3,9 @@ const STEPS = ['Personal', 'Address', 'Package', 'Schedule'] as const
 type Props = {
   current: number
   compact?: boolean
+  /** Furthest step the user has already completed. Any step <= this is clickable. */
+  maxReachable?: number
+  onStepClick?: (step: number) => void
 }
 
 function activeStep(current: number) {
@@ -21,7 +24,7 @@ function lineFillPercent(current: number) {
   return 0
 }
 
-export function Stepper({ current, compact = false }: Props) {
+export function Stepper({ current, compact = false, maxReachable, onStepClick }: Props) {
   const stepForA11y = activeStep(current)
   const fillPercent = lineFillPercent(current)
 
@@ -45,22 +48,35 @@ export function Stepper({ current, compact = false }: Props) {
               const active = current < 5 && step === current
               const done = (current < 5 && step < current) || (current >= 5 && step <= 4)
               const fill = active ? '#FFFFFF' : done ? '#4B8D83' : '#9A9A9A'
+              const reachable = maxReachable ?? current
+              const clickable = Boolean(onStepClick) && step !== current && step <= reachable
+
+              const circleClass = [
+                'flex h-[30px] w-[30px] items-center justify-center rounded-full border text-xs font-semibold',
+                active
+                  ? 'border-[#4B8D83] bg-[#063533] text-white shadow-[0_0_18px_rgba(75,141,131,0.8)]'
+                  : done
+                    ? 'border-[#4B8D83] bg-[#063533] text-[#4B8D83]'
+                    : 'border-[#9A9A9A]/40 bg-[#061214] text-[#9A9A9A]',
+                clickable ? 'cursor-pointer transition hover:brightness-125' : '',
+              ].join(' ')
 
               return (
                 <div key={label} className="flex w-[30px] flex-col items-center">
-                  <div
-                    className={[
-                      'flex h-[30px] w-[30px] items-center justify-center rounded-full border text-xs font-semibold',
-                      active
-                        ? 'border-[#4B8D83] bg-[#063533] text-white shadow-[0_0_18px_rgba(75,141,131,0.8)]'
-                        : done
-                          ? 'border-[#4B8D83] bg-[#063533] text-[#4B8D83]'
-                          : 'border-[#9A9A9A]/40 bg-[#061214] text-[#9A9A9A]',
-                    ].join(' ')}
-                    aria-hidden
-                  >
-                    {step}
-                  </div>
+                  {clickable ? (
+                    <button
+                      type="button"
+                      onClick={() => onStepClick?.(step)}
+                      className={circleClass}
+                      aria-label={`Go back to step ${step}: ${label}`}
+                    >
+                      {step}
+                    </button>
+                  ) : (
+                    <div className={circleClass} aria-hidden>
+                      {step}
+                    </div>
+                  )}
                   <span
                     className="mt-2 text-center text-[12px] font-medium leading-none"
                     style={{ fontFamily: 'Lato, sans-serif', color: fill, fontStyle: 'normal' }}
