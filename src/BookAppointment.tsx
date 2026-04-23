@@ -335,7 +335,6 @@ export default function BookAppointment() {
                 setPackageId={setPackageId}
                 detailId={detailId}
                 setDetailId={setDetailId}
-                isLg={isLg}
                 isMobile={isMobile}
               />
             )}
@@ -1092,14 +1091,12 @@ function PackageStep({
   setPackageId,
   detailId,
   setDetailId,
-  isLg,
   isMobile,
 }: {
   packageId: PackageId
   setPackageId: (id: PackageId) => void
   detailId: PackageId | null
   setDetailId: (id: PackageId | null) => void
-  isLg: boolean
   isMobile: boolean
 }) {
   return (
