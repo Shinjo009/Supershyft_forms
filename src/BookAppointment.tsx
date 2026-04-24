@@ -44,7 +44,7 @@ function useIsLg() {
 
 function inputClass(short?: boolean) {
   return [
-    'w-full rounded-[8px] bg-white/5 px-4 text-sm text-white outline-none ring-1 ring-white/5 placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]/70',
+    'w-full rounded-[8px] bg-white/5 px-4 text-base lg:text-sm text-white outline-none ring-1 ring-white/5 placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]/70',
     short ? 'h-10' : 'h-[44px]',
   ].join(' ')
 }
@@ -426,8 +426,8 @@ export default function BookAppointment() {
 }
 
 const mobileFieldInput =
-  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
-const mobileFieldInput14 = `${mobileFieldInput} text-sm`
+  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-base text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
+const mobileFieldInput14 = mobileFieldInput
 
 function PersonalStep({
   form,
