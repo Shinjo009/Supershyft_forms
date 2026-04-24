@@ -12,7 +12,6 @@ import {
   Users,
   Venus,
 } from 'lucide-react'
-import { AddMemberModal } from './components/AddMemberModal'
 import { ContinueButton } from './components/ContinueButton'
 import { PackageDetailBody } from './components/PackageDetailBody'
 import { PageBackdrop } from './components/PageBackdrop'
@@ -44,7 +43,7 @@ function useIsLg() {
 
 function inputClass(short?: boolean) {
   return [
-    'w-full rounded-[8px] bg-white/5 px-4 text-sm text-white outline-none ring-1 ring-white/5 placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]/70',
+    'w-full rounded-[8px] bg-white/5 px-4 text-base text-white outline-none ring-1 ring-white/5 placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]/70 lg:text-sm',
     short ? 'h-10' : 'h-[44px]',
   ].join(' ')
 }
@@ -86,9 +85,7 @@ export default function BookAppointment() {
   const [step, setStep] = useState(1)
   const [maxReachedStep, setMaxReachedStep] = useState(1)
   const [form, setForm] = useState<FormData>(defaultFormData)
-  const [packageId, setPackageId] = useState<PackageId>('fb-no-vit')
-  const [detailId, setDetailId] = useState<PackageId | null>(null)
-  const [addMemberOpen, setAddMemberOpen] = useState(false)
+  const packageId: PackageId = 'fb-no-vit'
   const [savedMembers, setSavedMembers] = useState<FormData[]>([])
   const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
   const [bookingId, setBookingId] = useState<string>('')
@@ -101,28 +98,22 @@ export default function BookAppointment() {
     setMaxReachedStep((prev) => Math.max(prev, step))
   }, [step])
 
-  const fullName = useMemo(
-    () => [form.firstName, form.lastName].filter(Boolean).join(' '),
-    [form.firstName, form.lastName],
-  )
-
   const selectedPkg = getPackage(packageId)
   const primaryMember = savedMembers[0]
 
-  /** Popup only fires after Schedule — every member (first or subsequent) walks the full 4 steps. */
   const goNextFromPersonal = () => {
     setStep(2)
   }
 
   const goNextFromSchedule = () => {
-    setAddMemberOpen(true)
+    setStep(3)
   }
 
   const allMembers = useMemo(() => [...savedMembers, form], [savedMembers, form])
 
-  const handleProceedToPayment = () => {
+  const handleConfirmBooking = () => {
     setBookingId((prev) => prev || generateBookingId())
-    setStep(6)
+    setStep(4)
   }
 
   /** Load the chosen member into the editable `form` (swapping with whoever was current)
@@ -140,34 +131,6 @@ export default function BookAppointment() {
     setStep(1)
   }
 
-  const resolveAddMember = (another: boolean) => {
-    setAddMemberOpen(false)
-    if (another) {
-      setSavedMembers((prev) => [...prev, form])
-      setExpandedMemberIndex(null)
-      setForm((f) => ({
-        ...defaultFormData,
-        // Re-use household-level info the new member inherits
-        street: f.street,
-        landmark: f.landmark,
-        pincode: f.pincode,
-        city: f.city,
-        appointmentDate: f.appointmentDate,
-        appointmentTime: f.appointmentTime,
-        // Default "use same" toggles to true so the new member inherits contact info
-        useSamePhone: true,
-        useSameEmail: true,
-        phone: f.phone,
-        email: f.email,
-        relation: 'spouse',
-      }))
-      setMaxReachedStep(1)
-      setStep(1)
-    } else {
-      setStep(5)
-    }
-  }
-
   const headerTitle = 'Book Appointment'
 
   const glassPanel =
@@ -177,11 +140,11 @@ export default function BookAppointment() {
 
   const isMobile = !isLg
   const mobilePersonal = isMobile && step === 1
-  const showBack = step === 6 ? false : isLg ? step > 1 : step > 1
-  const stretchStepBody = !isLg || step === 5 || step === 6
-  const hideGlobalContinue = mobilePersonal || step === 6
+  const showBack = step === 4 ? false : isLg ? step > 1 : step > 1
+  const stretchStepBody = !isLg || step === 3 || step === 4
+  const hideGlobalContinue = mobilePersonal || step === 4
   const mobileHeader = isMobile
-  const hideStepper = step === 6
+  const hideStepper = step === 4
 
   return (
     <PageBackdrop>
@@ -262,7 +225,7 @@ export default function BookAppointment() {
               }
             >
               <Stepper
-                current={step === 5 ? 5 : step}
+                current={step}
                 compact={!isLg}
                 maxReachable={maxReachedStep}
                 onStepClick={(target) => setStep(target)}
@@ -275,7 +238,7 @@ export default function BookAppointment() {
               mobilePersonal
                 ? 'min-h-0 overflow-hidden'
                 : isMobile
-                  ? step === 6
+                  ? step === 4
                     ? 'px-5'
                     : 'px-5 pt-1'
                   : ''
@@ -321,37 +284,18 @@ export default function BookAppointment() {
               </>
             )}
             {step === 2 && (
-              <AddressStep
-                form={form}
-                update={update}
-                inputClass={inputClass}
-                labelRow={labelRow}
-                isMobile={isMobile}
-              />
-            )}
-            {step === 3 && (
-              <PackageStep
-                packageId={packageId}
-                setPackageId={setPackageId}
-                detailId={detailId}
-                setDetailId={setDetailId}
-                isMobile={isMobile}
-              />
-            )}
-            {step === 4 && (
               <ScheduleStep form={form} update={update} isMobile={isMobile} />
             )}
-            {step === 5 && (
+            {step === 3 && (
               <ConfirmStep
                 form={form}
                 members={allMembers}
-                packageTitle={selectedPkg.title}
                 onEdit={(s) => setStep(s)}
                 onEditMember={editMember}
-                onProceed={handleProceedToPayment}
+                onProceed={handleConfirmBooking}
               />
             )}
-            {step === 6 && (
+            {step === 4 && (
               <BookingConfirmedStep
                 bookingId={bookingId}
                 form={form}
@@ -373,14 +317,12 @@ export default function BookAppointment() {
           {/* Footer CTA — mobile: full-width bar pinned to bottom with 30px safe-area; desktop: right-aligned pill */}
           {!hideGlobalContinue && (
             isMobile ? (
-              step < 5 ? (
+              step < 3 ? (
                 <div className="mt-auto shrink-0 px-6 pt-4 pb-[30px]">
                   <ContinueButton
                     variant="mobileBar"
                     onClick={() => {
                       if (step === 1) goNextFromPersonal()
-                      else if (step === 2) setStep(3)
-                      else if (step === 3) setStep(4)
                       else goNextFromSchedule()
                     }}
                   >
@@ -391,16 +333,14 @@ export default function BookAppointment() {
             ) : (
               <div
                 className={[
-                  step < 5 ? 'mt-6 flex' : 'mt-auto flex pt-8',
+                  step < 3 ? 'mt-6 flex' : 'mt-auto flex pt-8',
                   'justify-end',
                 ].join(' ')}
               >
-                {step < 5 && (
+                {step < 3 && (
                   <ContinueButton
                     onClick={() => {
                       if (step === 1) goNextFromPersonal()
-                      else if (step === 2) setStep(3)
-                      else if (step === 3) setStep(4)
                       else goNextFromSchedule()
                     }}
                   >
@@ -413,21 +353,13 @@ export default function BookAppointment() {
         </div>
       </div>
 
-      <AddMemberModal
-        open={addMemberOpen}
-        onClose={() => setAddMemberOpen(false)}
-        onYes={() => resolveAddMember(true)}
-        onNo={() => resolveAddMember(false)}
-        displayName={fullName}
-        memberCount={savedMembers.length + 1}
-      />
     </PageBackdrop>
   )
 }
 
 const mobileFieldInput =
   'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
-const mobileFieldInput14 = `${mobileFieldInput} text-sm`
+const mobileFieldInput14 = `${mobileFieldInput} text-base`
 
 function PersonalStep({
   form,
@@ -1224,24 +1156,27 @@ function PackageStep({
 function ConfirmStep({
   form,
   members,
-  packageTitle,
   onEdit,
   onEditMember,
   onProceed,
 }: {
   form: FormData
   members: FormData[]
-  packageTitle: string
   onEdit: (step: number) => void
   onEditMember: (index: number) => void
   onProceed: () => void
 }) {
   return (
     <>
-      <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Confirm Details</h2>
+      <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Details Preview</h2>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-8">
         <section className="flex-1 rounded-lg bg-white/5 p-5">
-          <h3 className="mb-5 text-[15px] font-semibold text-white">Personal Information</h3>
+          <div className="mb-5 flex items-center justify-between border-b border-white/20 pb-2">
+            <h3 className="text-[15px] font-semibold text-white">Personal Information</h3>
+            <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(1)}>
+              Edit
+            </button>
+          </div>
           {members.map((m, i) => (
             <div key={i}>
               {i > 0 && (
@@ -1259,38 +1194,11 @@ function ConfirmStep({
           ))}
         </section>
 
-        <section className="flex-1 rounded-lg bg-white/5 p-5">
-          <div className="mb-4 flex items-center justify-between border-b border-white/20 pb-2">
-            <h3 className="text-[15px] font-semibold text-white">Address Details</h3>
-            <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(2)}>
-              Edit
-            </button>
-          </div>
-          <ul className="space-y-4 text-sm text-[#ccc]">
-            <li className="flex gap-2">
-              <Home className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.street}
-            </li>
-            <li className="flex gap-2">
-              <Building2 className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.landmark}
-            </li>
-            <li className="flex gap-2">
-              <MapPin className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.pincode}
-            </li>
-            <li className="flex gap-2">
-              <MapPin className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.city}
-            </li>
-          </ul>
-        </section>
-
         <section className="flex flex-1 flex-col gap-6">
           <div className="rounded-lg bg-white/5 p-5">
             <div className="mb-4 flex items-center justify-between border-b border-white/20 pb-2">
-              <h3 className="text-[15px] font-semibold text-white">Sample Collection</h3>
-              <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(4)}>
+              <h3 className="text-[15px] font-semibold text-white">Schedule Date</h3>
+              <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(2)}>
                 Edit
               </button>
             </div>
@@ -1299,19 +1207,14 @@ function ConfirmStep({
                 <Calendar className="mt-0.5 size-5 shrink-0 opacity-70" />
                 {form.appointmentDate}
               </li>
-              <li className="flex gap-2">
-                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center opacity-70">🕐</span>
-                {form.appointmentTime}
-              </li>
             </ul>
-            <p className="mt-4 text-xs text-white/50">Package: {packageTitle}</p>
           </div>
           <ContinueButton
             className="w-full max-w-none"
             showChevron={false}
             onClick={onProceed}
           >
-            Proceed to Payment
+            Confirm Booking
           </ContinueButton>
         </section>
       </div>
@@ -1387,31 +1290,21 @@ function SummaryItem({
   )
 }
 
-const TIME_SLOTS = [
-  '06:00 AM', '06:30 AM', '07:00 AM', '07:30 AM', '08:00 AM',
-  '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
-  '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM',
-  '01:30 PM',
-] as const
-
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
 type UpcomingDate = { iso: string; day: string; date: number }
 
-function getUpcomingDates(count: number): UpcomingDate[] {
+function getMayDates(): UpcomingDate[] {
   const pad = (n: number) => String(n).padStart(2, '0')
-  const today = new Date()
-  const out: UpcomingDate[] = []
-  for (let i = 0; i < count; i++) {
-    const d = new Date(today)
-    d.setDate(today.getDate() + i)
-    out.push({
+  const year = new Date().getFullYear()
+  return [4, 5].map((dayOfMonth) => {
+    const d = new Date(year, 4, dayOfMonth)
+    return {
       iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
       day: DAY_LABELS[d.getDay()],
       date: d.getDate(),
-    })
-  }
-  return out
+    }
+  })
 }
 
 function PreferredDateIcon() {
@@ -1420,15 +1313,6 @@ function PreferredDateIcon() {
       <path d="M6.66699 1.66699V5.00033M13.3337 1.66699V5.00033" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4.16667 3.33398H15.8333C16.7538 3.33398 17.5 4.08018 17.5 5.00065V16.6673C17.5 17.5878 16.7538 18.334 15.8333 18.334H4.16667C3.24619 18.334 2.5 17.5878 2.5 16.6673V5.00065C2.5 4.08018 3.24619 3.33398 4.16667 3.33398V3.33398" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M2.5 8.33398H17.5" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function PreferredTimeIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-      <path d="M10.5932 19.4902L10.5822 19.492L10.5112 19.5241L10.4912 19.5278L10.4772 19.5241L10.4062 19.492C10.3955 19.4889 10.3875 19.4905 10.3822 19.4966L10.3782 19.5057L10.3612 19.8981L10.3662 19.9165L10.3762 19.9284L10.4802 19.9962L10.4952 19.9999L10.5072 19.9962L10.6112 19.9284L10.6232 19.9137L10.6272 19.8981L10.6102 19.5067C10.6075 19.4969 10.6018 19.4914 10.5932 19.4902ZM10.8582 19.3866L10.8452 19.3884L10.6602 19.4737L10.6502 19.4828L10.6472 19.4929L10.6652 19.8871L10.6702 19.8981L10.6782 19.9046L10.8792 19.9898C10.8918 19.9929 10.9015 19.9904 10.9082 19.9825L10.9122 19.9696L10.8782 19.4067C10.8748 19.3957 10.8682 19.389 10.8582 19.3866ZM10.1432 19.3884C10.1388 19.3859 10.1335 19.3852 10.1285 19.3862C10.1234 19.3872 10.119 19.39 10.1162 19.3939L10.1102 19.4067L10.0762 19.9696C10.0768 19.9806 10.0825 19.988 10.0932 19.9917L10.1082 19.9898L10.3092 19.9046L10.3192 19.8972L10.3232 19.8871L10.3402 19.4929L10.3372 19.4819L10.3272 19.4727L10.1432 19.3884Z" fill="#9A9A9A" />
-      <path d="M10 0C15.523 0 20 4.1045 20 9.16798C20 14.2315 15.523 18.336 10 18.336C4.477 18.336 0 14.2315 0 9.16798C0 4.1045 4.477 0 10 0ZM10 1.8336C7.87827 1.8336 5.84344 2.60632 4.34315 3.98179C2.84285 5.35725 2 7.22278 2 9.16798C2 11.1132 2.84285 12.9787 4.34315 14.3542C5.84344 15.7296 7.87827 16.5024 10 16.5024C12.1217 16.5024 14.1566 15.7296 15.6569 14.3542C17.1571 12.9787 18 11.1132 18 9.16798C18 7.22278 17.1571 5.35725 15.6569 3.98179C14.1566 2.60632 12.1217 1.8336 10 1.8336ZM10 3.66719C10.2449 3.66722 10.4813 3.74966 10.6644 3.89888C10.8474 4.0481 10.9643 4.25371 10.993 4.47672L11 4.58399V8.78842L13.707 11.2702C13.8863 11.4352 13.9905 11.6566 13.9982 11.8894C14.006 12.1222 13.9168 12.349 13.7488 12.5237C13.5807 12.6984 13.3464 12.8079 13.0935 12.83C12.8406 12.8521 12.588 12.7851 12.387 12.6426L12.293 12.5665L9.293 9.81615C9.13758 9.67354 9.03776 9.48794 9.009 9.28808L9 9.16798V4.58399C9 4.34084 9.10536 4.10765 9.29289 3.93571C9.48043 3.76378 9.73478 3.66719 10 3.66719Z" fill="#9A9A9A" />
     </svg>
   )
 }
@@ -1442,15 +1326,11 @@ function ScheduleStep({
   update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
   isMobile: boolean
 }) {
-  const dates = useMemo(() => getUpcomingDates(4), [])
+  const dates = useMemo(() => getMayDates(), [])
 
   const selectedDateClass =
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
   const idleDateClass = 'border-white/[0.08] bg-white/5'
-
-  const selectedPillClass =
-    'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-  const idlePillClass = 'bg-white/5 text-[#9A9A9A]'
 
   const sectionLabelClass = isMobile
     ? 'font-sans text-[14px] font-medium leading-normal text-[#9A9A9A]'
@@ -1470,7 +1350,7 @@ function ScheduleStep({
         <div
           className={
             isMobile
-              ? 'grid w-full grid-cols-4 gap-3 self-stretch'
+              ? 'grid w-full grid-cols-2 gap-3 self-stretch'
               : 'flex h-[79px] items-center gap-6 self-stretch overflow-x-auto lg:overflow-visible'
           }
         >
@@ -1511,45 +1391,6 @@ function ScheduleStep({
         </div>
       </section>
 
-      <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
-        {isMobile ? (
-          <div className="flex flex-col items-start gap-0.5">
-            <div className="flex items-center gap-2">
-              <PreferredTimeIcon />
-              <h2 className={sectionLabelClass}>Preferred Time Slot</h2>
-            </div>
-            <p className="pl-[28px] font-sans text-[10px] font-light leading-normal text-[#CCC]">
-              Collection window is of 1 hour
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col items-start gap-2">
-            <h2 className={sectionLabelClass}>Preferred Time Slot</h2>
-            <p className="text-[15px] font-light leading-none text-[#999]">
-              Collection window is of 1 hour
-            </p>
-          </div>
-        )}
-        <div className="grid w-full grid-cols-3 gap-3 self-stretch sm:grid-cols-4 lg:grid-cols-5">
-          {TIME_SLOTS.map((slot) => {
-            const selected = form.appointmentTime === slot
-            return (
-              <button
-                key={slot}
-                type="button"
-                onClick={() => update('appointmentTime', slot)}
-                aria-pressed={selected}
-                className={[
-                  'flex h-[39px] flex-col items-center justify-center rounded-[20px] border border-transparent px-4 text-center text-[14px] font-normal leading-none transition',
-                  selected ? selectedPillClass : idlePillClass,
-                ].join(' ')}
-              >
-                {slot}
-              </button>
-            )
-          })}
-        </div>
-      </section>
     </div>
   )
 }
@@ -1575,23 +1416,6 @@ function formatBookingDate(iso: string): string {
   return `${DAY_LABELS[d.getDay()]}, ${d.getDate()} ${MONTH_LABELS[d.getMonth()]}`
 }
 
-function formatTimeWindow(slot: string): string {
-  if (!slot) return '—'
-  const match = slot.match(/^(\d{1,2}):(\d{2}) (AM|PM)$/)
-  if (!match) return slot
-  const startH12 = parseInt(match[1], 10)
-  const minutes = match[2]
-  const startPeriod = match[3]
-  const h24 = (startH12 % 12) + (startPeriod === 'PM' ? 12 : 0)
-  const endH24 = (h24 + 1) % 24
-  const endPeriod = endH24 >= 12 ? 'PM' : 'AM'
-  const endH12 = endH24 % 12 === 0 ? 12 : endH24 % 12
-  if (startPeriod === endPeriod) {
-    return `${startH12}:${minutes}-${endH12}:${minutes} ${startPeriod}`
-  }
-  return `${startH12}:${minutes} ${startPeriod}-${endH12}:${minutes} ${endPeriod}`
-}
-
 function BookingConfirmedStep({
   bookingId,
   form,
@@ -1611,7 +1435,7 @@ function BookingConfirmedStep({
     .join(', ')
   const location =
     [form.landmark, form.city].filter(Boolean).join(', ') || form.city || form.street || '—'
-  const dateTime = `${formatBookingDate(form.appointmentDate)}  |  ${formatTimeWindow(form.appointmentTime)}`
+  const bookingDate = formatBookingDate(form.appointmentDate)
 
   if (isMobile) {
     return (
@@ -1647,7 +1471,7 @@ function BookingConfirmedStep({
             </div>
 
             <div className="flex w-full flex-col items-start gap-3.5">
-              <InfoRow icon={<CalendarIcon />} label="Date & Time" value={dateTime} isMobile />
+              <InfoRow icon={<CalendarIcon />} label="Date" value={bookingDate} isMobile />
               <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} isMobile />
               <InfoRow icon={<PackageIcon />} label="Package" value={packageTitle} isMobile />
               <InfoRow icon={<LocationIcon />} label="Location" value={location} isMobile />
@@ -1708,7 +1532,7 @@ function BookingConfirmedStep({
           </div>
 
           <div className="flex flex-col items-start gap-5 self-stretch">
-            <InfoRow icon={<CalendarIcon />} label="Date & Time" value={dateTime} />
+            <InfoRow icon={<CalendarIcon />} label="Date" value={bookingDate} />
             <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} />
             <InfoRow icon={<PackageIcon />} label="Package" value={packageTitle} />
             <InfoRow icon={<LocationIcon />} label="Location" value={location} />

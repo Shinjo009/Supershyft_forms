@@ -1,4 +1,4 @@
-const STEPS = ['Personal Info', 'Schedule & Time Slot'] as const
+const STEPS = ['Personal Info', 'Schedule Date'] as const
 
 type Props = {
   current: number
