@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
-  Building2,
   Calendar,
-  Home,
   Mail,
-  MapPin,
   Mars,
   Phone,
   User,
@@ -13,11 +10,10 @@ import {
   Venus,
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
-import { PackageDetailBody } from './components/PackageDetailBody'
+import { onboardUserForEngagement, type OnboardUserPayload } from './api/onboard'
 import { PageBackdrop } from './components/PageBackdrop'
 import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
-import { getPackage, PACKAGES, type PackageId } from './data/packages'
 import { defaultFormData, type FormData } from './types'
 
 const RELATION_OPTIONS = [
@@ -72,23 +68,16 @@ function labelRow(
   )
 }
 
-function PackageInfoIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-      <path d="M7 0C8.85652 0 10.637 0.737498 11.9497 2.05025C13.2625 3.36301 14 5.14348 14 7C14 8.85652 13.2625 10.637 11.9497 11.9497C10.637 13.2625 8.85652 14 7 14C5.14348 14 3.36301 13.2625 2.05025 11.9497C0.737498 10.637 0 8.85652 0 7C0 5.14348 0.737498 3.36301 2.05025 2.05025C3.36301 0.737498 5.14348 0 7 0ZM8.05 4.29688C8.57031 4.29688 8.99219 3.9375 8.99219 3.40156C8.99219 2.86563 8.57031 2.50625 8.05 2.50625C7.52969 2.50625 7.10938 2.86563 7.10938 3.40156C7.10938 3.9375 7.53125 4.29844 8.05 4.29844M8.23281 9.925C8.23281 9.81875 8.27031 9.54063 8.24844 9.38125L7.42656 10.3281C7.25625 10.5063 7.04375 10.6312 6.94375 10.5984C6.89862 10.5816 6.86096 10.5492 6.83749 10.5071C6.81403 10.4651 6.80627 10.416 6.81563 10.3687L8.18437 6.04063C8.29688 5.49062 7.98906 4.99062 7.33594 4.92656C6.64844 4.92656 5.63281 5.625 5.01562 6.5125C5.01562 6.61875 4.99531 6.88125 5.01562 7.04062L5.8375 6.09375C6.00938 5.91563 6.20625 5.79062 6.30625 5.825C6.35491 5.84336 6.39467 5.87968 6.41734 5.92648C6.44002 5.97328 6.44387 6.027 6.42812 6.07656L5.06875 10.3844C4.9125 10.8875 5.20937 11.3812 5.92969 11.4937C6.99062 11.4937 7.61719 10.8125 8.23438 9.925H8.23281Z" fill="white"/>
-    </svg>
-  )
-}
-
 export default function BookAppointment() {
   const isLg = useIsLg()
   const [step, setStep] = useState(1)
   const [maxReachedStep, setMaxReachedStep] = useState(1)
   const [form, setForm] = useState<FormData>(defaultFormData)
-  const packageId: PackageId = 'fb-no-vit'
-  const [savedMembers, setSavedMembers] = useState<FormData[]>([])
+  const [savedMembers] = useState<FormData[]>([])
   const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
   const [bookingId, setBookingId] = useState<string>('')
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
@@ -98,7 +87,6 @@ export default function BookAppointment() {
     setMaxReachedStep((prev) => Math.max(prev, step))
   }, [step])
 
-  const selectedPkg = getPackage(packageId)
   const primaryMember = savedMembers[0]
 
   const goNextFromPersonal = () => {
@@ -111,24 +99,76 @@ export default function BookAppointment() {
 
   const allMembers = useMemo(() => [...savedMembers, form], [savedMembers, form])
 
-  const handleConfirmBooking = () => {
-    setBookingId((prev) => prev || generateBookingId())
-    setStep(4)
-  }
+  const handleConfirmBooking = async () => {
+    if (isSubmittingBooking) return
 
-  /** Load the chosen member into the editable `form` (swapping with whoever was current)
-   *  and send the user back to Personal. After they walk the flow + say "No" on the
-   *  add-member popup, they'll land back on Confirm with the updated data. */
-  const editMember = (index: number) => {
-    if (index >= 0 && index < savedMembers.length) {
-      const next = [...savedMembers]
-      const toEdit = next[index]
-      next[index] = form
-      setSavedMembers(next)
-      setForm(toEdit)
+    const parsedAge = Number.parseInt(form.age, 10)
+    const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
+
+    if (!form.firstName.trim()) {
+      setSubmitError('First name is required.')
+      return
     }
-    setExpandedMemberIndex(null)
-    setStep(1)
+    if (!form.lastName.trim()) {
+      setSubmitError('Last name is required.')
+      return
+    }
+    if (!form.email.trim()) {
+      setSubmitError('Email is required.')
+      return
+    }
+    if (!form.phone.trim()) {
+      setSubmitError('Phone is required.')
+      return
+    }
+    if (!form.gender) {
+      setSubmitError('Gender is required.')
+      return
+    }
+    if (!Number.isFinite(safeAge)) {
+      setSubmitError('Please enter a valid age.')
+      return
+    }
+    if (!form.appointmentDate) {
+      setSubmitError('Please select a schedule date.')
+      return
+    }
+
+    setSubmitError(null)
+    setIsSubmittingBooking(true)
+
+    try {
+      const inferredDobYear = new Date().getFullYear() - safeAge
+      const inferredDob = `${inferredDobYear}-01-01`
+
+      const payload: OnboardUserPayload = {
+        age: safeAge,
+        first_name: form.firstName,
+        last_name: form.lastName,
+        email: form.email,
+        phone: form.phone,
+        gender: form.gender,
+        dob: inferredDob,
+        address: [form.street, form.landmark].filter(Boolean).join(', ') || 'NA',
+        pincode: form.pincode || 'NA',
+        city: form.city || 'NA',
+        state: 'NA',
+        country: 'India',
+        referred_by: '',
+        blood_collection_date: form.appointmentDate,
+        blood_collection_time_slot: '9:00',
+      }
+
+      const engagementCode = import.meta.env.VITE_ENGAGEMENT_CODE || ''
+      const responseMessage = await onboardUserForEngagement(engagementCode, payload)
+
+      setBookingId((prev) => prev || responseMessage || generateBookingId())
+      setStep(4)
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Unable to confirm booking.')
+    } finally {
+      setIsSubmittingBooking(false)
+    }
   }
 
   const headerTitle = 'Book Appointment'
@@ -291,8 +331,9 @@ export default function BookAppointment() {
                 form={form}
                 members={allMembers}
                 onEdit={(s) => setStep(s)}
-                onEditMember={editMember}
                 onProceed={handleConfirmBooking}
+                isSubmitting={isSubmittingBooking}
+                errorMessage={submitError}
               />
             )}
             {step === 4 && (
@@ -300,7 +341,6 @@ export default function BookAppointment() {
                 bookingId={bookingId}
                 form={form}
                 members={allMembers}
-                packageTitle={selectedPkg.title}
                 isMobile={isMobile}
               />
             )}
@@ -909,262 +949,20 @@ function UseSameToggle({
   )
 }
 
-function AddressStep({
-  form,
-  update,
-  inputClass,
-  labelRow,
-  isMobile,
-}: {
-  form: FormData
-  update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
-  inputClass: (short?: boolean) => string
-  labelRow: (
-    Icon: typeof User,
-    label: string,
-    extra?: React.ReactNode,
-    mobile?: boolean,
-  ) => React.ReactNode
-  isMobile: boolean
-}) {
-  if (isMobile) {
-    return (
-      <div className="flex flex-col gap-5 pb-2">
-        <div className="flex flex-col gap-1">
-          {labelRow(Home, 'House No./ Street', undefined, true)}
-          <input
-            className={mobileFieldInput14}
-            placeholder="House No./ Street"
-            value={form.street}
-            onChange={(e) => update('street', e.target.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          {labelRow(Building2, 'Landmark', undefined, true)}
-          <input
-            className={mobileFieldInput14}
-            placeholder="Landmark"
-            value={form.landmark}
-            onChange={(e) => update('landmark', e.target.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          {labelRow(MapPin, 'Pincode', undefined, true)}
-          <input
-            className={mobileFieldInput14}
-            inputMode="numeric"
-            placeholder="Pincode"
-            value={form.pincode}
-            onChange={(e) => update('pincode', e.target.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          {labelRow(MapPin, 'City', undefined, true)}
-          <input
-            className={mobileFieldInput14}
-            placeholder="City"
-            value={form.city}
-            onChange={(e) => update('city', e.target.value)}
-          />
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <>
-      <h2 className="mb-7 text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
-        Address Details
-      </h2>
-      <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
-        <div>
-          {labelRow(Home, 'House No./ Street')}
-          <input
-            className={inputClass()}
-            placeholder="House No./ Street"
-            value={form.street}
-            onChange={(e) => update('street', e.target.value)}
-          />
-        </div>
-        <div>
-          {labelRow(Building2, 'Landmark')}
-          <input
-            className={inputClass()}
-            placeholder="Landmark"
-            value={form.landmark}
-            onChange={(e) => update('landmark', e.target.value)}
-          />
-        </div>
-        <div>
-          {labelRow(MapPin, 'Pincode')}
-          <input
-            className={inputClass()}
-            placeholder="Pincode"
-            value={form.pincode}
-            onChange={(e) => update('pincode', e.target.value)}
-          />
-        </div>
-        <div>
-          {labelRow(MapPin, 'City')}
-          <input
-            className={inputClass()}
-            placeholder="City"
-            value={form.city}
-            onChange={(e) => update('city', e.target.value)}
-          />
-        </div>
-      </div>
-    </>
-  )
-}
-
-function PackageStep({
-  packageId,
-  setPackageId,
-  detailId,
-  setDetailId,
-  isMobile,
-}: {
-  packageId: PackageId
-  setPackageId: (id: PackageId) => void
-  detailId: PackageId | null
-  setDetailId: (id: PackageId | null) => void
-  isMobile: boolean
-}) {
-  return (
-    <>
-      {!isMobile && (
-        <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Select Package</h2>
-      )}
-
-      <div className="flex flex-1 flex-col gap-6">
-        {!detailId && (
-          <div
-            className={
-              isMobile
-                ? 'grid grid-cols-2 gap-3'
-                : 'flex gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0'
-            }
-          >
-            {PACKAGES.map((p) => {
-              const selected = packageId === p.id
-              return (
-                <div
-                  key={p.id}
-                  className={[
-                    'relative flex flex-col items-center overflow-hidden rounded-xl border text-center transition',
-                    isMobile
-                      ? 'h-[260px] w-full px-3 py-4'
-                      : 'max-h-[260px] min-w-[200px] flex-1 px-4 py-5 lg:min-w-0',
-                    selected
-                      ? 'border-[#4b8d83]/60 bg-[radial-gradient(ellipse_at_50%_30%,_#11795f_0%,_#1c493d_55%,_#0d2520_100%)]'
-                      : 'border-white/[0.08] bg-white/5',
-                  ].join(' ')}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setDetailId(p.id)}
-                    className="absolute right-2 top-2 rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white"
-                    aria-label={`About ${p.title}`}
-                  >
-                    <PackageInfoIcon />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPackageId(p.id)}
-                    className={`flex w-full flex-col items-center ${isMobile ? 'h-full gap-1.5' : 'gap-3'}`}
-                  >
-                    <div
-                      className={
-                        isMobile
-                          ? 'flex size-12 items-center justify-center'
-                          : 'flex size-14 items-center justify-center lg:size-16'
-                      }
-                    >
-                      <img
-                        src={p.iconSrc}
-                        alt=""
-                        className={isMobile ? 'size-12 object-contain' : 'h-16 w-16 object-contain'}
-                        aria-hidden
-                      />
-                    </div>
-                    <div
-                      className={
-                        isMobile
-                          ? 'text-sm font-semibold leading-tight text-white'
-                          : 'text-sm font-semibold leading-snug text-white'
-                      }
-                    >
-                      {p.lines ? (
-                        <>
-                          {p.lines[0]}
-                          <br />
-                          {p.lines[1]}
-                        </>
-                      ) : (
-                        p.title
-                      )}
-                    </div>
-                    <p
-                      className={
-                        isMobile
-                          ? 'text-[11px] font-light leading-snug text-white/80'
-                          : 'text-xs font-light text-white/80'
-                      }
-                    >
-                      {p.subtitle}
-                    </p>
-                    <div
-                      className={[
-                        'flex flex-wrap justify-center text-[#90df9e]',
-                        isMobile
-                          ? 'gap-x-3 gap-y-0.5 text-[11px]'
-                          : 'mt-1 gap-x-3 gap-y-1 text-[11px] lg:text-xs',
-                      ].join(' ')}
-                    >
-                      <span className="flex items-center gap-1">✓ Bio-AI Reports</span>
-                      <span className="flex items-center gap-1">✓ Blood Tests</span>
-                    </div>
-                    <p
-                      className={
-                        isMobile
-                          ? 'mt-auto text-[15px] font-semibold text-white'
-                          : 'mt-2 text-base font-semibold text-white'
-                      }
-                    >
-                      {p.price}
-                    </p>
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {detailId && (
-          <PackageDetailBody
-            pkg={getPackage(detailId)}
-            variant={isMobile ? 'mobile' : 'desktop'}
-            onClose={() => setDetailId(null)}
-          />
-        )}
-      </div>
-    </>
-  )
-}
-
 function ConfirmStep({
   form,
   members,
   onEdit,
-  onEditMember,
   onProceed,
+  isSubmitting,
+  errorMessage,
 }: {
   form: FormData
   members: FormData[]
   onEdit: (step: number) => void
-  onEditMember: (index: number) => void
   onProceed: () => void
+  isSubmitting: boolean
+  errorMessage: string | null
 }) {
   return (
     <>
@@ -1188,7 +986,6 @@ function ConfirmStep({
               <MemberSummary
                 member={m}
                 showRelation={i > 0}
-                onEdit={() => onEditMember(i)}
               />
             </div>
           ))}
@@ -1212,10 +1009,12 @@ function ConfirmStep({
           <ContinueButton
             className="w-full max-w-none"
             showChevron={false}
+            disabled={isSubmitting}
             onClick={onProceed}
           >
-            Confirm Booking
+            {isSubmitting ? 'Confirming...' : 'Confirm Booking'}
           </ContinueButton>
+          {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
         </section>
       </div>
     </>
@@ -1225,11 +1024,9 @@ function ConfirmStep({
 function MemberSummary({
   member,
   showRelation,
-  onEdit,
 }: {
   member: FormData
   showRelation: boolean
-  onEdit: () => void
 }) {
   const name = [member.firstName, member.lastName].filter(Boolean).join(' ') || '—'
   const GenderIcon = member.gender === 'female' ? Venus : Mars
@@ -1240,16 +1037,8 @@ function MemberSummary({
     RELATION_OPTIONS.find((o) => o.toLowerCase() === member.relation) ?? member.relation
 
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={onEdit}
-        className="absolute right-0 top-0 text-[13px] font-medium text-[#4b8d83] hover:text-[#90df9e]"
-      >
-        Edit
-      </button>
-
-      <div className="grid grid-cols-2 gap-x-3 gap-y-4 pr-10 text-sm text-[#cccccc]">
+    <div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-4 text-sm text-[#cccccc]">
         {showRelation ? (
           <>
             <SummaryItem Icon={User} label={name} />
@@ -1389,6 +1178,9 @@ function ScheduleStep({
             )
           })}
         </div>
+        <p className={isMobile ? 'text-[12px] text-[#ccc]' : 'text-[15px] font-light leading-none text-[#999]'}>
+          Timing: 9am to 1pm
+        </p>
       </section>
 
     </div>
@@ -1420,21 +1212,17 @@ function BookingConfirmedStep({
   bookingId,
   form,
   members,
-  packageTitle,
   isMobile,
 }: {
   bookingId: string
   form: FormData
   members: FormData[]
-  packageTitle: string
   isMobile: boolean
 }) {
   const memberNames = members
     .map((m) => [m.firstName, m.lastName].filter(Boolean).join(' '))
     .filter(Boolean)
     .join(', ')
-  const location =
-    [form.landmark, form.city].filter(Boolean).join(', ') || form.city || form.street || '—'
   const bookingDate = formatBookingDate(form.appointmentDate)
 
   if (isMobile) {
@@ -1473,8 +1261,6 @@ function BookingConfirmedStep({
             <div className="flex w-full flex-col items-start gap-3.5">
               <InfoRow icon={<CalendarIcon />} label="Date" value={bookingDate} isMobile />
               <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} isMobile />
-              <InfoRow icon={<PackageIcon />} label="Package" value={packageTitle} isMobile />
-              <InfoRow icon={<LocationIcon />} label="Location" value={location} isMobile />
             </div>
           </div>
         </div>
@@ -1534,8 +1320,6 @@ function BookingConfirmedStep({
           <div className="flex flex-col items-start gap-5 self-stretch">
             <InfoRow icon={<CalendarIcon />} label="Date" value={bookingDate} />
             <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} />
-            <InfoRow icon={<PackageIcon />} label="Package" value={packageTitle} />
-            <InfoRow icon={<LocationIcon />} label="Location" value={location} />
           </div>
         </div>
       </div>
@@ -1623,20 +1407,3 @@ function UserIcon() {
   )
 }
 
-function PackageIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <path d="M10.5 19.4439V10.555M9.61111 19.2039C9.88137 19.36 10.1879 19.4421 10.5 19.4421C10.8121 19.4421 11.1186 19.36 11.3889 19.2039L17.6111 15.6484C17.8811 15.4925 18.1054 15.2684 18.2614 14.9984C18.4174 14.7285 18.4997 14.4223 18.5 14.1106V6.99948C18.4997 6.68772 18.4174 6.38153 18.2614 6.11162C18.1054 5.84172 17.8811 5.61758 17.6111 5.4617L11.3889 1.90615C11.1186 1.75011 10.8121 1.66797 10.5 1.66797C10.1879 1.66797 9.88137 1.75011 9.61111 1.90615L3.38889 5.4617C3.1189 5.61758 2.89465 5.84172 2.73863 6.11162C2.58262 6.38153 2.50032 6.68772 2.5 6.99948V14.1106C2.50032 14.4223 2.58262 14.7285 2.73863 14.9984C2.89465 15.2684 3.1189 15.4925 3.38889 15.6484L9.61111 19.2039Z" stroke="#4B8D83" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2.7583 6.11026L10.5005 10.5547L18.2427 6.11026M6.50052 3.68359L14.5005 8.26137" stroke="#4B8D83" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function LocationIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <path d="M16.6668 8.33366C16.6668 12.4945 12.051 16.8278 10.501 18.1662C10.2044 18.3892 9.79596 18.3892 9.49933 18.1662C7.94933 16.8278 3.3335 12.4945 3.3335 8.33366C3.3335 4.65423 6.32073 1.66699 10.0002 1.66699C13.6796 1.66699 16.6668 4.65423 16.6668 8.33366" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M7.5 8.33398C7.5 9.71377 8.62021 10.834 10 10.834C11.3798 10.834 12.5 9.71377 12.5 8.33398C12.5 6.9542 11.3798 5.83398 10 5.83398C8.62021 5.83398 7.5 6.9542 7.5 8.33398V8.33398" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
