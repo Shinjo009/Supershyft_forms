@@ -590,6 +590,46 @@ function PersonalStep({
               onChange={(e) => update('email', e.target.value)}
             />
           </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(User, 'Employee ID', undefined, true)}
+            <input
+              className={mobileFieldInput14}
+              placeholder="Employee ID"
+              value={form.employeeId}
+              onChange={(e) => update('employeeId', e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(User, 'Would you like to have personalised Doctor consultations?', undefined, true)}
+            <div className="flex h-10 gap-6">
+              <button
+                type="button"
+                onClick={() => update('personalizedDoctorConsultation', 'yes')}
+                className={[
+                  'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs leading-4 transition',
+                  form.personalizedDoctorConsultation === 'yes'
+                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
+                    : 'bg-white/5 text-[#999]',
+                ].join(' ')}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                onClick={() => update('personalizedDoctorConsultation', 'no')}
+                className={[
+                  'flex flex-1 items-center justify-center gap-2 rounded-full px-2.5 py-1 text-xs leading-4 transition',
+                  form.personalizedDoctorConsultation === 'no'
+                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
+                    : 'bg-white/5 text-[#999]',
+                ].join(' ')}
+              >
+                No
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -631,7 +671,7 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(Mail, 'Email', undefined, true)}
+            {labelRow(Mail, 'Company emailId', undefined, true)}
             <input
               className={mobileFieldInput14}
               type="email"
@@ -640,6 +680,16 @@ function PersonalStep({
               autoComplete="email"
               value={form.email}
               onChange={(e) => update('email', e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(User, 'Employee ID', undefined, true)}
+            <input
+              className={mobileFieldInput14}
+              placeholder="Employee ID"
+              value={form.employeeId}
+              onChange={(e) => update('employeeId', e.target.value)}
             />
           </div>
 
@@ -685,6 +735,36 @@ function PersonalStep({
               </button>
             </div>
           </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(User, 'Would you like to have personalised Doctor consultations?', undefined, true)}
+            <div className="flex h-10 gap-6">
+              <button
+                type="button"
+                onClick={() => update('personalizedDoctorConsultation', 'yes')}
+                className={[
+                  'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs leading-4 transition',
+                  form.personalizedDoctorConsultation === 'yes'
+                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
+                    : 'bg-white/5 text-[#999]',
+                ].join(' ')}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                onClick={() => update('personalizedDoctorConsultation', 'no')}
+                className={[
+                  'flex flex-1 items-center justify-center gap-2 rounded-full px-2.5 py-1 text-xs leading-4 transition',
+                  form.personalizedDoctorConsultation === 'no'
+                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
+                    : 'bg-white/5 text-[#999]',
+                ].join(' ')}
+              >
+                No
+              </button>
+            </div>
+          </div>
         </div>
 
         {showMobileContinue && (
@@ -725,6 +805,35 @@ function PersonalStep({
       >
         <Venus className="size-4" />
         <span>Female</span>
+      </button>
+    </div>
+  )
+
+  const personalizedConsultationButtons = (
+    <div className="flex gap-3">
+      <button
+        type="button"
+        onClick={() => update('personalizedDoctorConsultation', 'yes')}
+        className={[
+          'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm text-[#9a9a9a]',
+          form.personalizedDoctorConsultation === 'yes'
+            ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
+            : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)]',
+        ].join(' ')}
+      >
+        <span>Yes</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => update('personalizedDoctorConsultation', 'no')}
+        className={[
+          'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm',
+          form.personalizedDoctorConsultation === 'no'
+            ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
+            : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#9a9a9a]',
+        ].join(' ')}
+      >
+        <span>No</span>
       </button>
     </div>
   )
@@ -801,6 +910,16 @@ function PersonalStep({
           </div>
 
           <div>
+            {labelRow(User, 'Employee ID')}
+            <input
+              className={inputClass()}
+              placeholder="Employee ID"
+              value={form.employeeId}
+              onChange={(e) => update('employeeId', e.target.value)}
+            />
+          </div>
+
+          <div>
             {labelRow(Calendar, 'Age')}
             <input
               className={inputClass()}
@@ -840,6 +959,11 @@ function PersonalStep({
           <div>
             {labelRow(User, 'Gender')}
             {genderButtons}
+          </div>
+
+          <div>
+            {labelRow(User, 'Would you like to have personalised Doctor consultations?')}
+            {personalizedConsultationButtons}
           </div>
         </div>
       </>
@@ -883,6 +1007,16 @@ function PersonalStep({
         </div>
 
         <div>
+          {labelRow(User, 'Employee ID')}
+          <input
+            className={inputClass()}
+            placeholder="Employee ID"
+            value={form.employeeId}
+            onChange={(e) => update('employeeId', e.target.value)}
+          />
+        </div>
+
+        <div>
           {labelRow(Calendar, 'Age')}
           <input
             className={inputClass()}
@@ -900,6 +1034,11 @@ function PersonalStep({
             value={form.phone}
             onChange={(e) => update('phone', e.target.value)}
           />
+        </div>
+
+        <div>
+          {labelRow(User, 'Would you like to have personalised Doctor consultations?')}
+          {personalizedConsultationButtons}
         </div>
       </div>
     </>
