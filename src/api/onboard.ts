@@ -5,15 +5,12 @@ export type OnboardUserPayload = {
   email: string
   phone: string
   gender: string
-  dob: string
-  address: string
-  pincode: string
-  city: string
-  state: string
-  country: string
-  referred_by: string
   blood_collection_date: string
   blood_collection_time_slot: string
+  participants_employee_id: string
+  participant_department: string
+  participant_blood_group: string
+  want_doctor_consultation: boolean
 }
 
 type ValidationErrorDetail = {
@@ -80,6 +77,8 @@ export async function onboardUserForEngagement(
     const requestId = response.headers.get('x-request-id') || ''
     const statusPrefix = `Request failed (${response.status})`
     const traceSuffix = requestId ? ` [request-id: ${requestId}]` : ''
+    console.error('[onboard] request payload json', JSON.stringify(payload, null, 2))
+    console.error('[onboard] error response json', JSON.stringify(data, null, 2))
 
     const validationMessage = parseValidationMessage(data)
     if (validationMessage) {

@@ -24,6 +24,22 @@ const RELATION_OPTIONS = [
   'Grandparent',
   'Other',
 ] as const
+const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
+const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
+const MALE_ENGAGEMENT_CODE = 'DMMU0526'
+const FEMALE_ENGAGEMENT_CODE = 'DFMU0526'
+const logClientError = (message: string) => console.error(`[BookAppointment] ${message}`)
+const toApiTimeSlot = (slot: string) => {
+  const normalized = slot.trim()
+  if (!normalized) return '9:00'
+  const firstPart = normalized.split('-')[0]?.trim() || normalized
+  const hour = Number.parseInt(firstPart.split(':')[0] || '', 10)
+  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return '9:00'
+  return `${hour}:00`
+}
 
 function useIsLg() {
   const [lg, setLg] = useState(false)
@@ -39,7 +55,7 @@ function useIsLg() {
 
 function inputClass(short?: boolean) {
   return [
-    'w-full rounded-[8px] bg-white/5 px-4 text-base text-white outline-none ring-1 ring-white/5 placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]/70 lg:text-sm',
+    'w-full rounded-[8px] bg-white/5 px-4 text-base text-white outline-none ring-1 ring-white/5 placeholder:text-[15px] placeholder:text-white/40 focus:ring-[#4b8d83]/70 lg:text-sm lg:placeholder:text-[13px]',
     short ? 'h-10' : 'h-[44px]',
   ].join(' ')
 }
@@ -144,6 +160,22 @@ function labelRow(
   )
 }
 
+function SelectChevron() {
+  return (
+    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/50" aria-hidden>
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="none">
+        <path
+          d="M5 7.5L10 12.5L15 7.5"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  )
+}
+
 export default function BookAppointment() {
   const isLg = useIsLg()
   const [step, setStep] = useState(1)
@@ -151,11 +183,7 @@ export default function BookAppointment() {
   const [form, setForm] = useState<FormData>(defaultFormData)
   const [savedMembers] = useState<FormData[]>([])
   const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
-  const [bookingId, setBookingId] = useState<string>('')
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [personalError, setPersonalError] = useState<string | null>(null)
-  const [scheduleError, setScheduleError] = useState<string | null>(null)
   const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
   const [attemptedScheduleContinue, setAttemptedScheduleContinue] = useState(false)
 
@@ -170,68 +198,81 @@ export default function BookAppointment() {
   const primaryMember = savedMembers[0]
 
   const goNextFromPersonal = () => {
+    const trimmedPhone = form.phone.trim()
+    const trimmedEmail = form.email.trim()
+    const trimmedAge = form.age.trim()
     setAttemptedPersonalContinue(true)
     if (!form.firstName.trim()) {
-      setPersonalError('First Name is required.')
+      logClientError('First Name is required.')
       return
     }
     if (!form.lastName.trim()) {
-      setPersonalError('Last Name is required.')
+      logClientError('Last Name is required.')
       return
     }
-    if (!form.phone.trim()) {
-      setPersonalError('Phone is required.')
+    if (!trimmedPhone) {
+      logClientError('Phone is required.')
       return
     }
-    if (!form.email.trim()) {
-      setPersonalError('Email is required.')
+    if (!/^\d{10}$/.test(trimmedPhone)) {
+      logClientError('Phone must be exactly 10 digits.')
+      return
+    }
+    if (!trimmedEmail) {
+      logClientError('Email is required.')
+      return
+    }
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      logClientError('Please enter a valid email address.')
       return
     }
     if (!form.department.trim()) {
-      setPersonalError('Department is required.')
+      logClientError('Department is required.')
       return
     }
     if (!form.employeeId.trim()) {
-      setPersonalError('Employee ID is required.')
+      logClientError('Employee ID is required.')
       return
     }
-    if (!form.age.trim()) {
-      setPersonalError('Age is required.')
+    if (!trimmedAge) {
+      logClientError('Age is required.')
+      return
+    }
+    if (!/^\d{1,2}$/.test(trimmedAge)) {
+      logClientError('Age must be up to 2 digits.')
       return
     }
     if (!form.gender) {
-      setPersonalError('Gender is required.')
+      logClientError('Gender is required.')
       return
     }
     if (!form.bloodGroup.trim()) {
-      setPersonalError('Blood group is required.')
+      logClientError('Blood group is required.')
       return
     }
     if (!form.relation.trim()) {
-      setPersonalError('Relation is required.')
+      logClientError('Relation is required.')
       return
     }
 
-    setPersonalError(null)
     setStep(2)
   }
 
   const goNextFromSchedule = () => {
     setAttemptedScheduleContinue(true)
     if (!form.appointmentDate) {
-      setScheduleError('Please select a schedule date.')
+      logClientError('Please select a schedule date.')
       return
     }
     if (!form.appointmentTime) {
-      setScheduleError('Please select a time slot.')
+      logClientError('Please select a time slot.')
       return
     }
     if (!form.personalizedDoctorConsultation) {
-      setScheduleError('Please select an option for doctor consultation.')
+      logClientError('Please select an option for doctor consultation.')
       return
     }
 
-    setScheduleError(null)
     setStep(3)
   }
 
@@ -240,70 +281,74 @@ export default function BookAppointment() {
   const handleConfirmBooking = async () => {
     if (isSubmittingBooking) return
 
+    const trimmedPhone = form.phone.trim()
+    const trimmedEmail = form.email.trim()
+    const trimmedAge = form.age.trim()
     const parsedAge = Number.parseInt(form.age, 10)
     const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
 
     if (!form.firstName.trim()) {
-      setSubmitError('First Name is required.')
+      logClientError('First Name is required.')
       return
     }
     if (!form.lastName.trim()) {
-      setSubmitError('Last Name is required.')
+      logClientError('Last Name is required.')
       return
     }
-    if (!form.email.trim()) {
-      setSubmitError('Email is required.')
+    if (!trimmedEmail) {
+      logClientError('Email is required.')
       return
     }
-    if (!form.phone.trim()) {
-      setSubmitError('Phone is required.')
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      logClientError('Please enter a valid email address.')
+      return
+    }
+    if (!trimmedPhone) {
+      logClientError('Phone is required.')
+      return
+    }
+    if (!/^\d{10}$/.test(trimmedPhone)) {
+      logClientError('Phone must be exactly 10 digits.')
       return
     }
     if (!form.gender) {
-      setSubmitError('Gender is required.')
+      logClientError('Gender is required.')
       return
     }
-    if (!Number.isFinite(safeAge)) {
-      setSubmitError('Please enter a valid age.')
+    if (!/^\d{1,2}$/.test(trimmedAge) || !Number.isFinite(safeAge)) {
+      logClientError('Age must be up to 2 digits.')
       return
     }
     if (!form.appointmentDate) {
-      setSubmitError('Please select a schedule date.')
+      logClientError('Please select a schedule date.')
       return
     }
 
-    setSubmitError(null)
     setIsSubmittingBooking(true)
 
     try {
-      const inferredDobYear = new Date().getFullYear() - safeAge
-      const inferredDob = `${inferredDobYear}-01-01`
+      const wantsDoctorConsultation = form.personalizedDoctorConsultation === 'yes'
 
       const payload: OnboardUserPayload = {
         age: safeAge,
         first_name: form.firstName,
         last_name: form.lastName,
-        email: form.email,
-        phone: form.phone,
+        email: trimmedEmail,
+        phone: trimmedPhone,
         gender: form.gender,
-        dob: inferredDob,
-        address: [form.street, form.landmark].filter(Boolean).join(', ') || 'NA',
-        pincode: form.pincode || 'NA',
-        city: form.city || 'NA',
-        state: 'NA',
-        country: 'India',
-        referred_by: '',
         blood_collection_date: form.appointmentDate,
-        blood_collection_time_slot: form.appointmentTime || '9:00',
+        blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
+        participants_employee_id: form.employeeId.trim(),
+        participant_department: form.department.trim(),
+        participant_blood_group: form.bloodGroup.trim(),
+        want_doctor_consultation: wantsDoctorConsultation,
       }
 
-      const engagementCode = import.meta.env.VITE_ENGAGEMENT_CODE || ''
-      const responseMessage = await onboardUserForEngagement(engagementCode, payload)
-
-      setBookingId((prev) => prev || responseMessage || generateBookingId())
+      const engagementCode = form.gender === 'female' ? FEMALE_ENGAGEMENT_CODE : MALE_ENGAGEMENT_CODE
+      await onboardUserForEngagement(engagementCode, payload)
       setStep(4)
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Unable to confirm booking.')
+      logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
     } finally {
       setIsSubmittingBooking(false)
     }
@@ -323,6 +368,7 @@ export default function BookAppointment() {
   const hideGlobalContinue = mobilePersonal || step === 4 || step === 1
   const mobileHeader = isMobile
   const hideStepper = step === 4
+  const showHeaderTitle = step !== 4
 
   return (
     <PageBackdrop>
@@ -349,7 +395,7 @@ export default function BookAppointment() {
             className={
               mobileHeader
                 ? 'grid grid-cols-[44px_1fr_44px] items-center gap-1 px-5 pt-5'
-                : 'mb-6 flex items-center gap-3 lg:mb-6 lg:gap-4'
+                : 'mb-6 grid grid-cols-[24px_1fr_24px] items-center gap-3 lg:mb-6 lg:gap-4'
             }
           >
             {mobileHeader ? (
@@ -366,9 +412,13 @@ export default function BookAppointment() {
                 ) : (
                   <span aria-hidden />
                 )}
-                <h1 className="text-center font-sans text-[20px] font-semibold leading-normal text-white">
-                  {headerTitle}
-                </h1>
+                {showHeaderTitle ? (
+                  <h1 className="text-center font-sans text-[20px] font-semibold leading-normal text-white">
+                    {headerTitle}
+                  </h1>
+                ) : (
+                  <span aria-hidden />
+                )}
                 <span aria-hidden />
               </>
             ) : (
@@ -377,17 +427,22 @@ export default function BookAppointment() {
                   <button
                     type="button"
                     onClick={() => setStep((s) => Math.max(1, s - 1))}
-                    className="shrink-0 rounded-lg p-1 text-white hover:bg-white/10"
+                    className="flex size-6 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
                     aria-label="Back"
                   >
                     <ArrowLeft className="size-5 lg:size-6" />
                   </button>
                 ) : (
-                  <span className="w-6 shrink-0" aria-hidden />
+                  <span className="size-6 shrink-0" aria-hidden />
                 )}
-                <h1 className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight text-white lg:text-[24px] lg:leading-none lg:tracking-[-0.5px]">
-                  {headerTitle}
-                </h1>
+                {showHeaderTitle ? (
+                  <h1 className="min-w-0 truncate text-center text-xl font-semibold tracking-tight text-white lg:text-[24px] lg:leading-none lg:tracking-[-0.5px]">
+                    {headerTitle}
+                  </h1>
+                ) : (
+                  <span aria-hidden />
+                )}
+                <span className="size-6 shrink-0" aria-hidden />
               </>
             )}
           </header>
@@ -434,7 +489,6 @@ export default function BookAppointment() {
                       labelRow={labelRow}
                       onContinue={goNextFromPersonal}
                       showMobileContinue
-                      errorMessage={personalError}
                       showMissingRequired={attemptedPersonalContinue}
                       savedMembers={savedMembers}
                       expandedMemberIndex={expandedMemberIndex}
@@ -453,7 +507,6 @@ export default function BookAppointment() {
                     labelRow={labelRow}
                     onContinue={goNextFromPersonal}
                     showMobileContinue
-                    errorMessage={personalError}
                     showMissingRequired={attemptedPersonalContinue}
                     savedMembers={savedMembers}
                     expandedMemberIndex={expandedMemberIndex}
@@ -470,7 +523,6 @@ export default function BookAppointment() {
                 form={form}
                 update={update}
                 isMobile={isMobile}
-                errorMessage={scheduleError}
                 showMissingRequired={attemptedScheduleContinue}
               />
             )}
@@ -481,12 +533,10 @@ export default function BookAppointment() {
                 onEdit={(s) => setStep(s)}
                 onProceed={handleConfirmBooking}
                 isSubmitting={isSubmittingBooking}
-                errorMessage={submitError}
               />
             )}
             {step === 4 && (
               <BookingConfirmedStep
-                bookingId={bookingId}
                 form={form}
                 members={allMembers}
                 isMobile={isMobile}
@@ -540,7 +590,7 @@ export default function BookAppointment() {
 }
 
 const mobileFieldInput =
-  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
+  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-white outline-none ring-1 ring-transparent placeholder:text-[13px] placeholder:text-white/40 focus:ring-[#4b8d83]'
 const mobileFieldInput14 = `${mobileFieldInput} text-[14px]`
 
 function PersonalStep({
@@ -551,7 +601,6 @@ function PersonalStep({
   labelRow,
   onContinue,
   showMobileContinue,
-  errorMessage,
   showMissingRequired,
   savedMembers,
   expandedMemberIndex,
@@ -571,7 +620,6 @@ function PersonalStep({
   ) => React.ReactNode
   onContinue: () => void
   showMobileContinue: boolean
-  errorMessage?: string | null
   showMissingRequired?: boolean
   savedMembers: FormData[]
   expandedMemberIndex: number | null
@@ -672,12 +720,23 @@ function PersonalStep({
 
           <div className="flex flex-col gap-1">
             {labelRow(BloodGroupIcon, 'Blood Group', undefined, true, isMissing(form.bloodGroup))}
-            <input
-              className={mobileFieldInput14}
-              placeholder="Blood Group"
-              value={form.bloodGroup}
-              onChange={(e) => update('bloodGroup', e.target.value)}
-            />
+            <div className="relative">
+              <select
+                className={`${mobileFieldInput14} appearance-none pr-10 ${form.bloodGroup ? 'text-white' : 'text-white/40'}`}
+                value={form.bloodGroup}
+                onChange={(e) => update('bloodGroup', e.target.value)}
+              >
+                <option value="" disabled className="bg-[#101a1a] text-[#d0d0d0]">
+                  Blood Group
+                </option>
+                {BLOOD_GROUP_OPTIONS.map((group) => (
+                  <option key={group} value={group} className="bg-[#101a1a] text-white">
+                    {group}
+                  </option>
+                ))}
+              </select>
+              <SelectChevron />
+            </div>
           </div>
 
           <div className="flex flex-col gap-1">
@@ -709,8 +768,9 @@ function PersonalStep({
               className={mobileFieldInput14}
               inputMode="numeric"
               placeholder="Age"
+              maxLength={2}
               value={form.age}
-              onChange={(e) => update('age', e.target.value)}
+              onChange={(e) => update('age', sanitizeAge(e.target.value))}
             />
           </div>
 
@@ -730,9 +790,10 @@ function PersonalStep({
               className={mobileFieldInput14}
               inputMode="tel"
               placeholder="+91 999999999"
+              maxLength={10}
               disabled={form.useSamePhone}
               value={phoneValue}
-              onChange={(e) => update('phone', e.target.value)}
+              onChange={(e) => update('phone', sanitizePhone(e.target.value))}
             />
           </div>
 
@@ -777,7 +838,6 @@ function PersonalStep({
 
         </div>
 
-        {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
       </div>
     )
   }
@@ -812,8 +872,9 @@ function PersonalStep({
               className={mobileFieldInput14}
               inputMode="tel"
               placeholder="Phone"
+              maxLength={10}
               value={form.phone}
-              onChange={(e) => update('phone', e.target.value)}
+              onChange={(e) => update('phone', sanitizePhone(e.target.value))}
             />
           </div>
 
@@ -856,8 +917,9 @@ function PersonalStep({
               className={mobileFieldInput14}
               inputMode="numeric"
               placeholder="Age"
+              maxLength={2}
               value={form.age}
-              onChange={(e) => update('age', e.target.value)}
+              onChange={(e) => update('age', sanitizeAge(e.target.value))}
             />
           </div>
 
@@ -895,17 +957,26 @@ function PersonalStep({
 
           <div className="flex flex-col gap-1">
             {labelRow(BloodGroupIcon, 'Blood Group', undefined, true, isMissing(form.bloodGroup))}
-            <input
-              className={mobileFieldInput14}
-              placeholder="Blood Group"
-              value={form.bloodGroup}
-              onChange={(e) => update('bloodGroup', e.target.value)}
-            />
+            <div className="relative">
+              <select
+                className={`${mobileFieldInput14} appearance-none pr-10 ${form.bloodGroup ? 'text-white' : 'text-white/40'}`}
+                value={form.bloodGroup}
+                onChange={(e) => update('bloodGroup', e.target.value)}
+              >
+                <option value="" disabled className="bg-[#101a1a] text-[#d0d0d0]">
+                  Blood Group
+                </option>
+                {BLOOD_GROUP_OPTIONS.map((group) => (
+                  <option key={group} value={group} className="bg-[#101a1a] text-white">
+                    {group}
+                  </option>
+                ))}
+              </select>
+              <SelectChevron />
+            </div>
           </div>
 
         </div>
-
-        {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
 
         {showMobileContinue && (
           <div className="pb-4">
@@ -1004,9 +1075,10 @@ function PersonalStep({
               className={inputClass()}
               placeholder="+91 999999999"
               inputMode="tel"
+              maxLength={10}
               disabled={form.useSamePhone}
               value={phoneValue}
-              onChange={(e) => update('phone', e.target.value)}
+              onChange={(e) => update('phone', sanitizePhone(e.target.value))}
             />
           </div>
 
@@ -1057,8 +1129,9 @@ function PersonalStep({
               className={inputClass()}
               placeholder="Age"
               inputMode="numeric"
+              maxLength={2}
               value={form.age}
-              onChange={(e) => update('age', e.target.value)}
+              onChange={(e) => update('age', sanitizeAge(e.target.value))}
             />
           </div>
 
@@ -1069,12 +1142,23 @@ function PersonalStep({
 
           <div>
             {labelRow(BloodGroupIcon, 'Blood Group', undefined, false, isMissing(form.bloodGroup))}
-            <input
-              className={inputClass()}
-              placeholder="Blood Group"
-              value={form.bloodGroup}
-              onChange={(e) => update('bloodGroup', e.target.value)}
-            />
+            <div className="relative">
+              <select
+                className={`${inputClass()} appearance-none pr-10 ${form.bloodGroup ? 'text-white' : 'text-white/40'}`}
+                value={form.bloodGroup}
+                onChange={(e) => update('bloodGroup', e.target.value)}
+              >
+                <option value="" disabled className="bg-[#101a1a] text-[#d0d0d0]">
+                  Blood Group
+                </option>
+                {BLOOD_GROUP_OPTIONS.map((group) => (
+                  <option key={group} value={group} className="bg-[#101a1a] text-white">
+                    {group}
+                  </option>
+                ))}
+              </select>
+              <SelectChevron />
+            </div>
           </div>
 
           <div>
@@ -1104,8 +1188,6 @@ function PersonalStep({
           </div>
 
         </div>
-
-        {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
 
         <div className="mt-4 flex justify-end">
           <ContinueButton onClick={onContinue}>Continue</ContinueButton>
@@ -1146,8 +1228,10 @@ function PersonalStep({
           <input
             className={inputClass()}
             placeholder="Phone"
+            inputMode="tel"
+            maxLength={10}
             value={form.phone}
-            onChange={(e) => update('phone', e.target.value)}
+            onChange={(e) => update('phone', sanitizePhone(e.target.value))}
           />
         </div>
 
@@ -1156,6 +1240,9 @@ function PersonalStep({
           <input
             className={inputClass()}
             placeholder="Email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
             value={form.email}
             onChange={(e) => update('email', e.target.value)}
           />
@@ -1186,8 +1273,10 @@ function PersonalStep({
           <input
             className={inputClass()}
             placeholder="Age"
+            inputMode="numeric"
+            maxLength={2}
             value={form.age}
-            onChange={(e) => update('age', e.target.value)}
+            onChange={(e) => update('age', sanitizeAge(e.target.value))}
           />
         </div>
 
@@ -1198,17 +1287,26 @@ function PersonalStep({
 
         <div>
           {labelRow(BloodGroupIcon, 'Blood Group', undefined, false, isMissing(form.bloodGroup))}
-          <input
-            className={inputClass()}
-            placeholder="Blood Group"
-            value={form.bloodGroup}
-            onChange={(e) => update('bloodGroup', e.target.value)}
-          />
+          <div className="relative">
+            <select
+              className={`${inputClass()} appearance-none pr-10 ${form.bloodGroup ? 'text-white' : 'text-white/40'}`}
+              value={form.bloodGroup}
+              onChange={(e) => update('bloodGroup', e.target.value)}
+            >
+              <option value="" disabled className="bg-[#101a1a] text-[#d0d0d0]">
+                Blood Group
+              </option>
+              {BLOOD_GROUP_OPTIONS.map((group) => (
+                <option key={group} value={group} className="bg-[#101a1a] text-white">
+                  {group}
+                </option>
+              ))}
+            </select>
+            <SelectChevron />
+          </div>
         </div>
 
       </div>
-
-      {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
 
       <div className="mt-4 flex justify-end">
         <ContinueButton onClick={onContinue}>Continue</ContinueButton>
@@ -1266,14 +1364,12 @@ function ConfirmStep({
   onEdit,
   onProceed,
   isSubmitting,
-  errorMessage,
 }: {
   form: FormData
   members: FormData[]
   onEdit: (step: number) => void
   onProceed: () => void
   isSubmitting: boolean
-  errorMessage: string | null
 }) {
   return (
     <>
@@ -1325,7 +1421,6 @@ function ConfirmStep({
           >
             {isSubmitting ? 'Confirming...' : 'Confirm Booking'}
           </ContinueButton>
-          {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
         </section>
       </div>
     </>
@@ -1397,7 +1492,7 @@ type UpcomingDate = { iso: string; day: string; date: number }
 function getMayDates(): UpcomingDate[] {
   const pad = (n: number) => String(n).padStart(2, '0')
   const year = new Date().getFullYear()
-  return [4, 5].map((dayOfMonth) => {
+  return [5, 6].map((dayOfMonth) => {
     const d = new Date(year, 4, dayOfMonth)
     return {
       iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
@@ -1421,13 +1516,11 @@ function ScheduleStep({
   form,
   update,
   isMobile,
-  errorMessage,
   showMissingRequired,
 }: {
   form: FormData
   update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
   isMobile: boolean
-  errorMessage?: string | null
   showMissingRequired?: boolean
 }) {
   const dates = useMemo(() => getMayDates(), [])
@@ -1504,9 +1597,6 @@ function ScheduleStep({
             )
           })}
         </div>
-        <p className={isMobile ? 'text-[12px] text-[#ccc]' : 'text-[15px] font-light leading-none text-[#999]'}>
-          Timing: 9am to 1pm
-        </p>
       </section>
 
       <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
@@ -1537,6 +1627,9 @@ function ScheduleStep({
             )
           })}
         </div>
+        <p className={isMobile ? 'text-[12px] text-[#ccc]' : 'text-[15px] font-light leading-none text-[#999]'}>
+          Timing: 9am - 12noon
+        </p>
       </section>
 
       <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
@@ -1582,19 +1675,8 @@ function ScheduleStep({
         </div>
       </section>
 
-      {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
-
     </div>
   )
-}
-
-function generateBookingId(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  let out = ''
-  for (let i = 0; i < 6; i++) {
-    out += chars[Math.floor(Math.random() * chars.length)]
-  }
-  return out
 }
 
 const MONTH_LABELS = [
@@ -1610,12 +1692,10 @@ function formatBookingDate(iso: string): string {
 }
 
 function BookingConfirmedStep({
-  bookingId,
   form,
   members,
   isMobile,
 }: {
-  bookingId: string
   form: FormData
   members: FormData[]
   isMobile: boolean
@@ -1625,6 +1705,7 @@ function BookingConfirmedStep({
     .filter(Boolean)
     .join(', ')
   const bookingDate = formatBookingDate(form.appointmentDate)
+  const bookingDateTime = `${bookingDate} | ${form.appointmentTime || '—'}`
 
   if (isMobile) {
     return (
@@ -1650,18 +1731,9 @@ function BookingConfirmedStep({
           </h2>
 
           <div className="flex w-full flex-col items-center gap-5 self-stretch rounded-[8px] border border-[#90DF9E]/20 bg-[#4B8D83]/10 p-6">
-            <div className="flex flex-col items-center self-stretch">
-              <span className="text-center font-sans text-[14px] font-normal leading-[24px] text-[#9A9A9A]">
-                Booking ID
-              </span>
-              <span className="font-sans text-[20px] font-bold leading-[28px] text-white">
-                {bookingId || '—'}
-              </span>
-            </div>
-
             <div className="flex w-full flex-col items-start gap-3.5">
-              <InfoRow icon={<CalendarIcon />} label="Date" value={bookingDate} isMobile />
-              <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} isMobile />
+              <InfoRow icon={<UserIcon />} label="Name" value={memberNames || '—'} isMobile />
+              <InfoRow icon={<CalendarIcon />} label="Date & Time" value={bookingDateTime} isMobile />
             </div>
           </div>
         </div>
@@ -1676,10 +1748,7 @@ function BookingConfirmedStep({
             Download the App
           </a>
           <p className="text-center font-sans text-[13px] font-medium leading-normal text-[#999]">
-            OR
-          </p>
-          <p className="text-center font-sans text-[13px] font-medium leading-normal text-[#999]">
-            We will get in touch with you on Whatsapp/ Email
+            Log in to complete your questionnaire and access your detailed helath insights.
           </p>
         </div>
       </div>
@@ -1709,18 +1778,9 @@ function BookingConfirmedStep({
         </h2>
 
         <div className="flex w-[517px] max-w-full flex-col items-center gap-[30px] rounded-[8px] border border-[#90DF9E]/20 bg-[#4B8D83]/10 p-6">
-          <div className="flex flex-col items-center">
-            <span className="text-center text-[20px] font-normal leading-[40px] text-[#9A9A9A]">
-              Booking ID
-            </span>
-            <span className="text-[30px] font-bold leading-[40px] text-white">
-              {bookingId || '—'}
-            </span>
-          </div>
-
           <div className="flex flex-col items-start gap-5 self-stretch">
-            <InfoRow icon={<CalendarIcon />} label="Date" value={bookingDate} />
-            <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} />
+            <InfoRow icon={<UserIcon />} label="Name" value={memberNames || '—'} />
+            <InfoRow icon={<CalendarIcon />} label="Date & Time" value={bookingDateTime} />
           </div>
         </div>
       </div>
@@ -1733,10 +1793,8 @@ function BookingConfirmedStep({
       >
         Download the App
       </a>
-
-      <p className="mt-3 text-center text-[14px] font-medium leading-[22.5px] text-[#999]">OR</p>
-      <p className="text-center text-[15px] font-medium leading-[22.5px] text-[#999]">
-        We will get in touch with you on Whatsapp/ Email
+      <p className="mt-3 text-center text-[15px] font-medium leading-[22.5px] text-[#999]">
+        Log in to complete your questionnaire and access your detailed helath insights.
       </p>
     </div>
   )
@@ -1754,33 +1812,25 @@ function InfoRow({
   isMobile?: boolean
 }) {
   return (
-    <div className="flex items-start gap-3 self-stretch">
+    <div className="flex min-w-0 flex-1 flex-col self-stretch">
       <span
-        className={
+        className={[
           isMobile
-            ? 'mt-[6px] flex size-[18px] shrink-0 items-center justify-center'
-            : 'mt-[18px] flex size-5 shrink-0 items-center justify-center'
-        }
-        aria-hidden
+            ? 'pl-[30px] font-sans text-[10px] font-normal leading-normal text-[#9A9A9A]'
+            : 'pl-8 text-[12px] font-normal leading-none text-[#9A9A9A]',
+        ].join(' ')}
       >
-        {icon}
+        {label}
       </span>
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className={isMobile ? 'mt-1 flex items-center gap-3' : 'mt-1 flex items-center gap-3'}>
         <span
-          className={
-            isMobile
-              ? 'font-sans text-[10px] font-normal leading-normal text-[#9A9A9A]'
-              : 'text-[12px] font-normal leading-none text-[#9A9A9A]'
-          }
+          className={isMobile ? 'flex size-[18px] shrink-0 items-center justify-center' : 'flex size-5 shrink-0 items-center justify-center'}
+          aria-hidden
         >
-          {label}
+          {icon}
         </span>
         <span
-          className={
-            isMobile
-              ? 'mt-1 font-sans text-[15px] font-medium leading-normal text-[#CCC]'
-              : 'mt-1 truncate text-[20px] font-medium leading-none text-[#CCC]'
-          }
+          className={isMobile ? 'min-w-0 font-sans text-[15px] font-medium leading-normal text-[#CCC]' : 'min-w-0 truncate text-[20px] font-medium leading-none text-[#CCC]'}
         >
           {value}
         </span>
