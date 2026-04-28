@@ -172,11 +172,11 @@ export default function BookAppointment() {
   const goNextFromPersonal = () => {
     setAttemptedPersonalContinue(true)
     if (!form.firstName.trim()) {
-      setPersonalError('First name is required.')
+      setPersonalError('First Name is required.')
       return
     }
     if (!form.lastName.trim()) {
-      setPersonalError('Last name is required.')
+      setPersonalError('Last Name is required.')
       return
     }
     if (!form.phone.trim()) {
@@ -244,11 +244,11 @@ export default function BookAppointment() {
     const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
 
     if (!form.firstName.trim()) {
-      setSubmitError('First name is required.')
+      setSubmitError('First Name is required.')
       return
     }
     if (!form.lastName.trim()) {
-      setSubmitError('Last name is required.')
+      setSubmitError('Last Name is required.')
       return
     }
     if (!form.email.trim()) {
@@ -541,7 +541,7 @@ export default function BookAppointment() {
 
 const mobileFieldInput =
   'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
-const mobileFieldInput14 = `${mobileFieldInput} text-base`
+const mobileFieldInput14 = `${mobileFieldInput} text-[14px]`
 
 function PersonalStep({
   form,
@@ -623,14 +623,14 @@ function PersonalStep({
             <div className="flex gap-2">
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
-                placeholder="First name"
+                placeholder="First Name"
                 autoComplete="given-name"
                 value={form.firstName}
                 onChange={(e) => update('firstName', e.target.value)}
               />
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
-                placeholder="Last name"
+                placeholder="Last Name"
                 autoComplete="family-name"
                 value={form.lastName}
                 onChange={(e) => update('lastName', e.target.value)}
@@ -791,14 +791,14 @@ function PersonalStep({
             <div className="flex gap-2">
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
-                placeholder="First name"
+                placeholder="First Name"
                 autoComplete="given-name"
                 value={form.firstName}
                 onChange={(e) => update('firstName', e.target.value)}
               />
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
-                placeholder="Last name"
+                placeholder="Last Name"
                 autoComplete="family-name"
                 value={form.lastName}
                 onChange={(e) => update('lastName', e.target.value)}
@@ -974,7 +974,7 @@ function PersonalStep({
             <div className="flex gap-2">
               <input
                 className={`${inputClass()} min-w-0 flex-1`}
-                placeholder="First name"
+                placeholder="First Name"
                 autoComplete="given-name"
                 value={form.firstName}
                 onChange={(e) => update('firstName', e.target.value)}
@@ -1107,7 +1107,7 @@ function PersonalStep({
 
         {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
 
-        <div className="flex justify-end">
+        <div className="mt-4 flex justify-end">
           <ContinueButton onClick={onContinue}>Continue</ContinueButton>
         </div>
       </>
@@ -1126,7 +1126,7 @@ function PersonalStep({
           <div className="flex gap-2">
             <input
               className={`${inputClass()} min-w-0 flex-1`}
-              placeholder="First name"
+              placeholder="First Name"
               autoComplete="given-name"
               value={form.firstName}
               onChange={(e) => update('firstName', e.target.value)}
@@ -1152,7 +1152,7 @@ function PersonalStep({
         </div>
 
         <div>
-          {labelRow(Mail, 'Company EmailID', undefined, false, isMissing(form.email))}
+          {labelRow(Mail, 'Company Email Id', undefined, false, isMissing(form.email))}
           <input
             className={inputClass()}
             placeholder="Email"
@@ -1210,7 +1210,7 @@ function PersonalStep({
 
       {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
 
-      <div className="flex justify-end">
+      <div className="mt-4 flex justify-end">
         <ContinueButton onClick={onContinue}>Continue</ContinueButton>
       </div>
     </>
