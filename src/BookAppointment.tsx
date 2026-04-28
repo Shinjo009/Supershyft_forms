@@ -15,6 +15,7 @@ import { PageBackdrop } from './components/PageBackdrop'
 import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
 import { defaultFormData, type FormData } from './types'
+import supershyftWhiteLogo from './assets/SuperShyft - white logo.svg'
 
 const RELATION_OPTIONS = [
   'Parent',
@@ -27,6 +28,8 @@ const RELATION_OPTIONS = [
 const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const NAME_REGEX = /^[A-Za-z\s]+$/
+const sanitizeName = (value: string) => value.replace(/[^A-Za-z\s]/g, '')
 const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
 const MALE_ENGAGEMENT_CODE = 'DMMU0526'
@@ -141,7 +144,16 @@ function labelRow(
   extra?: React.ReactNode,
   mobile?: boolean,
   showRequired?: boolean,
+  errorType?: 'missing' | 'invalid',
 ) {
+  const helperText =
+    errorType === 'missing'
+      ? 'Field is required'
+      : errorType === 'invalid'
+        ? 'Invalid Input'
+        : showRequired
+          ? 'Field is required'
+        : ''
   return (
     <div className={`flex items-center gap-2 ${mobile ? 'mb-1' : 'mb-1.5'}`}>
       <span
@@ -153,7 +165,12 @@ function labelRow(
         className={`font-medium ${mobile ? 'text-sm text-[#999]' : 'text-[13px] text-[#9a9a9a]'}`}
       >
         {label}
-        {showRequired ? <span className="text-[#ff6b6b]"> *</span> : null}
+        {showRequired ? (
+          <span className="text-[#ff6b6b]">
+            {' '}
+            * {helperText}
+          </span>
+        ) : null}
       </span>
       {extra}
     </div>
@@ -201,13 +218,23 @@ export default function BookAppointment() {
     const trimmedPhone = form.phone.trim()
     const trimmedEmail = form.email.trim()
     const trimmedAge = form.age.trim()
+    const trimmedFirstName = form.firstName.trim()
+    const trimmedLastName = form.lastName.trim()
     setAttemptedPersonalContinue(true)
-    if (!form.firstName.trim()) {
+    if (!trimmedFirstName) {
       logClientError('First Name is required.')
       return
     }
-    if (!form.lastName.trim()) {
+    if (!NAME_REGEX.test(trimmedFirstName)) {
+      logClientError('Invalid Input for First Name.')
+      return
+    }
+    if (!trimmedLastName) {
       logClientError('Last Name is required.')
+      return
+    }
+    if (!NAME_REGEX.test(trimmedLastName)) {
+      logClientError('Invalid Input for Last Name.')
       return
     }
     if (!trimmedPhone) {
@@ -215,7 +242,7 @@ export default function BookAppointment() {
       return
     }
     if (!/^\d{10}$/.test(trimmedPhone)) {
-      logClientError('Phone must be exactly 10 digits.')
+      logClientError('Invalid Input for Phone.')
       return
     }
     if (!trimmedEmail) {
@@ -354,7 +381,9 @@ export default function BookAppointment() {
     }
   }
 
-  const headerTitle = 'Book Appointment'
+  const desktopWelcomeTitle = 'Welcome to the world of Bio AI technology.'
+  const desktopWelcomeSubtitle =
+    'Book your Bio-marker sample collection & schedule your personalised doctor consultation.'
 
   const glassPanel =
     'rounded-[18px] border border-white/12 bg-black/18 shadow-[0_26px_70px_rgba(0,0,0,0.35)] backdrop-blur-[2px]'
@@ -381,6 +410,11 @@ export default function BookAppointment() {
               : 'min-h-svh max-w-[980px] px-4 py-6 pb-24'
         }`}
       >
+        {showHeaderTitle && (
+          <div className="mt-4 mb-4 flex justify-center">
+            <img src={supershyftWhiteLogo} alt="SuperShyft" className="h-16 w-16 object-contain" />
+          </div>
+        )}
         <div
           className={`flex min-h-0 flex-col ${mobilePersonal ? 'flex-1' : 'flex-1 lg:flex-none'} ${
             mobilePersonal
@@ -413,9 +447,14 @@ export default function BookAppointment() {
                   <span aria-hidden />
                 )}
                 {showHeaderTitle ? (
-                  <h1 className="text-center font-sans text-[20px] font-semibold leading-normal text-white">
-                    {headerTitle}
-                  </h1>
+                  <div className="min-w-0 text-center">
+                    <h1 className="whitespace-nowrap text-[17px] font-semibold leading-tight tracking-tight text-white">
+                      {desktopWelcomeTitle}
+                    </h1>
+                    <p className="mt-1 text-[12px] leading-normal text-[#cfcfcf]">
+                      {desktopWelcomeSubtitle}
+                    </p>
+                  </div>
                 ) : (
                   <span aria-hidden />
                 )}
@@ -436,9 +475,14 @@ export default function BookAppointment() {
                   <span className="size-6 shrink-0" aria-hidden />
                 )}
                 {showHeaderTitle ? (
-                  <h1 className="min-w-0 truncate text-center text-xl font-semibold tracking-tight text-white lg:text-[24px] lg:leading-none lg:tracking-[-0.5px]">
-                    {headerTitle}
-                  </h1>
+                  <div className="min-w-0 flex-1 text-center">
+                    <h1 className="whitespace-nowrap text-[17px] font-semibold leading-none tracking-tight text-white">
+                      {desktopWelcomeTitle}
+                    </h1>
+                    <p className="mt-2 text-[14px] font-normal leading-normal text-[#cfcfcf]">
+                      {desktopWelcomeSubtitle}
+                    </p>
+                  </div>
                 ) : (
                   <span aria-hidden />
                 )}
@@ -591,7 +635,7 @@ export default function BookAppointment() {
 
 const mobileFieldInput =
   'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-white outline-none ring-1 ring-transparent placeholder:text-[13px] placeholder:text-white/40 focus:ring-[#4b8d83]'
-const mobileFieldInput14 = `${mobileFieldInput} text-[14px]`
+const mobileFieldInput14 = `${mobileFieldInput} text-[16px]`
 
 function PersonalStep({
   form,
@@ -617,6 +661,7 @@ function PersonalStep({
     extra?: React.ReactNode,
     mobile?: boolean,
     showRequired?: boolean,
+    errorType?: 'missing' | 'invalid',
   ) => React.ReactNode
   onContinue: () => void
   showMobileContinue: boolean
@@ -644,6 +689,27 @@ function PersonalStep({
   const isMissing = (value: string) => showRequired && !value.trim()
   const isMissingGender = showRequired && !form.gender
   const isMissingRelation = showRequired && !form.relation.trim()
+  const fullNameError: 'missing' | 'invalid' | undefined = !showRequired
+    ? undefined
+    : !form.firstName.trim() || !form.lastName.trim()
+      ? 'missing'
+      : !NAME_REGEX.test(form.firstName.trim()) || !NAME_REGEX.test(form.lastName.trim())
+        ? 'invalid'
+        : undefined
+  const phoneError: 'missing' | 'invalid' | undefined = !showRequired
+    ? undefined
+    : !phoneValue.trim()
+      ? 'missing'
+      : !/^\d{10}$/.test(phoneValue.trim())
+        ? 'invalid'
+        : undefined
+  const emailError: 'missing' | 'invalid' | undefined = !showRequired
+    ? undefined
+    : !emailValue.trim()
+      ? 'missing'
+      : !EMAIL_REGEX.test(emailValue.trim())
+        ? 'invalid'
+        : undefined
 
   if (!isLg && hasSavedMembers) {
     const relationPillBase =
@@ -667,21 +733,21 @@ function PersonalStep({
 
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
-            {labelRow(User, 'Full Name', undefined, true, isMissing(form.firstName) || isMissing(form.lastName))}
+            {labelRow(User, 'Full Name', undefined, true, Boolean(fullNameError), fullNameError)}
             <div className="flex gap-2">
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
                 placeholder="First Name"
                 autoComplete="given-name"
                 value={form.firstName}
-                onChange={(e) => update('firstName', e.target.value)}
+                onChange={(e) => update('firstName', sanitizeName(e.target.value))}
               />
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
                 placeholder="Last Name"
                 autoComplete="family-name"
                 value={form.lastName}
-                onChange={(e) => update('lastName', e.target.value)}
+                onChange={(e) => update('lastName', sanitizeName(e.target.value))}
               />
             </div>
           </div>
@@ -784,7 +850,8 @@ function PersonalStep({
                 label="Same as before"
               />,
               true,
-              isMissing(form.phone),
+              Boolean(phoneError),
+              phoneError,
             )}
             <input
               className={mobileFieldInput14}
@@ -803,7 +870,8 @@ function PersonalStep({
               'Email',
               <UseSameToggle checked={form.useSameEmail} onChange={toggleUseSameEmail} />,
               true,
-              isMissing(form.email),
+              Boolean(emailError),
+              emailError,
             )}
             <input
               className={mobileFieldInput14}
@@ -847,27 +915,34 @@ function PersonalStep({
       <div className="flex min-h-0 flex-col gap-5 pb-2">
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
-            {labelRow(User, 'Full Name', undefined, true, isMissing(form.firstName) || isMissing(form.lastName))}
+            {labelRow(User, 'Full Name', undefined, true, Boolean(fullNameError), fullNameError)}
             <div className="flex gap-2">
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
                 placeholder="First Name"
                 autoComplete="given-name"
                 value={form.firstName}
-                onChange={(e) => update('firstName', e.target.value)}
+                onChange={(e) => update('firstName', sanitizeName(e.target.value))}
               />
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
                 placeholder="Last Name"
                 autoComplete="family-name"
                 value={form.lastName}
-                onChange={(e) => update('lastName', e.target.value)}
+                onChange={(e) => update('lastName', sanitizeName(e.target.value))}
               />
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(Phone, 'Phone Number (Whatsapp)', undefined, true, isMissing(form.phone))}
+            {labelRow(
+              Phone,
+              'Phone Number (Whatsapp)',
+              undefined,
+              true,
+              Boolean(phoneError),
+              phoneError,
+            )}
             <input
               className={mobileFieldInput14}
               inputMode="tel"
@@ -879,7 +954,7 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(Mail, 'Company Email ID', undefined, true, isMissing(form.email))}
+            {labelRow(Mail, 'Company Email ID', undefined, true, Boolean(emailError), emailError)}
             <input
               className={mobileFieldInput14}
               type="email"
@@ -1041,21 +1116,21 @@ function PersonalStep({
 
         <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
           <div>
-            {labelRow(User, 'Full Name', undefined, false, isMissing(form.firstName) || isMissing(form.lastName))}
+            {labelRow(User, 'Full Name', undefined, false, Boolean(fullNameError), fullNameError)}
             <div className="flex gap-2">
               <input
                 className={`${inputClass()} min-w-0 flex-1`}
                 placeholder="First Name"
                 autoComplete="given-name"
                 value={form.firstName}
-                onChange={(e) => update('firstName', e.target.value)}
+                onChange={(e) => update('firstName', sanitizeName(e.target.value))}
               />
               <input
                 className={`${inputClass()} min-w-0 flex-1`}
                 placeholder="Last Name"
                 autoComplete="family-name"
                 value={form.lastName}
-                onChange={(e) => update('lastName', e.target.value)}
+                onChange={(e) => update('lastName', sanitizeName(e.target.value))}
               />
             </div>
           </div>
@@ -1069,7 +1144,8 @@ function PersonalStep({
                 onChange={toggleUseSamePhone}
               />,
               false,
-              isMissing(form.phone),
+              Boolean(phoneError),
+              phoneError,
             )}
             <input
               className={inputClass()}
@@ -1091,7 +1167,8 @@ function PersonalStep({
                 onChange={toggleUseSameEmail}
               />,
               false,
-              isMissing(form.email),
+              Boolean(emailError),
+              emailError,
             )}
             <input
               className={inputClass()}
@@ -1204,27 +1281,34 @@ function PersonalStep({
 
       <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
         <div>
-          {labelRow(User, 'Full Name', undefined, false, isMissing(form.firstName) || isMissing(form.lastName))}
+          {labelRow(User, 'Full Name', undefined, false, Boolean(fullNameError), fullNameError)}
           <div className="flex gap-2">
             <input
               className={`${inputClass()} min-w-0 flex-1`}
               placeholder="First Name"
               autoComplete="given-name"
               value={form.firstName}
-              onChange={(e) => update('firstName', e.target.value)}
+              onChange={(e) => update('firstName', sanitizeName(e.target.value))}
             />
             <input
               className={`${inputClass()} min-w-0 flex-1`}
               placeholder="Last Name"
               autoComplete="family-name"
               value={form.lastName}
-              onChange={(e) => update('lastName', e.target.value)}
+              onChange={(e) => update('lastName', sanitizeName(e.target.value))}
             />
           </div>
         </div>
 
         <div>
-          {labelRow(Phone, 'Phone Number (Whatsapp)', undefined, false, isMissing(form.phone))}
+          {labelRow(
+            Phone,
+            'Phone Number (Whatsapp)',
+            undefined,
+            false,
+            Boolean(phoneError),
+            phoneError,
+          )}
           <input
             className={inputClass()}
             placeholder="Phone"
@@ -1236,7 +1320,7 @@ function PersonalStep({
         </div>
 
         <div>
-          {labelRow(Mail, 'Company Email Id', undefined, false, isMissing(form.email))}
+          {labelRow(Mail, 'Company Email Id', undefined, false, Boolean(emailError), emailError)}
           <input
             className={inputClass()}
             placeholder="Email"
@@ -1371,6 +1455,7 @@ function ConfirmStep({
   onProceed: () => void
   isSubmitting: boolean
 }) {
+  const schedulePreview = formatSchedulePreview(form.appointmentDate, form.appointmentTime)
   return (
     <>
       <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Details Preview</h2>
@@ -1409,7 +1494,7 @@ function ConfirmStep({
             <ul className="space-y-4 text-sm text-[#ccc]">
               <li className="flex gap-2">
                 <Calendar className="mt-0.5 size-5 shrink-0 opacity-70" />
-                {form.appointmentDate}
+                {schedulePreview}
               </li>
             </ul>
           </div>
@@ -1489,6 +1574,15 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
 type UpcomingDate = { iso: string; day: string; date: number }
 
+function getOrdinalDay(day: number): string {
+  if (day % 100 >= 11 && day % 100 <= 13) return `${day}th`
+  const last = day % 10
+  if (last === 1) return `${day}st`
+  if (last === 2) return `${day}nd`
+  if (last === 3) return `${day}rd`
+  return `${day}th`
+}
+
 function getMayDates(): UpcomingDate[] {
   const pad = (n: number) => String(n).padStart(2, '0')
   const year = new Date().getFullYear()
@@ -1512,6 +1606,15 @@ function PreferredDateIcon() {
   )
 }
 
+function PreferredTimeSlotIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+      <circle cx="10" cy="10" r="7.5" stroke="#9A9A9A" strokeWidth="1.66667" />
+      <path d="M10 5.83398V10.0007H13.3333" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function ScheduleStep({
   form,
   update,
@@ -1524,7 +1627,7 @@ function ScheduleStep({
   showMissingRequired?: boolean
 }) {
   const dates = useMemo(() => getMayDates(), [])
-  const timeSlots = ['9:00 - 10:00', '10:00 - 11:00', '11:00 - 12:00']
+  const timeSlots = ['9:00AM - 10:00AM', '10:00AM - 11:00AM', '11:00AM - 12:00PM']
 
   const selectedDateClass =
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
@@ -1543,7 +1646,7 @@ function ScheduleStep({
             <h2 className={sectionLabelClass}>
               Preferred Date
               {showMissingRequired && !form.appointmentDate ? (
-                <span className="text-[#ff6b6b]"> *</span>
+                <span className="text-[#ff6b6b]"> * Field is required</span>
               ) : null}
             </h2>
           </div>
@@ -1551,7 +1654,7 @@ function ScheduleStep({
           <h2 className={sectionLabelClass}>
             Preferred Date
             {showMissingRequired && !form.appointmentDate ? (
-              <span className="text-[#ff6b6b]"> *</span>
+              <span className="text-[#ff6b6b]"> * Field is required</span>
             ) : null}
           </h2>
         )}
@@ -1587,11 +1690,11 @@ function ScheduleStep({
                 </span>
                 <span
                   className={[
-                    'font-sans text-[18px] font-semibold leading-none',
+                    'font-sans text-[15px] font-semibold leading-none',
                     selected ? 'text-white' : 'text-[#cccccc]/80',
                   ].join(' ')}
                 >
-                  {d.date}
+                  {`${getOrdinalDay(d.date)} May`}
                 </span>
               </button>
             )
@@ -1600,12 +1703,15 @@ function ScheduleStep({
       </section>
 
       <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
-        <h2 className={sectionLabelClass}>
-          Preferred Time Slot
-          {showMissingRequired && !form.appointmentTime ? (
-            <span className="text-[#ff6b6b]"> *</span>
-          ) : null}
-        </h2>
+        <div className="flex items-center gap-2">
+          <PreferredTimeSlotIcon />
+          <h2 className={sectionLabelClass}>
+            Preferred Time Slot
+            {showMissingRequired && !form.appointmentTime ? (
+              <span className="text-[#ff6b6b]"> * Field is required</span>
+            ) : null}
+          </h2>
+        </div>
         <div className={isMobile ? 'grid w-full grid-cols-2 gap-3' : 'grid w-full grid-cols-3 gap-4'}>
           {timeSlots.map((slot) => {
             const selected = form.appointmentTime === slot
@@ -1627,16 +1733,13 @@ function ScheduleStep({
             )
           })}
         </div>
-        <p className={isMobile ? 'text-[12px] text-[#ccc]' : 'text-[15px] font-light leading-none text-[#999]'}>
-          Timing: 9am - 12noon
-        </p>
       </section>
 
       <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
         <h2 className={sectionLabelClass}>
           Would you like to have personalised Doctor consultations?
           {showMissingRequired && !form.personalizedDoctorConsultation ? (
-            <span className="text-[#ff6b6b]"> *</span>
+            <span className="text-[#ff6b6b]"> * Field is required</span>
           ) : null}
         </h2>
         <div className={isMobile ? 'flex h-10 w-full gap-6' : 'flex w-full gap-3'}>
@@ -1689,6 +1792,14 @@ function formatBookingDate(iso: string): string {
   const d = new Date(`${iso}T00:00:00`)
   if (Number.isNaN(d.getTime())) return iso
   return `${DAY_LABELS[d.getDay()]}, ${d.getDate()} ${MONTH_LABELS[d.getMonth()]}`
+}
+
+function formatSchedulePreview(iso: string, slot: string): string {
+  if (!iso) return '—'
+  const d = new Date(`${iso}T00:00:00`)
+  const safeSlot = slot || '—'
+  if (Number.isNaN(d.getTime())) return `${iso} | ${safeSlot}`
+  return `${getOrdinalDay(d.getDate())} ${MONTH_LABELS[d.getMonth()]} | ${safeSlot}`
 }
 
 function BookingConfirmedStep({
@@ -1745,7 +1856,7 @@ function BookingConfirmedStep({
             rel="noopener noreferrer"
             className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[16px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
           >
-            Download the App
+            Continue to Our App
           </a>
           <p className="text-center font-sans text-[13px] font-medium leading-normal text-[#999]">
             Log in to complete your questionnaire and access your detailed helath insights.
@@ -1791,7 +1902,7 @@ function BookingConfirmedStep({
         rel="noopener noreferrer"
         className="mt-[10px] flex h-[49px] w-[231.53px] items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[15px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
       >
-        Download the App
+        Continue to Our App
       </a>
       <p className="mt-3 text-center text-[15px] font-medium leading-[22.5px] text-[#999]">
         Log in to complete your questionnaire and access your detailed helath insights.
