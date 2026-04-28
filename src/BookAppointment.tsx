@@ -388,7 +388,7 @@ export default function BookAppointment() {
   const glassPanel =
     'rounded-[18px] border border-white/12 bg-black/18 shadow-[0_26px_70px_rgba(0,0,0,0.35)] backdrop-blur-[2px]'
   /** Mobile step 1: full-bleed on backdrop — no framed card/border (matches Figma). */
-  const mobileStep1Layout = 'flex w-full min-h-0 flex-1 flex-col overflow-hidden'
+  const mobileStep1Layout = 'flex w-full flex-1 flex-col'
 
   const isMobile = !isLg
   const mobilePersonal = isMobile && step === 1
@@ -404,7 +404,7 @@ export default function BookAppointment() {
       <div
         className={`mx-auto flex flex-col lg:max-w-none lg:min-h-svh lg:px-10 lg:py-14 ${
           mobilePersonal
-            ? 'h-dvh max-h-dvh min-h-0 overflow-hidden px-0 py-0'
+            ? 'min-h-svh px-0 py-0'
             : isMobile
               ? 'min-h-svh px-0 py-0'
               : 'min-h-svh max-w-[980px] px-4 py-6 pb-24'
@@ -513,7 +513,7 @@ export default function BookAppointment() {
           <div
             className={`flex min-h-0 flex-col ${stretchStepBody ? 'flex-1' : 'flex-none'} ${
               mobilePersonal
-                ? 'min-h-0 overflow-hidden'
+                ? ''
                 : isMobile
                   ? step === 4
                     ? 'px-5'
@@ -524,7 +524,7 @@ export default function BookAppointment() {
             {step === 1 && (
               <>
                 {mobilePersonal ? (
-                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6">
+                  <div className="px-6">
                     <PersonalStep
                       form={form}
                       update={update}
