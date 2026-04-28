@@ -447,11 +447,11 @@ export default function BookAppointment() {
                   <span aria-hidden />
                 )}
                 {showHeaderTitle ? (
-                  <div className="min-w-0 text-center">
-                    <h1 className="whitespace-nowrap text-[17px] font-semibold leading-tight tracking-tight text-white">
+                  <div className="min-w-0 w-full text-center">
+                    <h1 className="w-full text-center text-[17px] font-semibold leading-tight tracking-tight text-white">
                       {desktopWelcomeTitle}
                     </h1>
-                    <p className="mt-1 text-[12px] leading-normal text-[#cfcfcf]">
+                    <p className="mt-1 w-full text-center text-[12px] leading-normal text-[#cfcfcf]">
                       {desktopWelcomeSubtitle}
                     </p>
                   </div>
