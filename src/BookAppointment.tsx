@@ -45,11 +45,86 @@ function inputClass(short?: boolean) {
 }
 
 /** Figma mobile: 20px icon, 8px gap, Lato Medium 14px #999. Desktop: ~14px icon, 13px label #9a9a9a */
+type IconType = React.ComponentType<{ className?: string; strokeWidth?: number }>
+
+const BloodGroupIcon: IconType = ({ className }) => (
+  <svg
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 10 14"
+    aria-hidden
+    fill="none"
+  >
+    <path
+      d="M5 0L4.375 0.7C4.375 0.7 3.30833 1.90833 2.23333 3.475C1.15833 5.04167 0 6.91667 0 8.71667C0 10.0427 0.526784 11.3145 1.46447 12.2522C2.40215 13.1899 3.67392 13.7167 5 13.7167C6.32608 13.7167 7.59785 13.1899 8.53553 12.2522C9.47322 11.3145 10 10.0427 10 8.71667C10 6.91667 8.84167 5.04167 7.76667 3.475C6.69167 1.90833 5.625 0.7 5.625 0.7L5 0ZM5 2.60833C5.36667 3.04167 5.7 3.4 6.4 4.41667C7.40833 5.88333 8.33333 7.75 8.33333 8.71667C8.33333 10.5667 6.85 12.05 5 12.05C3.15 12.05 1.66667 10.5667 1.66667 8.71667C1.66667 7.75 2.59167 5.88333 3.6 4.41667C4.3 3.4 4.63333 3.04167 5 2.60833Z"
+      fill="#9A9A9A"
+    />
+  </svg>
+)
+
+const DepartmentIcon: IconType = ({ className }) => (
+  <svg
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 15 15"
+    aria-hidden
+    fill="none"
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M10.0008 2.5007C10.0011 3.01791 9.84096 3.52247 9.54246 3.94485C9.24396 4.36723 8.8218 4.68663 8.33417 4.85904V6.66737H10.8342C11.4972 6.66737 12.1331 6.93076 12.6019 7.3996C13.0708 7.86844 13.3342 8.50433 13.3342 9.16737V10.1424C13.8904 10.339 14.3593 10.7259 14.6578 11.2347C14.9564 11.7435 15.0654 12.3416 14.9657 12.923C14.866 13.5045 14.5639 14.032 14.1128 14.4123C13.6618 14.7925 13.0908 15.0011 12.5008 15.0011C11.9109 15.0011 11.3399 14.7925 10.8889 14.4123C10.4378 14.032 10.1357 13.5045 10.036 12.923C9.93627 12.3416 10.0453 11.7435 10.3439 11.2347C10.6424 10.7259 11.1113 10.339 11.6675 10.1424V9.16737C11.6675 8.94635 11.5797 8.73439 11.4234 8.57811C11.2671 8.42183 11.0552 8.33404 10.8342 8.33404H4.1675C3.94649 8.33404 3.73453 8.42183 3.57825 8.57811C3.42197 8.73439 3.33417 8.94635 3.33417 9.16737V10.1424C3.89042 10.339 4.35925 10.7259 4.6578 11.2347C4.95636 11.7435 5.06541 12.3416 4.96568 12.923C4.86595 13.5045 4.56386 14.032 4.11281 14.4123C3.66177 14.7925 3.0908 15.0011 2.50084 15.0011C1.91088 15.0011 1.33991 14.7925 0.888862 14.4123C0.437813 14.032 0.135725 13.5045 0.0359959 12.923C-0.0637335 12.3416 0.045317 11.7435 0.343872 11.2347C0.642427 10.7259 1.11126 10.339 1.66751 10.1424V9.16737C1.66751 8.50433 1.9309 7.86844 2.39974 7.3996C2.86858 6.93076 3.50446 6.66737 4.1675 6.66737H6.6675V4.85904C6.23513 4.7064 5.85304 4.43782 5.56301 4.08267C5.27298 3.72753 5.08617 3.29948 5.02301 2.84532C4.95985 2.39116 5.02277 1.92838 5.20488 1.50757C5.38699 1.08676 5.6813 0.72412 6.05561 0.459291C6.42993 0.194462 6.86985 0.037641 7.32728 0.00597255C7.78472 -0.0256959 8.24205 0.0690073 8.64929 0.279729C9.05653 0.49045 9.398 0.809078 9.63636 1.20078C9.87473 1.59248 10.0008 2.04217 10.0008 2.5007ZM7.50084 1.66737C7.27982 1.66737 7.06786 1.75517 6.91158 1.91145C6.7553 2.06773 6.6675 2.27969 6.6675 2.5007C6.6675 2.72172 6.7553 2.93368 6.91158 3.08996C7.06786 3.24624 7.27982 3.33404 7.50084 3.33404C7.72185 3.33404 7.93381 3.24624 8.09009 3.08996C8.24637 2.93368 8.33417 2.72172 8.33417 2.5007C8.33417 2.27969 8.24637 2.06773 8.09009 1.91145C7.93381 1.75517 7.72185 1.66737 7.50084 1.66737ZM2.50084 11.6674C2.27982 11.6674 2.06786 11.7552 1.91158 11.9114C1.7553 12.0677 1.66751 12.2797 1.66751 12.5007C1.66751 12.7217 1.7553 12.9337 1.91158 13.09C2.06786 13.2462 2.27982 13.334 2.50084 13.334C2.72185 13.334 2.93381 13.2462 3.09009 13.09C3.24637 12.9337 3.33417 12.7217 3.33417 12.5007C3.33417 12.2797 3.24637 12.0677 3.09009 11.9114C2.93381 11.7552 2.72185 11.6674 2.50084 11.6674ZM12.5008 11.6674C12.2798 11.6674 12.0679 11.7552 11.9116 11.9114C11.7553 12.0677 11.6675 12.2797 11.6675 12.5007C11.6675 12.7217 11.7553 12.9337 11.9116 13.09C12.0679 13.2462 12.2798 13.334 12.5008 13.334C12.7219 13.334 12.9338 13.2462 13.0901 13.09C13.2464 12.9337 13.3342 12.7217 13.3342 12.5007C13.3342 12.2797 13.2464 12.0677 13.0901 11.9114C12.9338 11.7552 12.7219 11.6674 12.5008 11.6674Z"
+      fill="#9A9A9A"
+    />
+  </svg>
+)
+
+const EmployeeIdIcon: IconType = ({ className }) => (
+  <svg
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 20 20"
+    aria-hidden
+    fill="none"
+  >
+    <path
+      d="M2.5 5.83301C2.5 5.16997 2.76339 4.53408 3.23223 4.06524C3.70107 3.5964 4.33696 3.33301 5 3.33301H15C15.663 3.33301 16.2989 3.5964 16.7678 4.06524C17.2366 4.53408 17.5 5.16997 17.5 5.83301V14.1663C17.5 14.8294 17.2366 15.4653 16.7678 15.9341C16.2989 16.4029 15.663 16.6663 15 16.6663H5C4.33696 16.6663 3.70107 16.4029 3.23223 15.9341C2.76339 15.4653 2.5 14.8294 2.5 14.1663V5.83301Z"
+      stroke="#9A9A9A"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M12.4997 6.66602H14.1663M12.4997 9.99935H14.1663M5.83301 13.3327H14.1663M5.83301 8.33268C5.83301 8.77471 6.0086 9.19863 6.32116 9.51119C6.63372 9.82375 7.05765 9.99935 7.49967 9.99935C7.9417 9.99935 8.36562 9.82375 8.67819 9.51119C8.99075 9.19863 9.16634 8.77471 9.16634 8.33268C9.16634 7.89065 8.99075 7.46673 8.67819 7.15417C8.36562 6.84161 7.9417 6.66602 7.49967 6.66602C7.05765 6.66602 6.63372 6.84161 6.32116 7.15417C6.0086 7.46673 5.83301 7.89065 5.83301 8.33268Z"
+      stroke="#9A9A9A"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+const GenderIcon: IconType = ({ className }) => (
+  <svg
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 14 18"
+    aria-hidden
+    fill="none"
+  >
+    <path
+      d="M12.1953 0H9.07032C8.82168 0 8.58322 0.0987721 8.40741 0.274587C8.23159 0.450403 8.13282 0.68886 8.13282 0.9375C8.13282 1.18614 8.23159 1.4246 8.40741 1.60041C8.58322 1.77623 8.82168 1.875 9.07032 1.875H9.9297L8.70782 3.09922C8.08216 2.5793 7.34545 2.21001 6.5545 2.01983C5.76355 1.82964 4.93949 1.82364 4.14586 2.00229C3.35222 2.18093 2.61022 2.53945 1.97705 3.0502C1.34388 3.56095 0.836461 4.21029 0.493921 4.94815C0.151381 5.68601 -0.0171317 6.49268 0.0013751 7.30596C0.0198819 8.11924 0.224914 8.91741 0.600663 9.63893C0.976412 10.3604 1.51284 10.986 2.16859 11.4674C2.82433 11.9489 3.58188 12.2733 4.38282 12.4156V13.4375H2.82032C2.57168 13.4375 2.33322 13.5363 2.15741 13.7121C1.98159 13.8879 1.88282 14.1264 1.88282 14.375C1.88282 14.6236 1.98159 14.8621 2.15741 15.0379C2.33322 15.2137 2.57168 15.3125 2.82032 15.3125H4.38282V16.5625C4.38282 16.8111 4.48159 17.0496 4.65741 17.2254C4.83322 17.4012 5.07168 17.5 5.32032 17.5C5.56896 17.5 5.80742 17.4012 5.98323 17.2254C6.15905 17.0496 6.25782 16.8111 6.25782 16.5625V15.3125H7.82032C8.06896 15.3125 8.30742 15.2137 8.48323 15.0379C8.65905 14.8621 8.75782 14.6236 8.75782 14.375C8.75782 14.1264 8.65905 13.8879 8.48323 13.7121C8.30742 13.5363 8.06896 13.4375 7.82032 13.4375H6.25782V12.4156C7.09685 12.266 7.8875 11.9164 8.56288 11.3966C9.23826 10.8767 9.77851 10.2019 10.1379 9.42911C10.4973 8.65632 10.6654 7.80834 10.6277 6.9569C10.5901 6.10545 10.348 5.27559 9.92188 4.5375L11.2578 3.20312V4.0625C11.2578 4.31114 11.3566 4.5496 11.5324 4.72541C11.7082 4.90123 11.9467 5 12.1953 5C12.444 5 12.6824 4.90123 12.8582 4.72541C13.034 4.5496 13.1328 4.31114 13.1328 4.0625V0.9375C13.1328 0.68886 13.034 0.450403 12.8582 0.274587C12.6824 0.0987721 12.444 0 12.1953 0ZM5.32032 10.625C4.64045 10.625 3.97584 10.4234 3.41055 10.0457C2.84525 9.66796 2.40466 9.1311 2.14448 8.50297C1.88431 7.87485 1.81623 7.18369 1.94887 6.51688C2.08151 5.85007 2.4089 5.23756 2.88964 4.75682C3.37038 4.27608 3.98289 3.94869 4.6497 3.81605C5.31651 3.68341 6.00767 3.75149 6.6358 4.01166C7.26392 4.27184 7.80078 4.71243 8.1785 5.27773C8.55621 5.84302 8.75782 6.50763 8.75782 7.1875C8.75679 8.09886 8.39429 8.97261 7.74986 9.61704C7.10543 10.2615 6.23169 10.624 5.32032 10.625Z"
+      fill="#9A9A9A"
+    />
+  </svg>
+)
+
 function labelRow(
-  Icon: typeof User,
+  Icon: IconType,
   label: string,
   extra?: React.ReactNode,
   mobile?: boolean,
+  showRequired?: boolean,
 ) {
   return (
     <div className={`flex items-center gap-2 ${mobile ? 'mb-1' : 'mb-1.5'}`}>
@@ -62,6 +137,7 @@ function labelRow(
         className={`font-medium ${mobile ? 'text-sm text-[#999]' : 'text-[13px] text-[#9a9a9a]'}`}
       >
         {label}
+        {showRequired ? <span className="text-[#ff6b6b]"> *</span> : null}
       </span>
       {extra}
     </div>
@@ -78,6 +154,10 @@ export default function BookAppointment() {
   const [bookingId, setBookingId] = useState<string>('')
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [personalError, setPersonalError] = useState<string | null>(null)
+  const [scheduleError, setScheduleError] = useState<string | null>(null)
+  const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
+  const [attemptedScheduleContinue, setAttemptedScheduleContinue] = useState(false)
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
@@ -90,10 +170,68 @@ export default function BookAppointment() {
   const primaryMember = savedMembers[0]
 
   const goNextFromPersonal = () => {
+    setAttemptedPersonalContinue(true)
+    if (!form.firstName.trim()) {
+      setPersonalError('First name is required.')
+      return
+    }
+    if (!form.lastName.trim()) {
+      setPersonalError('Last name is required.')
+      return
+    }
+    if (!form.phone.trim()) {
+      setPersonalError('Phone is required.')
+      return
+    }
+    if (!form.email.trim()) {
+      setPersonalError('Email is required.')
+      return
+    }
+    if (!form.department.trim()) {
+      setPersonalError('Department is required.')
+      return
+    }
+    if (!form.employeeId.trim()) {
+      setPersonalError('Employee ID is required.')
+      return
+    }
+    if (!form.age.trim()) {
+      setPersonalError('Age is required.')
+      return
+    }
+    if (!form.gender) {
+      setPersonalError('Gender is required.')
+      return
+    }
+    if (!form.bloodGroup.trim()) {
+      setPersonalError('Blood group is required.')
+      return
+    }
+    if (!form.relation.trim()) {
+      setPersonalError('Relation is required.')
+      return
+    }
+
+    setPersonalError(null)
     setStep(2)
   }
 
   const goNextFromSchedule = () => {
+    setAttemptedScheduleContinue(true)
+    if (!form.appointmentDate) {
+      setScheduleError('Please select a schedule date.')
+      return
+    }
+    if (!form.appointmentTime) {
+      setScheduleError('Please select a time slot.')
+      return
+    }
+    if (!form.personalizedDoctorConsultation) {
+      setScheduleError('Please select an option for doctor consultation.')
+      return
+    }
+
+    setScheduleError(null)
     setStep(3)
   }
 
@@ -156,7 +294,7 @@ export default function BookAppointment() {
         country: 'India',
         referred_by: '',
         blood_collection_date: form.appointmentDate,
-        blood_collection_time_slot: '9:00',
+        blood_collection_time_slot: form.appointmentTime || '9:00',
       }
 
       const engagementCode = import.meta.env.VITE_ENGAGEMENT_CODE || ''
@@ -182,7 +320,7 @@ export default function BookAppointment() {
   const mobilePersonal = isMobile && step === 1
   const showBack = step === 4 ? false : isLg ? step > 1 : step > 1
   const stretchStepBody = !isLg || step === 3 || step === 4
-  const hideGlobalContinue = mobilePersonal || step === 4
+  const hideGlobalContinue = mobilePersonal || step === 4 || step === 1
   const mobileHeader = isMobile
   const hideStepper = step === 4
 
@@ -295,7 +433,9 @@ export default function BookAppointment() {
                       inputClass={inputClass}
                       labelRow={labelRow}
                       onContinue={goNextFromPersonal}
-                      showMobileContinue={false}
+                      showMobileContinue
+                      errorMessage={personalError}
+                      showMissingRequired={attemptedPersonalContinue}
                       savedMembers={savedMembers}
                       expandedMemberIndex={expandedMemberIndex}
                       onToggleMember={(i) =>
@@ -312,7 +452,9 @@ export default function BookAppointment() {
                     inputClass={inputClass}
                     labelRow={labelRow}
                     onContinue={goNextFromPersonal}
-                    showMobileContinue={false}
+                    showMobileContinue
+                    errorMessage={personalError}
+                    showMissingRequired={attemptedPersonalContinue}
                     savedMembers={savedMembers}
                     expandedMemberIndex={expandedMemberIndex}
                     onToggleMember={(i) =>
@@ -324,7 +466,13 @@ export default function BookAppointment() {
               </>
             )}
             {step === 2 && (
-              <ScheduleStep form={form} update={update} isMobile={isMobile} />
+              <ScheduleStep
+                form={form}
+                update={update}
+                isMobile={isMobile}
+                errorMessage={scheduleError}
+                showMissingRequired={attemptedScheduleContinue}
+              />
             )}
             {step === 3 && (
               <ConfirmStep
@@ -346,13 +494,7 @@ export default function BookAppointment() {
             )}
           </div>
 
-          {mobilePersonal && step === 1 && (
-            <div className="shrink-0 px-6 pt-2 pb-[30px]">
-              <ContinueButton variant="mobileBar" onClick={goNextFromPersonal}>
-                Continue
-              </ContinueButton>
-            </div>
-          )}
+          {mobilePersonal && step === 1 && null}
 
           {/* Footer CTA — mobile: full-width bar pinned to bottom with 30px safe-area; desktop: right-aligned pill */}
           {!hideGlobalContinue && (
@@ -409,6 +551,8 @@ function PersonalStep({
   labelRow,
   onContinue,
   showMobileContinue,
+  errorMessage,
+  showMissingRequired,
   savedMembers,
   expandedMemberIndex,
   onToggleMember,
@@ -419,13 +563,16 @@ function PersonalStep({
   isLg: boolean
   inputClass: (short?: boolean) => string
   labelRow: (
-    Icon: typeof User,
+    Icon: IconType,
     label: string,
     extra?: React.ReactNode,
     mobile?: boolean,
+    showRequired?: boolean,
   ) => React.ReactNode
   onContinue: () => void
   showMobileContinue: boolean
+  errorMessage?: string | null
+  showMissingRequired?: boolean
   savedMembers: FormData[]
   expandedMemberIndex: number | null
   onToggleMember: (index: number) => void
@@ -444,6 +591,11 @@ function PersonalStep({
     update('useSameEmail', next)
     if (next && primaryMember) update('email', primaryMember.email)
   }
+
+  const showRequired = Boolean(showMissingRequired)
+  const isMissing = (value: string) => showRequired && !value.trim()
+  const isMissingGender = showRequired && !form.gender
+  const isMissingRelation = showRequired && !form.relation.trim()
 
   if (!isLg && hasSavedMembers) {
     const relationPillBase =
@@ -467,7 +619,7 @@ function PersonalStep({
 
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
-            {labelRow(User, 'Full Name', undefined, true)}
+            {labelRow(User, 'Full Name', undefined, true, isMissing(form.firstName) || isMissing(form.lastName))}
             <div className="flex gap-2">
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
@@ -478,7 +630,7 @@ function PersonalStep({
               />
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
-                placeholder="Last Name"
+                placeholder="Last name"
                 autoComplete="family-name"
                 value={form.lastName}
                 onChange={(e) => update('lastName', e.target.value)}
@@ -487,7 +639,7 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(User, 'Gender', undefined, true)}
+            {labelRow(GenderIcon, 'Gender', undefined, true, isMissingGender)}
             <div className="flex h-10 gap-6">
               <button
                 type="button"
@@ -519,7 +671,17 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(Users, 'Relation', undefined, true)}
+            {labelRow(BloodGroupIcon, 'Blood Group', undefined, true, isMissing(form.bloodGroup))}
+            <input
+              className={mobileFieldInput14}
+              placeholder="Blood Group"
+              value={form.bloodGroup}
+              onChange={(e) => update('bloodGroup', e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(Users, 'Relation', undefined, true, isMissingRelation)}
             <div className="grid grid-cols-3 gap-2">
               {RELATION_OPTIONS.map((opt) => {
                 const id = opt.toLowerCase()
@@ -542,7 +704,7 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(Calendar, 'Age', undefined, true)}
+            {labelRow(Calendar, 'Age', undefined, true, isMissing(form.age))}
             <input
               className={mobileFieldInput14}
               inputMode="numeric"
@@ -562,6 +724,7 @@ function PersonalStep({
                 label="Same as before"
               />,
               true,
+              isMissing(form.phone),
             )}
             <input
               className={mobileFieldInput14}
@@ -579,6 +742,7 @@ function PersonalStep({
               'Email',
               <UseSameToggle checked={form.useSameEmail} onChange={toggleUseSameEmail} />,
               true,
+              isMissing(form.email),
             )}
             <input
               className={mobileFieldInput14}
@@ -592,7 +756,17 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(User, 'Employee ID', undefined, true)}
+            {labelRow(DepartmentIcon, 'Department', undefined, true, isMissing(form.department))}
+            <input
+              className={mobileFieldInput14}
+              placeholder="Department"
+              value={form.department}
+              onChange={(e) => update('department', e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true, isMissing(form.employeeId))}
             <input
               className={mobileFieldInput14}
               placeholder="Employee ID"
@@ -601,36 +775,9 @@ function PersonalStep({
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            {labelRow(User, 'Would you like to have personalised Doctor consultations?', undefined, true)}
-            <div className="flex h-10 gap-6">
-              <button
-                type="button"
-                onClick={() => update('personalizedDoctorConsultation', 'yes')}
-                className={[
-                  'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs leading-4 transition',
-                  form.personalizedDoctorConsultation === 'yes'
-                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
-                    : 'bg-white/5 text-[#999]',
-                ].join(' ')}
-              >
-                Yes
-              </button>
-              <button
-                type="button"
-                onClick={() => update('personalizedDoctorConsultation', 'no')}
-                className={[
-                  'flex flex-1 items-center justify-center gap-2 rounded-full px-2.5 py-1 text-xs leading-4 transition',
-                  form.personalizedDoctorConsultation === 'no'
-                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
-                    : 'bg-white/5 text-[#999]',
-                ].join(' ')}
-              >
-                No
-              </button>
-            </div>
-          </div>
         </div>
+
+        {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
       </div>
     )
   }
@@ -640,7 +787,7 @@ function PersonalStep({
       <div className="flex min-h-0 flex-col gap-5 pb-2">
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
-            {labelRow(User, 'Full Name', undefined, true)}
+            {labelRow(User, 'Full Name', undefined, true, isMissing(form.firstName) || isMissing(form.lastName))}
             <div className="flex gap-2">
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
@@ -651,7 +798,7 @@ function PersonalStep({
               />
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
-                placeholder="Last Name"
+                placeholder="Last name"
                 autoComplete="family-name"
                 value={form.lastName}
                 onChange={(e) => update('lastName', e.target.value)}
@@ -660,7 +807,7 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(Phone, 'Phone', undefined, true)}
+            {labelRow(Phone, 'Phone Number (Whatsapp)', undefined, true, isMissing(form.phone))}
             <input
               className={mobileFieldInput14}
               inputMode="tel"
@@ -671,7 +818,7 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(Mail, 'Company emailId', undefined, true)}
+            {labelRow(Mail, 'Company Email ID', undefined, true, isMissing(form.email))}
             <input
               className={mobileFieldInput14}
               type="email"
@@ -684,7 +831,17 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(User, 'Employee ID', undefined, true)}
+            {labelRow(DepartmentIcon, 'Department', undefined, true, isMissing(form.department))}
+            <input
+              className={mobileFieldInput14}
+              placeholder="Department"
+              value={form.department}
+              onChange={(e) => update('department', e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true, isMissing(form.employeeId))}
             <input
               className={mobileFieldInput14}
               placeholder="Employee ID"
@@ -694,7 +851,7 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(Calendar, 'Age', undefined, true)}
+            {labelRow(Calendar, 'Age', undefined, true, isMissing(form.age))}
             <input
               className={mobileFieldInput14}
               inputMode="numeric"
@@ -705,7 +862,7 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(User, 'Gender', undefined, true)}
+            {labelRow(GenderIcon, 'Gender', undefined, true, isMissingGender)}
             <div className="flex h-10 gap-6">
               <button
                 type="button"
@@ -737,38 +894,21 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(User, 'Would you like to have personalised Doctor consultations?', undefined, true)}
-            <div className="flex h-10 gap-6">
-              <button
-                type="button"
-                onClick={() => update('personalizedDoctorConsultation', 'yes')}
-                className={[
-                  'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs leading-4 transition',
-                  form.personalizedDoctorConsultation === 'yes'
-                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
-                    : 'bg-white/5 text-[#999]',
-                ].join(' ')}
-              >
-                Yes
-              </button>
-              <button
-                type="button"
-                onClick={() => update('personalizedDoctorConsultation', 'no')}
-                className={[
-                  'flex flex-1 items-center justify-center gap-2 rounded-full px-2.5 py-1 text-xs leading-4 transition',
-                  form.personalizedDoctorConsultation === 'no'
-                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
-                    : 'bg-white/5 text-[#999]',
-                ].join(' ')}
-              >
-                No
-              </button>
-            </div>
+            {labelRow(BloodGroupIcon, 'Blood Group', undefined, true, isMissing(form.bloodGroup))}
+            <input
+              className={mobileFieldInput14}
+              placeholder="Blood Group"
+              value={form.bloodGroup}
+              onChange={(e) => update('bloodGroup', e.target.value)}
+            />
           </div>
+
         </div>
 
+        {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
+
         {showMobileContinue && (
-          <div className="mt-6 pb-4 pt-2">
+          <div className="pb-4">
             <ContinueButton variant="mobileBar" onClick={onContinue}>
               Continue
             </ContinueButton>
@@ -809,34 +949,6 @@ function PersonalStep({
     </div>
   )
 
-  const personalizedConsultationButtons = (
-    <div className="flex gap-3">
-      <button
-        type="button"
-        onClick={() => update('personalizedDoctorConsultation', 'yes')}
-        className={[
-          'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm text-[#9a9a9a]',
-          form.personalizedDoctorConsultation === 'yes'
-            ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-            : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)]',
-        ].join(' ')}
-      >
-        <span>Yes</span>
-      </button>
-      <button
-        type="button"
-        onClick={() => update('personalizedDoctorConsultation', 'no')}
-        className={[
-          'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm',
-          form.personalizedDoctorConsultation === 'no'
-            ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-            : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#9a9a9a]',
-        ].join(' ')}
-      >
-        <span>No</span>
-      </button>
-    </div>
-  )
 
   if (hasSavedMembers) {
     return (
@@ -858,27 +970,35 @@ function PersonalStep({
 
         <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
           <div>
-            {labelRow(User, 'Full Name')}
-            <input
-              className={inputClass()}
-              placeholder="Full Name"
-              value={[form.firstName, form.lastName].filter(Boolean).join(' ')}
-              onChange={(e) => {
-                const parts = e.target.value.split(' ')
-                update('firstName', parts[0] ?? '')
-                update('lastName', parts.slice(1).join(' '))
-              }}
-            />
+            {labelRow(User, 'Full Name', undefined, false, isMissing(form.firstName) || isMissing(form.lastName))}
+            <div className="flex gap-2">
+              <input
+                className={`${inputClass()} min-w-0 flex-1`}
+                placeholder="First name"
+                autoComplete="given-name"
+                value={form.firstName}
+                onChange={(e) => update('firstName', e.target.value)}
+              />
+              <input
+                className={`${inputClass()} min-w-0 flex-1`}
+                placeholder="Last Name"
+                autoComplete="family-name"
+                value={form.lastName}
+                onChange={(e) => update('lastName', e.target.value)}
+              />
+            </div>
           </div>
 
           <div>
             {labelRow(
               Phone,
-              'Phone',
+              'Phone Number (Whatsapp)',
               <UseSameToggle
                 checked={form.useSamePhone}
                 onChange={toggleUseSamePhone}
               />,
+              false,
+              isMissing(form.phone),
             )}
             <input
               className={inputClass()}
@@ -898,6 +1018,8 @@ function PersonalStep({
                 checked={form.useSameEmail}
                 onChange={toggleUseSameEmail}
               />,
+              false,
+              isMissing(form.email),
             )}
             <input
               className={inputClass()}
@@ -910,7 +1032,17 @@ function PersonalStep({
           </div>
 
           <div>
-            {labelRow(User, 'Employee ID')}
+            {labelRow(DepartmentIcon, 'Department', undefined, false, isMissing(form.department))}
+            <input
+              className={inputClass()}
+              placeholder="Department"
+              value={form.department}
+              onChange={(e) => update('department', e.target.value)}
+            />
+          </div>
+
+          <div>
+            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false, isMissing(form.employeeId))}
             <input
               className={inputClass()}
               placeholder="Employee ID"
@@ -920,7 +1052,7 @@ function PersonalStep({
           </div>
 
           <div>
-            {labelRow(Calendar, 'Age')}
+            {labelRow(Calendar, 'Age', undefined, false, isMissing(form.age))}
             <input
               className={inputClass()}
               placeholder="Age"
@@ -931,7 +1063,22 @@ function PersonalStep({
           </div>
 
           <div>
-            {labelRow(Users, 'Relation')}
+            {labelRow(GenderIcon, 'Gender', undefined, false, isMissingGender)}
+            {genderButtons}
+          </div>
+
+          <div>
+            {labelRow(BloodGroupIcon, 'Blood Group', undefined, false, isMissing(form.bloodGroup))}
+            <input
+              className={inputClass()}
+              placeholder="Blood Group"
+              value={form.bloodGroup}
+              onChange={(e) => update('bloodGroup', e.target.value)}
+            />
+          </div>
+
+          <div>
+            {labelRow(Users, 'Relation', undefined, false, isMissingRelation)}
             <div className="grid grid-cols-3 gap-3">
               {RELATION_OPTIONS.map((opt) => {
                 const id = opt.toLowerCase()
@@ -956,15 +1103,12 @@ function PersonalStep({
             </div>
           </div>
 
-          <div>
-            {labelRow(User, 'Gender')}
-            {genderButtons}
-          </div>
+        </div>
 
-          <div>
-            {labelRow(User, 'Would you like to have personalised Doctor consultations?')}
-            {personalizedConsultationButtons}
-          </div>
+        {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
+
+        <div className="flex justify-end">
+          <ContinueButton onClick={onContinue}>Continue</ContinueButton>
         </div>
       </>
     )
@@ -978,56 +1122,27 @@ function PersonalStep({
 
       <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
         <div>
-          {labelRow(User, 'Full Name')}
-          <input
-            className={inputClass()}
-            placeholder="Full Name"
-            value={[form.firstName, form.lastName].filter(Boolean).join(' ')}
-            onChange={(e) => {
-              const parts = e.target.value.split(' ')
-              update('firstName', parts[0] ?? '')
-              update('lastName', parts.slice(1).join(' '))
-            }}
-          />
+          {labelRow(User, 'Full Name', undefined, false, isMissing(form.firstName) || isMissing(form.lastName))}
+          <div className="flex gap-2">
+            <input
+              className={`${inputClass()} min-w-0 flex-1`}
+              placeholder="First name"
+              autoComplete="given-name"
+              value={form.firstName}
+              onChange={(e) => update('firstName', e.target.value)}
+            />
+            <input
+              className={`${inputClass()} min-w-0 flex-1`}
+              placeholder="Last Name"
+              autoComplete="family-name"
+              value={form.lastName}
+              onChange={(e) => update('lastName', e.target.value)}
+            />
+          </div>
         </div>
 
         <div>
-          {labelRow(User, 'Gender')}
-          {genderButtons}
-        </div>
-
-        <div>
-          {labelRow(Mail, 'Email')}
-          <input
-            className={inputClass()}
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => update('email', e.target.value)}
-          />
-        </div>
-
-        <div>
-          {labelRow(User, 'Employee ID')}
-          <input
-            className={inputClass()}
-            placeholder="Employee ID"
-            value={form.employeeId}
-            onChange={(e) => update('employeeId', e.target.value)}
-          />
-        </div>
-
-        <div>
-          {labelRow(Calendar, 'Age')}
-          <input
-            className={inputClass()}
-            placeholder="Age"
-            value={form.age}
-            onChange={(e) => update('age', e.target.value)}
-          />
-        </div>
-
-        <div>
-          {labelRow(Phone, 'Phone')}
+          {labelRow(Phone, 'Phone Number (Whatsapp)', undefined, false, isMissing(form.phone))}
           <input
             className={inputClass()}
             placeholder="Phone"
@@ -1037,9 +1152,66 @@ function PersonalStep({
         </div>
 
         <div>
-          {labelRow(User, 'Would you like to have personalised Doctor consultations?')}
-          {personalizedConsultationButtons}
+          {labelRow(Mail, 'Company EmailID', undefined, false, isMissing(form.email))}
+          <input
+            className={inputClass()}
+            placeholder="Email"
+            value={form.email}
+            onChange={(e) => update('email', e.target.value)}
+          />
         </div>
+
+        <div>
+          {labelRow(DepartmentIcon, 'Department', undefined, false, isMissing(form.department))}
+          <input
+            className={inputClass()}
+            placeholder="Department"
+            value={form.department}
+            onChange={(e) => update('department', e.target.value)}
+          />
+        </div>
+
+        <div>
+          {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false, isMissing(form.employeeId))}
+          <input
+            className={inputClass()}
+            placeholder="Employee ID"
+            value={form.employeeId}
+            onChange={(e) => update('employeeId', e.target.value)}
+          />
+        </div>
+
+        <div>
+          {labelRow(Calendar, 'Age', undefined, false, isMissing(form.age))}
+          <input
+            className={inputClass()}
+            placeholder="Age"
+            value={form.age}
+            onChange={(e) => update('age', e.target.value)}
+          />
+        </div>
+
+        <div>
+          {labelRow(GenderIcon, 'Gender', undefined, false, isMissingGender)}
+          {genderButtons}
+        </div>
+
+        <div>
+          {labelRow(BloodGroupIcon, 'Blood Group', undefined, false, isMissing(form.bloodGroup))}
+          <input
+            className={inputClass()}
+            placeholder="Blood Group"
+            value={form.bloodGroup}
+            onChange={(e) => update('bloodGroup', e.target.value)}
+          />
+        </div>
+
+      </div>
+
+      {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
+
+      <div className="flex justify-end">
+        <ContinueButton onClick={onContinue}>Continue</ContinueButton>
       </div>
     </>
   )
@@ -1249,12 +1421,17 @@ function ScheduleStep({
   form,
   update,
   isMobile,
+  errorMessage,
+  showMissingRequired,
 }: {
   form: FormData
   update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
   isMobile: boolean
+  errorMessage?: string | null
+  showMissingRequired?: boolean
 }) {
   const dates = useMemo(() => getMayDates(), [])
+  const timeSlots = ['9:00 - 10:00', '10:00 - 11:00', '11:00 - 12:00']
 
   const selectedDateClass =
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
@@ -1270,10 +1447,20 @@ function ScheduleStep({
         {isMobile ? (
           <div className="flex items-center gap-2">
             <PreferredDateIcon />
-            <h2 className={sectionLabelClass}>Preferred Date</h2>
+            <h2 className={sectionLabelClass}>
+              Preferred Date
+              {showMissingRequired && !form.appointmentDate ? (
+                <span className="text-[#ff6b6b]"> *</span>
+              ) : null}
+            </h2>
           </div>
         ) : (
-          <h2 className={sectionLabelClass}>Preferred Date</h2>
+          <h2 className={sectionLabelClass}>
+            Preferred Date
+            {showMissingRequired && !form.appointmentDate ? (
+              <span className="text-[#ff6b6b]"> *</span>
+            ) : null}
+          </h2>
         )}
         <div
           className={
@@ -1321,6 +1508,81 @@ function ScheduleStep({
           Timing: 9am to 1pm
         </p>
       </section>
+
+      <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
+        <h2 className={sectionLabelClass}>
+          Preferred Time Slot
+          {showMissingRequired && !form.appointmentTime ? (
+            <span className="text-[#ff6b6b]"> *</span>
+          ) : null}
+        </h2>
+        <div className={isMobile ? 'grid w-full grid-cols-2 gap-3' : 'grid w-full grid-cols-3 gap-4'}>
+          {timeSlots.map((slot) => {
+            const selected = form.appointmentTime === slot
+            return (
+              <button
+                key={slot}
+                type="button"
+                onClick={() => update('appointmentTime', slot)}
+                aria-pressed={selected}
+                className={[
+                  isMobile
+                    ? 'flex h-10 w-full items-center justify-center rounded-[8px] border text-sm transition'
+                    : 'flex h-[44px] w-full items-center justify-center rounded-[6px] border text-sm transition',
+                  selected ? selectedDateClass : idleDateClass,
+                ].join(' ')}
+              >
+                <span className={selected ? 'text-white' : 'text-[#cccccc]/80'}>{slot}</span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
+        <h2 className={sectionLabelClass}>
+          Would you like to have personalised Doctor consultations?
+          {showMissingRequired && !form.personalizedDoctorConsultation ? (
+            <span className="text-[#ff6b6b]"> *</span>
+          ) : null}
+        </h2>
+        <div className={isMobile ? 'flex h-10 w-full gap-6' : 'flex w-full gap-3'}>
+          <button
+            type="button"
+            onClick={() => update('personalizedDoctorConsultation', 'yes')}
+            className={[
+              isMobile
+                ? 'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs leading-4 transition'
+                : 'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm text-[#9a9a9a]',
+              form.personalizedDoctorConsultation === 'yes'
+                ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
+                : isMobile
+                  ? 'bg-white/5 text-[#999]'
+                  : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)]',
+            ].join(' ')}
+          >
+            Yes
+          </button>
+          <button
+            type="button"
+            onClick={() => update('personalizedDoctorConsultation', 'no')}
+            className={[
+              isMobile
+                ? 'flex flex-1 items-center justify-center gap-2 rounded-full px-2.5 py-1 text-xs leading-4 transition'
+                : 'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm',
+              form.personalizedDoctorConsultation === 'no'
+                ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
+                : isMobile
+                  ? 'bg-white/5 text-[#999]'
+                  : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#9a9a9a]',
+            ].join(' ')}
+          >
+            No
+          </button>
+        </div>
+      </section>
+
+      {errorMessage && <p className="text-sm text-[#ff9e9e]">{errorMessage}</p>}
 
     </div>
   )
