@@ -1737,7 +1737,7 @@ function ScheduleStep({
 
       <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
         <h2 className={sectionLabelClass}>
-          Would you like to have personalised Doctor consultations?
+          Would you like to have personalised Doctor consultations after the reports?
           {showMissingRequired && !form.personalizedDoctorConsultation ? (
             <span className="text-[#ff6b6b]"> * Field is required</span>
           ) : null}
