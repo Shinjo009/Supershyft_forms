@@ -1802,6 +1802,9 @@ function formatSchedulePreview(iso: string, slot: string): string {
   return `${getOrdinalDay(d.getDate())} ${MONTH_LABELS[d.getMonth()]} | ${safeSlot}`
 }
 
+/** Set to `true` to show the “Continue to Our App” button and subcopy on the confirm step. */
+const SHOW_BOOKING_CONFIRM_APP_CTA = false
+
 function BookingConfirmedStep({
   form,
   members,
@@ -1821,7 +1824,12 @@ function BookingConfirmedStep({
   if (isMobile) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center self-stretch">
-        <div className="flex w-full flex-col items-center gap-6 pt-[60px]">
+        <div
+          className={
+            'flex w-full flex-col items-center gap-6 pt-[60px]' +
+            (SHOW_BOOKING_CONFIRM_APP_CTA ? '' : ' pb-[50px]')
+          }
+        >
           <div
             className="flex size-[80px] items-center justify-center rounded-full border border-[#90DF9E] bg-black/20 shadow-[0_1px_10px_0_#90DF9E]"
             aria-hidden
@@ -1849,19 +1857,21 @@ function BookingConfirmedStep({
           </div>
         </div>
 
-        <div className="mt-auto flex w-full flex-col items-center gap-3 pb-[50px] pt-6">
-          <a
-            href="https://app.supershyft.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[16px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
-          >
-            Continue to Our App
-          </a>
-          <p className="text-center font-sans text-[13px] font-medium leading-normal text-[#999]">
-            Log in to complete your questionnaire and access your detailed helath insights.
-          </p>
-        </div>
+        {SHOW_BOOKING_CONFIRM_APP_CTA ? (
+          <div className="mt-auto flex w-full flex-col items-center gap-3 pb-[50px] pt-6">
+            <a
+              href="https://app.supershyft.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[16px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
+            >
+              Continue to Our App
+            </a>
+            <p className="text-center font-sans text-[13px] font-medium leading-normal text-[#999]">
+              Log in to complete your questionnaire and access your detailed health insights.
+            </p>
+          </div>
+        ) : null}
       </div>
     )
   }
@@ -1896,17 +1906,21 @@ function BookingConfirmedStep({
         </div>
       </div>
 
-      <a
-        href="https://app.supershyft.com"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-[10px] flex h-[49px] w-[231.53px] items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[15px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
-      >
-        Continue to Our App
-      </a>
-      <p className="mt-3 text-center text-[15px] font-medium leading-[22.5px] text-[#999]">
-        Log in to complete your questionnaire and access your detailed helath insights.
-      </p>
+      {SHOW_BOOKING_CONFIRM_APP_CTA ? (
+        <>
+          <a
+            href="https://app.supershyft.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-[10px] flex h-[49px] w-[231.53px] items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[15px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
+          >
+            Continue to Our App
+          </a>
+          <p className="mt-3 text-center text-[15px] font-medium leading-[22.5px] text-[#999]">
+            Log in to complete your questionnaire and access your detailed health insights.
+          </p>
+        </>
+      ) : null}
     </div>
   )
 }
