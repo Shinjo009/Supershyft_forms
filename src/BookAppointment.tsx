@@ -15,7 +15,7 @@ import { PageBackdrop } from './components/PageBackdrop'
 import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
 import { defaultFormData, type FormData } from './types'
-import supershyftWhiteLogo from './assets/SuperShyft - white logo.svg'
+import supershyftWhiteLogo from './assets/SuperShyft - Logo [Final]-03 7 (1).svg'
 
 const RELATION_OPTIONS = [
   'Parent',
@@ -412,7 +412,7 @@ export default function BookAppointment() {
       >
         {showHeaderTitle && (
           <div className="mt-4 mb-4 flex justify-center">
-            <img src={supershyftWhiteLogo} alt="SuperShyft" className="h-16 w-16 object-contain" />
+            <img src={supershyftWhiteLogo} alt="SuperShyft" className="h-[98px] w-[98px] object-contain" />
           </div>
         )}
         <div
