@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
-  Building2,
   Calendar,
   Home,
   IdCard,
@@ -21,7 +20,7 @@ import { defaultFormData, type FormData } from './types'
 import areaStreetIcon from './assets/AreaStreet.svg'
 import landmarkIcon from './assets/landmark.svg'
 import pincodeIcon from './assets/pincode.svg'
-import { onboardPublicUser } from './onboardUserForEngagementApi'
+import { onboardUserForEngagement } from './onboardUserForEngagementApi'
 
 const ALLOWED_EMPLOYEE_IDS = new Set([
   '0000IN0210', '0000IN0221', '0000IN0224', '0000IN0227', '0000IN0228', '0000IN0229',
@@ -151,17 +150,13 @@ export default function BookAppointment() {
     setForm((f) => ({ ...f, [key]: value }))
   }, [])
 
-  useEffect(() => {
-    setMaxReachedStep((prev) => Math.max(prev, step))
-    setStepError('')
-  }, [step])
-
-  const fullName = useMemo(
-    () => [form.firstName, form.lastName].filter(Boolean).join(' '),
-    [form.firstName, form.lastName],
-  )
-
   const primaryMember = savedMembers[0]
+
+  const goToStep = useCallback((nextStep: number) => {
+    setStep(nextStep)
+    setMaxReachedStep((prev) => Math.max(prev, nextStep))
+    setStepError('')
+  }, [])
 
   /** Every member walks 3 editable steps before confirm. */
   const goNextFromPersonal = () => {
@@ -241,9 +236,9 @@ export default function BookAppointment() {
 
   const continueFromCurrentStep = () => {
     if (!validateStep(step)) return
-    if (step === 1) setStep(2)
-    else if (step === 2) setStep(3)
-    else if (step === 3) setStep(4)
+    if (step === 1) goToStep(2)
+    else if (step === 2) goToStep(3)
+    else if (step === 3) goToStep(4)
   }
 
   const handleProceedToPayment = async () => {
@@ -255,41 +250,38 @@ export default function BookAppointment() {
       return
     }
 
-    const currentYear = new Date().getFullYear()
-    const dobYear = Math.max(1900, currentYear - parsedAge)
-    const derivedDob = `${dobYear}-01-01`
-    const address = [form.houseBuilding, form.areaStreet, form.landmark]
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .join(', ')
+    const normalizeCollectionTimeSlot = (rawSlot: string): string => {
+      const slot = rawSlot.trim()
+      const ampmMatch = slot.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+      if (ampmMatch) {
+        const hour12 = Number.parseInt(ampmMatch[1], 10)
+        const minutes = ampmMatch[2]
+        const period = ampmMatch[3].toUpperCase()
+        const hour24 = (hour12 % 12) + (period === 'PM' ? 12 : 0)
+        return `${hour24}:${minutes}`
+      }
+      return slot
+    }
 
     try {
-      await onboardPublicUser({
+      await onboardUserForEngagement({
         age: parsedAge,
         first_name: form.firstName.trim(),
         last_name: form.lastName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
         gender: form.gender,
-        dob: derivedDob,
-        address,
-        pincode: form.pincode.trim(),
-        city: form.city.trim(),
-        state: 'Maharashtra',
-        country: 'India',
         blood_collection_date: form.appointmentDate,
-        blood_collection_time_slot: form.appointmentTime,
+        blood_collection_time_slot: normalizeCollectionTimeSlot(form.appointmentTime),
         participants_employee_id: normalizeEmployeeId(form.employeeId),
         participant_department: 'General',
         participant_blood_group: 'Unknown',
-        want_doctor_consultation: false,
-        want_nutritionist_consultation: false,
-        want_doctor_and_nutritionist_consultation: false,
+        want_doctor_consultation: true,
       })
 
       persistUsedEmployeeId(form.employeeId)
       setBookingId((prev) => prev || generateBookingId())
-      setStep(5)
+      goToStep(5)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to submit booking.'
       setStepError(message)
@@ -308,7 +300,7 @@ export default function BookAppointment() {
       setForm(toEdit)
     }
     setExpandedMemberIndex(null)
-    setStep(1)
+    goToStep(1)
   }
 
   const headerTitle = 'Book Appointment'
@@ -359,7 +351,7 @@ export default function BookAppointment() {
                 {showBack ? (
                   <button
                     type="button"
-                    onClick={() => setStep((s) => Math.max(1, s - 1))}
+                    onClick={() => goToStep(Math.max(1, step - 1))}
                     className="flex size-9 items-center justify-center rounded-lg text-white hover:bg-white/10"
                     aria-label="Back"
                   >
@@ -378,7 +370,7 @@ export default function BookAppointment() {
                 {showBack ? (
                   <button
                     type="button"
-                    onClick={() => setStep((s) => Math.max(1, s - 1))}
+                    onClick={() => goToStep(Math.max(1, step - 1))}
                     className="shrink-0 rounded-lg p-1 text-white hover:bg-white/10"
                     aria-label="Back"
                   >
@@ -408,7 +400,7 @@ export default function BookAppointment() {
                 current={step}
                 compact={!isLg}
                 maxReachable={maxReachedStep}
-                onStepClick={(target) => setStep(target)}
+                onStepClick={(target) => goToStep(target)}
               />
             </div>
           )}
@@ -479,7 +471,7 @@ export default function BookAppointment() {
               <ConfirmStep
                 form={form}
                 members={allMembers}
-                onEdit={(s) => setStep(s)}
+                onEdit={(s) => goToStep(s)}
                 onEditMember={editMember}
                 onProceed={handleProceedToPayment}
                 errorMessage={stepError}

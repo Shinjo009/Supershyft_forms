@@ -1,24 +1,16 @@
-export type PublicOnboardUserPayload = {
+export type OnboardUserForEngagementPayload = {
   age: number
   first_name: string
   last_name: string
   email: string
   phone: string
   gender: string
-  dob: string
-  address: string
-  pincode: string
-  city: string
-  state: string
-  country: string
   blood_collection_date: string
   blood_collection_time_slot: string
   participants_employee_id: string
   participant_department: string
   participant_blood_group: string
   want_doctor_consultation: boolean
-  want_nutritionist_consultation: boolean
-  want_doctor_and_nutritionist_consultation: boolean
 }
 
 type ValidationErrorDetail = {
@@ -37,6 +29,13 @@ function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '')
 }
 
+function firstNonEmpty(...values: Array<string | undefined>): string {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) return value.trim()
+  }
+  return ''
+}
+
 function parseValidationMessage(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null
   const response = data as ValidationErrorResponse
@@ -49,14 +48,34 @@ function parseValidationMessage(data: unknown): string | null {
   return messages.length > 0 ? messages.join(', ') : null
 }
 
-export async function onboardPublicUser(payload: PublicOnboardUserPayload): Promise<string> {
-  const baseUrl = import.meta.env.VITE_BACKEND_BASE_URL || import.meta.env.BACKEND_BASE_URL || ''
+export async function onboardUserForEngagement(
+  payload: OnboardUserForEngagementPayload,
+): Promise<string> {
+  const baseUrlFromEnv = firstNonEmpty(
+    import.meta.env.VITE_BACKEND_BASE_URL,
+    import.meta.env.VITE_API_BASE_URL,
+    import.meta.env.VITE_BASE_URL,
+    import.meta.env.BACKEND_BASE_URL,
+    import.meta.env.API_BASE_URL,
+  )
+  const sameOriginFallback =
+    typeof window !== 'undefined' && window.location?.origin ? window.location.origin : ''
+  const baseUrl = baseUrlFromEnv || sameOriginFallback
+
+  const engagementCode = firstNonEmpty(
+    import.meta.env.VITE_ENGAGEMENT_CODE,
+    import.meta.env.VITE_CBTW_ENGAGEMENT_CODE,
+    import.meta.env.ENGAGEMENT_CODE,
+    'CBMU0626',
+  )
 
   if (!baseUrl) {
-    throw new Error('Missing API base URL. Set VITE_BACKEND_BASE_URL in .env.')
+    throw new Error(
+      'Missing API base URL. Set one of VITE_BACKEND_BASE_URL or VITE_API_BASE_URL in .env.',
+    )
   }
 
-  const url = `${trimTrailingSlash(baseUrl)}/users/public/onboard`
+  const url = `${trimTrailingSlash(baseUrl)}/users/code/${encodeURIComponent(engagementCode)}/onboard`
 
   const response = await fetch(url, {
     method: 'POST',
@@ -94,7 +113,7 @@ export async function onboardPublicUser(payload: PublicOnboardUserPayload): Prom
       throw new Error(`${statusPrefix}: ${data}${traceSuffix}`)
     }
 
-    throw new Error(`${statusPrefix}. Please check request payload and API configuration.${traceSuffix}`)
+    throw new Error(`${statusPrefix}. Please check engagement code and request payload.${traceSuffix}`)
   }
 
   if (typeof data === 'string') {
