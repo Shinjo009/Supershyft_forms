@@ -1,4 +1,4 @@
-const STEPS = ['Personal', 'Address', 'Package', 'Schedule'] as const
+const STEPS = ['Personal', 'Address', 'Schedule'] as const
 
 type Props = {
   current: number
@@ -9,15 +9,15 @@ type Props = {
 }
 
 function activeStep(current: number) {
-  return current >= 5 ? 4 : Math.max(1, Math.min(4, current))
+  return current >= 4 ? 3 : Math.max(1, Math.min(3, current))
 }
 
 function lineFillPercent(current: number) {
-  if (current >= 5) return 100
+  if (current >= 4) return 100
   const step = activeStep(current)
-  if (step >= 4) return 100
+  if (step >= 3) return 100
 
-  const segment = 100 / 3
+  const segment = 100 / 2
   if (step === 1) return Math.round(segment * (44 / 102))
   if (step === 2) return Math.round(segment)
   if (step === 3) return Math.round(segment * 2)
@@ -32,7 +32,7 @@ export function Stepper({ current, compact = false, maxReachable, onStepClick }:
     <div
       className="w-full"
       role="navigation"
-      aria-label={`Form progress, step ${stepForA11y} of 4: ${STEPS[stepForA11y - 1]}`}
+      aria-label={`Form progress, step ${stepForA11y} of 3: ${STEPS[stepForA11y - 1]}`}
     >
       <div className={compact ? 'mx-auto w-full max-w-[360px]' : 'mx-auto w-[600px]'}>
         <div className="relative">
@@ -45,8 +45,8 @@ export function Stepper({ current, compact = false, maxReachable, onStepClick }:
           <div className="relative z-10 flex items-start justify-between">
             {STEPS.map((label, i) => {
               const step = i + 1
-              const active = current < 5 && step === current
-              const done = (current < 5 && step < current) || (current >= 5 && step <= 4)
+              const active = current < 4 && step === current
+              const done = (current < 4 && step < current) || (current >= 4 && step <= 3)
               const fill = active ? '#FFFFFF' : done ? '#4B8D83' : '#9A9A9A'
               const reachable = maxReachable ?? current
               const clickable = Boolean(onStepClick) && step !== current && step <= reachable

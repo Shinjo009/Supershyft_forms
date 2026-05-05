@@ -4,6 +4,7 @@ import {
   Building2,
   Calendar,
   Home,
+  IdCard,
   Mail,
   MapPin,
   Mars,
@@ -12,14 +13,64 @@ import {
   Users,
   Venus,
 } from 'lucide-react'
-import { AddMemberModal } from './components/AddMemberModal'
 import { ContinueButton } from './components/ContinueButton'
-import { PackageDetailBody } from './components/PackageDetailBody'
 import { PageBackdrop } from './components/PageBackdrop'
 import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
-import { getPackage, PACKAGES, type PackageId } from './data/packages'
 import { defaultFormData, type FormData } from './types'
+import areaStreetIcon from './assets/AreaStreet.svg'
+import landmarkIcon from './assets/landmark.svg'
+import pincodeIcon from './assets/pincode.svg'
+import { onboardPublicUser } from './onboardUserForEngagementApi'
+
+const ALLOWED_EMPLOYEE_IDS = new Set([
+  '0000IN0210', '0000IN0221', '0000IN0224', '0000IN0227', '0000IN0228', '0000IN0229',
+  '0000IN0232', '0000IN0233', '0000IN0235', '0000IN0237', '0000IN0245', '0000IN0277',
+  '0000IN0315', '0000IN0335', '0000IN0338', '0000IN0351', '0000IN0354', '0000IN0368',
+  '0000IN0406', '0000IN0424', '0000IN0426', '0000IN0428', '0000IN0442', '0000IN0451',
+  '0000IN0508', '0000IN0524', '0000IN0543', '0000IN0547', '0000IN0548', '0000IN0550',
+  '0000IN0551', '0000IN0554', '0000IN0555', '0000IN0560', '0000IN0561', '0000IN0564',
+  '0000IN0567', '0000IN0570', '0000IN0580', '0000IN0583', '0000IN0584', '0000IN0585',
+  // Reusable test ID: can book multiple times.
+  '0000IN000',
+])
+
+const REUSABLE_TEST_EMPLOYEE_IDS = new Set(['0000IN000'])
+const USED_EMPLOYEE_IDS_STORAGE_KEY = 'supershyft-used-employee-ids'
+
+function normalizeEmployeeId(value: string): string {
+  return value.trim().toUpperCase()
+}
+
+function getUsedEmployeeIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set()
+  try {
+    const raw = window.localStorage.getItem(USED_EMPLOYEE_IDS_STORAGE_KEY)
+    if (!raw) return new Set()
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return new Set()
+    return new Set(
+      parsed
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => normalizeEmployeeId(item)),
+    )
+  } catch {
+    return new Set()
+  }
+}
+
+function persistUsedEmployeeId(employeeId: string) {
+  if (typeof window === 'undefined') return
+  const normalized = normalizeEmployeeId(employeeId)
+  if (!normalized || REUSABLE_TEST_EMPLOYEE_IDS.has(normalized)) return
+  const used = getUsedEmployeeIds()
+  used.add(normalized)
+  try {
+    window.localStorage.setItem(USED_EMPLOYEE_IDS_STORAGE_KEY, JSON.stringify([...used]))
+  } catch {
+    // ignore storage write failures
+  }
+}
 
 const RELATION_OPTIONS = [
   'Parent',
@@ -51,7 +102,7 @@ function inputClass(short?: boolean) {
 
 /** Figma mobile: 20px icon, 8px gap, Lato Medium 14px #999. Desktop: ~14px icon, 13px label #9a9a9a */
 function labelRow(
-  Icon: typeof User,
+  Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>,
   label: string,
   extra?: React.ReactNode,
   mobile?: boolean,
@@ -64,7 +115,7 @@ function labelRow(
         <Icon className={mobile ? 'size-5' : 'size-3.5'} strokeWidth={1.75} />
       </span>
       <span
-        className={`font-medium ${mobile ? 'text-sm text-[#999]' : 'text-[13px] text-[#9a9a9a]'}`}
+        className={`font-medium ${mobile ? 'text-[13px] text-[#999]' : 'text-[13px] text-[#9a9a9a]'}`}
       >
         {label}
       </span>
@@ -73,12 +124,16 @@ function labelRow(
   )
 }
 
-function PackageInfoIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-      <path d="M7 0C8.85652 0 10.637 0.737498 11.9497 2.05025C13.2625 3.36301 14 5.14348 14 7C14 8.85652 13.2625 10.637 11.9497 11.9497C10.637 13.2625 8.85652 14 7 14C5.14348 14 3.36301 13.2625 2.05025 11.9497C0.737498 10.637 0 8.85652 0 7C0 5.14348 0.737498 3.36301 2.05025 2.05025C3.36301 0.737498 5.14348 0 7 0ZM8.05 4.29688C8.57031 4.29688 8.99219 3.9375 8.99219 3.40156C8.99219 2.86563 8.57031 2.50625 8.05 2.50625C7.52969 2.50625 7.10938 2.86563 7.10938 3.40156C7.10938 3.9375 7.53125 4.29844 8.05 4.29844M8.23281 9.925C8.23281 9.81875 8.27031 9.54063 8.24844 9.38125L7.42656 10.3281C7.25625 10.5063 7.04375 10.6312 6.94375 10.5984C6.89862 10.5816 6.86096 10.5492 6.83749 10.5071C6.81403 10.4651 6.80627 10.416 6.81563 10.3687L8.18437 6.04063C8.29688 5.49062 7.98906 4.99062 7.33594 4.92656C6.64844 4.92656 5.63281 5.625 5.01562 6.5125C5.01562 6.61875 4.99531 6.88125 5.01562 7.04062L5.8375 6.09375C6.00938 5.91563 6.20625 5.79062 6.30625 5.825C6.35491 5.84336 6.39467 5.87968 6.41734 5.92648C6.44002 5.97328 6.44387 6.027 6.42812 6.07656L5.06875 10.3844C4.9125 10.8875 5.20937 11.3812 5.92969 11.4937C6.99062 11.4937 7.61719 10.8125 8.23438 9.925H8.23281Z" fill="white"/>
-    </svg>
-  )
+function AreaStreetIcon({ className }: { className?: string; strokeWidth?: number }) {
+  return <img src={areaStreetIcon} alt="" className={className} aria-hidden />
+}
+
+function LandmarkIcon({ className }: { className?: string; strokeWidth?: number }) {
+  return <img src={landmarkIcon} alt="" className={className} aria-hidden />
+}
+
+function PincodeIcon({ className }: { className?: string; strokeWidth?: number }) {
+  return <img src={pincodeIcon} alt="" className={className} aria-hidden />
 }
 
 export default function BookAppointment() {
@@ -86,19 +141,19 @@ export default function BookAppointment() {
   const [step, setStep] = useState(1)
   const [maxReachedStep, setMaxReachedStep] = useState(1)
   const [form, setForm] = useState<FormData>(defaultFormData)
-  const [packageId, setPackageId] = useState<PackageId>('fb-no-vit')
-  const [detailId, setDetailId] = useState<PackageId | null>(null)
-  const [addMemberOpen, setAddMemberOpen] = useState(false)
   const [savedMembers, setSavedMembers] = useState<FormData[]>([])
   const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
   const [bookingId, setBookingId] = useState<string>('')
+  const [stepError, setStepError] = useState('')
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
+    setStepError('')
     setForm((f) => ({ ...f, [key]: value }))
   }, [])
 
   useEffect(() => {
     setMaxReachedStep((prev) => Math.max(prev, step))
+    setStepError('')
   }, [step])
 
   const fullName = useMemo(
@@ -106,23 +161,139 @@ export default function BookAppointment() {
     [form.firstName, form.lastName],
   )
 
-  const selectedPkg = getPackage(packageId)
   const primaryMember = savedMembers[0]
 
-  /** Popup only fires after Schedule — every member (first or subsequent) walks the full 4 steps. */
+  /** Every member walks 3 editable steps before confirm. */
   const goNextFromPersonal = () => {
-    setStep(2)
-  }
-
-  const goNextFromSchedule = () => {
-    setAddMemberOpen(true)
+    continueFromCurrentStep()
   }
 
   const allMembers = useMemo(() => [...savedMembers, form], [savedMembers, form])
 
-  const handleProceedToPayment = () => {
-    setBookingId((prev) => prev || generateBookingId())
-    setStep(6)
+  const hasText = (value: string) => value.trim().length > 0
+  const hasSavedMembers = savedMembers.length > 0
+  const phoneForValidation =
+    hasSavedMembers && form.useSamePhone && primaryMember ? primaryMember.phone : form.phone
+  const emailForValidation =
+    hasSavedMembers && form.useSameEmail && primaryMember ? primaryMember.email : form.email
+
+  const validateStep = (targetStep: number): boolean => {
+    if (targetStep === 1) {
+      const normalizedEmployeeId = normalizeEmployeeId(form.employeeId)
+      const personalValid =
+        hasText(form.firstName) &&
+        hasText(form.lastName) &&
+        hasText(form.age) &&
+        hasText(form.gender) &&
+        hasText(form.employeeId) &&
+        hasText(phoneForValidation) &&
+        hasText(emailForValidation) &&
+        (!hasSavedMembers || hasText(form.relation))
+
+      if (!personalValid) {
+        setStepError('Please fill all Personal details to continue.')
+        return false
+      }
+
+      if (!ALLOWED_EMPLOYEE_IDS.has(normalizedEmployeeId)) {
+        setStepError('This Employee ID is not eligible for this form.')
+        return false
+      }
+
+      const usedIds = getUsedEmployeeIds()
+      if (
+        usedIds.has(normalizedEmployeeId) &&
+        !REUSABLE_TEST_EMPLOYEE_IDS.has(normalizedEmployeeId)
+      ) {
+        setStepError('This Employee ID has already been used for booking.')
+        return false
+      }
+
+      return true
+    }
+
+    if (targetStep === 2) {
+      const addressValid =
+        hasText(form.houseBuilding) &&
+        hasText(form.areaStreet) &&
+        hasText(form.landmark) &&
+        hasText(form.pincode) &&
+        hasText(form.city)
+
+      if (!addressValid) {
+        setStepError('Please fill all Address details to continue.')
+        return false
+      }
+      return true
+    }
+
+    if (targetStep === 3) {
+      const scheduleValid = hasText(form.appointmentDate) && hasText(form.appointmentTime)
+      if (!scheduleValid) {
+        setStepError('Please choose both preferred date and time slot.')
+        return false
+      }
+      return true
+    }
+
+    return true
+  }
+
+  const continueFromCurrentStep = () => {
+    if (!validateStep(step)) return
+    if (step === 1) setStep(2)
+    else if (step === 2) setStep(3)
+    else if (step === 3) setStep(4)
+  }
+
+  const handleProceedToPayment = async () => {
+    setStepError('')
+
+    const parsedAge = Number.parseInt(form.age.trim(), 10)
+    if (!Number.isFinite(parsedAge) || parsedAge <= 0) {
+      setStepError('Please enter a valid age before confirming.')
+      return
+    }
+
+    const currentYear = new Date().getFullYear()
+    const dobYear = Math.max(1900, currentYear - parsedAge)
+    const derivedDob = `${dobYear}-01-01`
+    const address = [form.houseBuilding, form.areaStreet, form.landmark]
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .join(', ')
+
+    try {
+      await onboardPublicUser({
+        age: parsedAge,
+        first_name: form.firstName.trim(),
+        last_name: form.lastName.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        gender: form.gender,
+        dob: derivedDob,
+        address,
+        pincode: form.pincode.trim(),
+        city: form.city.trim(),
+        state: 'Maharashtra',
+        country: 'India',
+        blood_collection_date: form.appointmentDate,
+        blood_collection_time_slot: form.appointmentTime,
+        participants_employee_id: normalizeEmployeeId(form.employeeId),
+        participant_department: 'General',
+        participant_blood_group: 'Unknown',
+        want_doctor_consultation: false,
+        want_nutritionist_consultation: false,
+        want_doctor_and_nutritionist_consultation: false,
+      })
+
+      persistUsedEmployeeId(form.employeeId)
+      setBookingId((prev) => prev || generateBookingId())
+      setStep(5)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to submit booking.'
+      setStepError(message)
+    }
   }
 
   /** Load the chosen member into the editable `form` (swapping with whoever was current)
@@ -140,34 +311,6 @@ export default function BookAppointment() {
     setStep(1)
   }
 
-  const resolveAddMember = (another: boolean) => {
-    setAddMemberOpen(false)
-    if (another) {
-      setSavedMembers((prev) => [...prev, form])
-      setExpandedMemberIndex(null)
-      setForm((f) => ({
-        ...defaultFormData,
-        // Re-use household-level info the new member inherits
-        street: f.street,
-        landmark: f.landmark,
-        pincode: f.pincode,
-        city: f.city,
-        appointmentDate: f.appointmentDate,
-        appointmentTime: f.appointmentTime,
-        // Default "use same" toggles to true so the new member inherits contact info
-        useSamePhone: true,
-        useSameEmail: true,
-        phone: f.phone,
-        email: f.email,
-        relation: 'spouse',
-      }))
-      setMaxReachedStep(1)
-      setStep(1)
-    } else {
-      setStep(5)
-    }
-  }
-
   const headerTitle = 'Book Appointment'
 
   const glassPanel =
@@ -177,11 +320,11 @@ export default function BookAppointment() {
 
   const isMobile = !isLg
   const mobilePersonal = isMobile && step === 1
-  const showBack = step === 6 ? false : isLg ? step > 1 : step > 1
-  const stretchStepBody = !isLg || step === 5 || step === 6
-  const hideGlobalContinue = mobilePersonal || step === 6
+  const showBack = step === 5 ? false : isLg ? step > 1 : step > 1
+  const stretchStepBody = !isLg || step === 4 || step === 5
+  const hideGlobalContinue = mobilePersonal || step === 5
   const mobileHeader = isMobile
-  const hideStepper = step === 6
+  const hideStepper = step === 5
 
   return (
     <PageBackdrop>
@@ -255,14 +398,14 @@ export default function BookAppointment() {
             <div
               className={
                 mobilePersonal
-                  ? 'mt-6 mb-[45px] shrink-0 px-5'
+                  ? 'mt-5 mb-8 shrink-0 px-5'
                   : isMobile
                     ? 'mt-6 mb-8 shrink-0 px-5'
                     : 'mb-8 px-1 lg:mx-auto lg:w-[600px] lg:px-0'
               }
             >
               <Stepper
-                current={step === 5 ? 5 : step}
+                current={step}
                 compact={!isLg}
                 maxReachable={maxReachedStep}
                 onStepClick={(target) => setStep(target)}
@@ -275,7 +418,7 @@ export default function BookAppointment() {
               mobilePersonal
                 ? 'min-h-0 overflow-hidden'
                 : isMobile
-                  ? step === 6
+                  ? step === 5
                     ? 'px-5'
                     : 'px-5 pt-1'
                   : ''
@@ -330,40 +473,33 @@ export default function BookAppointment() {
               />
             )}
             {step === 3 && (
-              <PackageStep
-                packageId={packageId}
-                setPackageId={setPackageId}
-                detailId={detailId}
-                setDetailId={setDetailId}
-                isMobile={isMobile}
-              />
-            )}
-            {step === 4 && (
               <ScheduleStep form={form} update={update} isMobile={isMobile} />
             )}
-            {step === 5 && (
+            {step === 4 && (
               <ConfirmStep
                 form={form}
                 members={allMembers}
-                packageTitle={selectedPkg.title}
                 onEdit={(s) => setStep(s)}
                 onEditMember={editMember}
                 onProceed={handleProceedToPayment}
+                errorMessage={stepError}
               />
             )}
-            {step === 6 && (
+            {step === 5 && (
               <BookingConfirmedStep
                 bookingId={bookingId}
                 form={form}
                 members={allMembers}
-                packageTitle={selectedPkg.title}
                 isMobile={isMobile}
               />
             )}
           </div>
 
           {mobilePersonal && step === 1 && (
-            <div className="shrink-0 px-6 pt-2 pb-[30px]">
+            <div className="shrink-0 px-6 pt-1 pb-5">
+              {stepError && (
+                <p className="mb-2 text-center text-xs text-[#ffb4b4]">{stepError}</p>
+              )}
               <ContinueButton variant="mobileBar" onClick={goNextFromPersonal}>
                 Continue
               </ContinueButton>
@@ -373,16 +509,14 @@ export default function BookAppointment() {
           {/* Footer CTA — mobile: full-width bar pinned to bottom with 30px safe-area; desktop: right-aligned pill */}
           {!hideGlobalContinue && (
             isMobile ? (
-              step < 5 ? (
+              step < 4 ? (
                 <div className="mt-auto shrink-0 px-6 pt-4 pb-[30px]">
+                  {stepError && (
+                    <p className="mb-2 text-center text-xs text-[#ffb4b4]">{stepError}</p>
+                  )}
                   <ContinueButton
                     variant="mobileBar"
-                    onClick={() => {
-                      if (step === 1) goNextFromPersonal()
-                      else if (step === 2) setStep(3)
-                      else if (step === 3) setStep(4)
-                      else goNextFromSchedule()
-                    }}
+                    onClick={continueFromCurrentStep}
                   >
                     Continue
                   </ContinueButton>
@@ -391,21 +525,19 @@ export default function BookAppointment() {
             ) : (
               <div
                 className={[
-                  step < 5 ? 'mt-6 flex' : 'mt-auto flex pt-8',
+                  step < 4 ? 'mt-6 flex' : 'mt-auto flex pt-8',
                   'justify-end',
                 ].join(' ')}
               >
-                {step < 5 && (
-                  <ContinueButton
-                    onClick={() => {
-                      if (step === 1) goNextFromPersonal()
-                      else if (step === 2) setStep(3)
-                      else if (step === 3) setStep(4)
-                      else goNextFromSchedule()
-                    }}
-                  >
-                    Continue
-                  </ContinueButton>
+                {step < 4 && (
+                  <div className="flex flex-col items-end gap-2">
+                    {stepError && (
+                      <p className="text-right text-xs text-[#ffb4b4]">{stepError}</p>
+                    )}
+                    <ContinueButton onClick={continueFromCurrentStep}>
+                      Continue
+                    </ContinueButton>
+                  </div>
                 )}
               </div>
             )
@@ -413,21 +545,17 @@ export default function BookAppointment() {
         </div>
       </div>
 
-      <AddMemberModal
-        open={addMemberOpen}
-        onClose={() => setAddMemberOpen(false)}
-        onYes={() => resolveAddMember(true)}
-        onNo={() => resolveAddMember(false)}
-        displayName={fullName}
-        memberCount={savedMembers.length + 1}
-      />
     </PageBackdrop>
   )
 }
 
 const mobileFieldInput =
-  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-base text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
+  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-[15px] text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
 const mobileFieldInput14 = mobileFieldInput
+const mobileFieldTextarea =
+  'h-10 w-full resize-none overflow-hidden rounded-lg border-0 bg-white/5 px-4 py-2.5 text-[15px] text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
+const desktopFieldTextarea =
+  'h-[44px] w-full resize-none overflow-hidden rounded-[8px] bg-white/5 px-4 py-3 text-base lg:text-sm text-white outline-none ring-1 ring-white/5 placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]/70'
 
 function PersonalStep({
   form,
@@ -447,7 +575,7 @@ function PersonalStep({
   isLg: boolean
   inputClass: (short?: boolean) => string
   labelRow: (
-    Icon: typeof User,
+    Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>,
     label: string,
     extra?: React.ReactNode,
     mobile?: boolean,
@@ -544,6 +672,16 @@ function PersonalStep({
                 Female
               </button>
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(IdCard, 'Employee ID', undefined, true)}
+            <input
+              className={mobileFieldInput14}
+              placeholder="Employee ID"
+              value={form.employeeId}
+              onChange={(e) => update('employeeId', e.target.value)}
+            />
           </div>
 
           <div className="flex flex-col gap-1">
@@ -713,6 +851,16 @@ function PersonalStep({
               </button>
             </div>
           </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(IdCard, 'Employee ID', undefined, true)}
+            <input
+              className={mobileFieldInput14}
+              placeholder="Employee ID"
+              value={form.employeeId}
+              onChange={(e) => update('employeeId', e.target.value)}
+            />
+          </div>
         </div>
 
         {showMobileContinue && (
@@ -869,6 +1017,16 @@ function PersonalStep({
             {labelRow(User, 'Gender')}
             {genderButtons}
           </div>
+
+          <div>
+            {labelRow(IdCard, 'Employee ID')}
+            <input
+              className={inputClass()}
+              placeholder="Employee ID"
+              value={form.employeeId}
+              onChange={(e) => update('employeeId', e.target.value)}
+            />
+          </div>
         </div>
       </>
     )
@@ -898,6 +1056,16 @@ function PersonalStep({
         <div>
           {labelRow(User, 'Gender')}
           {genderButtons}
+        </div>
+
+        <div>
+          {labelRow(IdCard, 'Employee ID')}
+          <input
+            className={inputClass()}
+            placeholder="Employee ID"
+            value={form.employeeId}
+            onChange={(e) => update('employeeId', e.target.value)}
+          />
         </div>
 
         <div>
@@ -988,36 +1156,57 @@ function AddressStep({
   update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
   inputClass: (short?: boolean) => string
   labelRow: (
-    Icon: typeof User,
+    Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>,
     label: string,
     extra?: React.ReactNode,
     mobile?: boolean,
   ) => React.ReactNode
   isMobile: boolean
 }) {
+  const autoResizeTextarea = (event: React.FormEvent<HTMLTextAreaElement>) => {
+    const el = event.currentTarget
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
+
   if (isMobile) {
     return (
       <div className="flex flex-col gap-5 pb-2">
         <div className="flex flex-col gap-1">
-          {labelRow(Home, 'House No./ Street', undefined, true)}
-          <input
-            className={mobileFieldInput14}
-            placeholder="House No./ Street"
-            value={form.street}
-            onChange={(e) => update('street', e.target.value)}
+          {labelRow(Home, 'House No./ Building', undefined, true)}
+          <textarea
+            className={mobileFieldTextarea}
+            placeholder="House No./ Building"
+            value={form.houseBuilding}
+            onChange={(e) => update('houseBuilding', e.target.value)}
+            onInput={autoResizeTextarea}
+            rows={1}
           />
         </div>
         <div className="flex flex-col gap-1">
-          {labelRow(Building2, 'Landmark', undefined, true)}
-          <input
-            className={mobileFieldInput14}
+          {labelRow(AreaStreetIcon, 'Area/ Street', undefined, true)}
+          <textarea
+            className={mobileFieldTextarea}
+            placeholder="Area/ Street"
+            value={form.areaStreet}
+            onChange={(e) => update('areaStreet', e.target.value)}
+            onInput={autoResizeTextarea}
+            rows={1}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          {labelRow(LandmarkIcon, 'Landmark', undefined, true)}
+          <textarea
+            className={mobileFieldTextarea}
             placeholder="Landmark"
             value={form.landmark}
             onChange={(e) => update('landmark', e.target.value)}
+            onInput={autoResizeTextarea}
+            rows={1}
           />
         </div>
         <div className="flex flex-col gap-1">
-          {labelRow(MapPin, 'Pincode', undefined, true)}
+          {labelRow(PincodeIcon, 'Pincode', undefined, true)}
           <input
             className={mobileFieldInput14}
             inputMode="numeric"
@@ -1028,11 +1217,13 @@ function AddressStep({
         </div>
         <div className="flex flex-col gap-1">
           {labelRow(MapPin, 'City', undefined, true)}
-          <input
-            className={mobileFieldInput14}
+          <textarea
+            className={mobileFieldTextarea}
             placeholder="City"
             value={form.city}
             onChange={(e) => update('city', e.target.value)}
+            onInput={autoResizeTextarea}
+            rows={1}
           />
         </div>
       </div>
@@ -1046,25 +1237,40 @@ function AddressStep({
       </h2>
       <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
         <div>
-          {labelRow(Home, 'House No./ Street')}
-          <input
-            className={inputClass()}
-            placeholder="House No./ Street"
-            value={form.street}
-            onChange={(e) => update('street', e.target.value)}
+          {labelRow(Home, 'House No./ Building')}
+          <textarea
+            className={desktopFieldTextarea}
+            placeholder="House No./ Building"
+            value={form.houseBuilding}
+            onChange={(e) => update('houseBuilding', e.target.value)}
+            onInput={autoResizeTextarea}
+            rows={1}
           />
         </div>
         <div>
-          {labelRow(Building2, 'Landmark')}
-          <input
-            className={inputClass()}
+          {labelRow(AreaStreetIcon, 'Area/ Street')}
+          <textarea
+            className={desktopFieldTextarea}
+            placeholder="Area/ Street"
+            value={form.areaStreet}
+            onChange={(e) => update('areaStreet', e.target.value)}
+            onInput={autoResizeTextarea}
+            rows={1}
+          />
+        </div>
+        <div>
+          {labelRow(LandmarkIcon, 'Landmark')}
+          <textarea
+            className={desktopFieldTextarea}
             placeholder="Landmark"
             value={form.landmark}
             onChange={(e) => update('landmark', e.target.value)}
+            onInput={autoResizeTextarea}
+            rows={1}
           />
         </div>
         <div>
-          {labelRow(MapPin, 'Pincode')}
+          {labelRow(PincodeIcon, 'Pincode')}
           <input
             className={inputClass()}
             placeholder="Pincode"
@@ -1074,148 +1280,15 @@ function AddressStep({
         </div>
         <div>
           {labelRow(MapPin, 'City')}
-          <input
-            className={inputClass()}
+          <textarea
+            className={desktopFieldTextarea}
             placeholder="City"
             value={form.city}
             onChange={(e) => update('city', e.target.value)}
+            onInput={autoResizeTextarea}
+            rows={1}
           />
         </div>
-      </div>
-    </>
-  )
-}
-
-function PackageStep({
-  packageId,
-  setPackageId,
-  detailId,
-  setDetailId,
-  isMobile,
-}: {
-  packageId: PackageId
-  setPackageId: (id: PackageId) => void
-  detailId: PackageId | null
-  setDetailId: (id: PackageId | null) => void
-  isMobile: boolean
-}) {
-  return (
-    <>
-      {!isMobile && (
-        <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Select Package</h2>
-      )}
-
-      <div className="flex flex-1 flex-col gap-6">
-        {!detailId && (
-          <div
-            className={
-              isMobile
-                ? 'grid grid-cols-2 gap-3'
-                : 'flex gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0'
-            }
-          >
-            {PACKAGES.map((p) => {
-              const selected = packageId === p.id
-              return (
-                <div
-                  key={p.id}
-                  className={[
-                    'relative flex flex-col items-center overflow-hidden rounded-xl border text-center transition',
-                    isMobile
-                      ? 'h-[260px] w-full px-3 py-4'
-                      : 'max-h-[260px] min-w-[200px] flex-1 px-4 py-5 lg:min-w-0',
-                    selected
-                      ? 'border-[#4b8d83]/60 bg-[radial-gradient(ellipse_at_50%_30%,_#11795f_0%,_#1c493d_55%,_#0d2520_100%)]'
-                      : 'border-white/[0.08] bg-white/5',
-                  ].join(' ')}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setDetailId(p.id)}
-                    className="absolute right-2 top-2 rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white"
-                    aria-label={`About ${p.title}`}
-                  >
-                    <PackageInfoIcon />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPackageId(p.id)}
-                    className={`flex w-full flex-col items-center ${isMobile ? 'h-full gap-1.5' : 'gap-3'}`}
-                  >
-                    <div
-                      className={
-                        isMobile
-                          ? 'flex size-12 items-center justify-center'
-                          : 'flex size-14 items-center justify-center lg:size-16'
-                      }
-                    >
-                      <img
-                        src={p.iconSrc}
-                        alt=""
-                        className={isMobile ? 'size-12 object-contain' : 'h-16 w-16 object-contain'}
-                        aria-hidden
-                      />
-                    </div>
-                    <div
-                      className={
-                        isMobile
-                          ? 'text-sm font-semibold leading-tight text-white'
-                          : 'text-sm font-semibold leading-snug text-white'
-                      }
-                    >
-                      {p.lines ? (
-                        <>
-                          {p.lines[0]}
-                          <br />
-                          {p.lines[1]}
-                        </>
-                      ) : (
-                        p.title
-                      )}
-                    </div>
-                    <p
-                      className={
-                        isMobile
-                          ? 'text-[11px] font-light leading-snug text-white/80'
-                          : 'text-xs font-light text-white/80'
-                      }
-                    >
-                      {p.subtitle}
-                    </p>
-                    <div
-                      className={[
-                        'flex flex-wrap justify-center text-[#90df9e]',
-                        isMobile
-                          ? 'gap-x-3 gap-y-0.5 text-[11px]'
-                          : 'mt-1 gap-x-3 gap-y-1 text-[11px] lg:text-xs',
-                      ].join(' ')}
-                    >
-                      <span className="flex items-center gap-1">✓ Bio-AI Reports</span>
-                      <span className="flex items-center gap-1">✓ Blood Tests</span>
-                    </div>
-                    <p
-                      className={
-                        isMobile
-                          ? 'mt-auto text-[15px] font-semibold text-white'
-                          : 'mt-2 text-base font-semibold text-white'
-                      }
-                    >
-                      {p.price}
-                    </p>
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {detailId && (
-          <PackageDetailBody
-            pkg={getPackage(detailId)}
-            variant={isMobile ? 'mobile' : 'desktop'}
-            onClose={() => setDetailId(null)}
-          />
-        )}
       </div>
     </>
   )
@@ -1224,17 +1297,17 @@ function PackageStep({
 function ConfirmStep({
   form,
   members,
-  packageTitle,
   onEdit,
   onEditMember,
   onProceed,
+  errorMessage,
 }: {
   form: FormData
   members: FormData[]
-  packageTitle: string
   onEdit: (step: number) => void
   onEditMember: (index: number) => void
   onProceed: () => void
+  errorMessage?: string
 }) {
   return (
     <>
@@ -1269,14 +1342,18 @@ function ConfirmStep({
           <ul className="space-y-4 text-sm text-[#ccc]">
             <li className="flex gap-2">
               <Home className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.street}
+              {form.houseBuilding}
             </li>
             <li className="flex gap-2">
-              <Building2 className="mt-0.5 size-5 shrink-0 opacity-70" />
+              <AreaStreetIcon className="mt-0.5 size-5 shrink-0 opacity-70" />
+              {form.areaStreet}
+            </li>
+            <li className="flex gap-2">
+              <LandmarkIcon className="mt-0.5 size-5 shrink-0 opacity-70" />
               {form.landmark}
             </li>
             <li className="flex gap-2">
-              <MapPin className="mt-0.5 size-5 shrink-0 opacity-70" />
+              <PincodeIcon className="mt-0.5 size-5 shrink-0 opacity-70" />
               {form.pincode}
             </li>
             <li className="flex gap-2">
@@ -1290,7 +1367,7 @@ function ConfirmStep({
           <div className="rounded-lg bg-white/5 p-5">
             <div className="mb-4 flex items-center justify-between border-b border-white/20 pb-2">
               <h3 className="text-[15px] font-semibold text-white">Sample Collection</h3>
-              <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(4)}>
+              <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(3)}>
                 Edit
               </button>
             </div>
@@ -1304,15 +1381,17 @@ function ConfirmStep({
                 {form.appointmentTime}
               </li>
             </ul>
-            <p className="mt-4 text-xs text-white/50">Package: {packageTitle}</p>
           </div>
           <ContinueButton
             className="w-full max-w-none"
             showChevron={false}
             onClick={onProceed}
           >
-            Proceed to Payment
+            Confirm
           </ContinueButton>
+          {errorMessage && (
+            <p className="text-center text-xs text-[#ffb4b4]">{errorMessage}</p>
+          )}
         </section>
       </div>
     </>
@@ -1359,6 +1438,7 @@ function MemberSummary({
         )}
         <SummaryItem Icon={Calendar} label={member.age ? `${member.age} Years` : '—'} />
         <SummaryItem Icon={GenderIcon} label={genderLabel} />
+        <SummaryItem Icon={IdCard} label={member.employeeId || '—'} />
         <div className="col-span-2">
           <SummaryItem Icon={Phone} label={member.phone || '—'} />
         </div>
@@ -1398,13 +1478,13 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
 type UpcomingDate = { iso: string; day: string; date: number }
 
-function getUpcomingDates(count: number): UpcomingDate[] {
+function getUpcomingDates(count: number, startOffsetDays = 0): UpcomingDate[] {
   const pad = (n: number) => String(n).padStart(2, '0')
   const today = new Date()
   const out: UpcomingDate[] = []
   for (let i = 0; i < count; i++) {
     const d = new Date(today)
-    d.setDate(today.getDate() + i)
+    d.setDate(today.getDate() + startOffsetDays + i)
     out.push({
       iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
       day: DAY_LABELS[d.getDay()],
@@ -1442,7 +1522,7 @@ function ScheduleStep({
   update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
   isMobile: boolean
 }) {
-  const dates = useMemo(() => getUpcomingDates(4), [])
+  const dates = useMemo(() => getUpcomingDates(4, 2), [])
 
   const selectedDateClass =
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
@@ -1596,13 +1676,11 @@ function BookingConfirmedStep({
   bookingId,
   form,
   members,
-  packageTitle,
   isMobile,
 }: {
   bookingId: string
   form: FormData
   members: FormData[]
-  packageTitle: string
   isMobile: boolean
 }) {
   const memberNames = members
@@ -1610,7 +1688,11 @@ function BookingConfirmedStep({
     .filter(Boolean)
     .join(', ')
   const location =
-    [form.landmark, form.city].filter(Boolean).join(', ') || form.city || form.street || '—'
+    [form.landmark, form.city].filter(Boolean).join(', ') ||
+    form.city ||
+    form.areaStreet ||
+    form.houseBuilding ||
+    '—'
   const dateTime = `${formatBookingDate(form.appointmentDate)}  |  ${formatTimeWindow(form.appointmentTime)}`
 
   if (isMobile) {
@@ -1649,7 +1731,6 @@ function BookingConfirmedStep({
             <div className="flex w-full flex-col items-start gap-3.5">
               <InfoRow icon={<CalendarIcon />} label="Date & Time" value={dateTime} isMobile />
               <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} isMobile />
-              <InfoRow icon={<PackageIcon />} label="Package" value={packageTitle} isMobile />
               <InfoRow icon={<LocationIcon />} label="Location" value={location} isMobile />
             </div>
           </div>
@@ -1664,11 +1745,8 @@ function BookingConfirmedStep({
           >
             Download the App
           </a>
-          <p className="text-center font-sans text-[13px] font-medium leading-normal text-[#999]">
-            OR
-          </p>
-          <p className="text-center font-sans text-[13px] font-medium leading-normal text-[#999]">
-            We will get in touch with you on Whatsapp/ Email
+          <p className="text-center font-sans text-[14px] font-medium leading-normal text-[#CCC]">
+            ⚠️ Don&apos;t miss the call from our collection team
           </p>
         </div>
       </div>
@@ -1710,7 +1788,6 @@ function BookingConfirmedStep({
           <div className="flex flex-col items-start gap-5 self-stretch">
             <InfoRow icon={<CalendarIcon />} label="Date & Time" value={dateTime} />
             <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} />
-            <InfoRow icon={<PackageIcon />} label="Package" value={packageTitle} />
             <InfoRow icon={<LocationIcon />} label="Location" value={location} />
           </div>
         </div>
@@ -1724,10 +1801,8 @@ function BookingConfirmedStep({
       >
         Download the App
       </a>
-
-      <p className="mt-3 text-center text-[14px] font-medium leading-[22.5px] text-[#999]">OR</p>
-      <p className="text-center text-[15px] font-medium leading-[22.5px] text-[#999]">
-        We will get in touch with you on Whatsapp/ Email
+      <p className="mt-4 text-center text-[14px] font-medium leading-normal text-[#CCC]">
+        ⚠️ Don&apos;t miss the call from our collection team
       </p>
     </div>
   )
@@ -1795,15 +1870,6 @@ function UserIcon() {
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
       <path d="M15.8332 17.5V15.8333C15.8332 13.9924 14.3408 12.5 12.4998 12.5H7.49984C5.65889 12.5 4.1665 13.9924 4.1665 15.8333V17.5" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M6.6665 5.83333C6.6665 7.67305 8.16012 9.16667 9.99984 9.16667C11.8396 9.16667 13.3332 7.67305 13.3332 5.83333C13.3332 3.99362 11.8396 2.5 9.99984 2.5C8.16012 2.5 6.6665 3.99362 6.6665 5.83333V5.83333" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function PackageIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <path d="M10.5 19.4439V10.555M9.61111 19.2039C9.88137 19.36 10.1879 19.4421 10.5 19.4421C10.8121 19.4421 11.1186 19.36 11.3889 19.2039L17.6111 15.6484C17.8811 15.4925 18.1054 15.2684 18.2614 14.9984C18.4174 14.7285 18.4997 14.4223 18.5 14.1106V6.99948C18.4997 6.68772 18.4174 6.38153 18.2614 6.11162C18.1054 5.84172 17.8811 5.61758 17.6111 5.4617L11.3889 1.90615C11.1186 1.75011 10.8121 1.66797 10.5 1.66797C10.1879 1.66797 9.88137 1.75011 9.61111 1.90615L3.38889 5.4617C3.1189 5.61758 2.89465 5.84172 2.73863 6.11162C2.58262 6.38153 2.50032 6.68772 2.5 6.99948V14.1106C2.50032 14.4223 2.58262 14.7285 2.73863 14.9984C2.89465 15.2684 3.1189 15.4925 3.38889 15.6484L9.61111 19.2039Z" stroke="#4B8D83" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2.7583 6.11026L10.5005 10.5547L18.2427 6.11026M6.50052 3.68359L14.5005 8.26137" stroke="#4B8D83" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }

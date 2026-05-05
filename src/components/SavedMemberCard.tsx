@@ -1,4 +1,4 @@
-import { Calendar, ChevronDown, Mail, Mars, Phone, User, Venus } from 'lucide-react'
+import { Calendar, ChevronDown, IdCard, Mail, Mars, Phone, User, Venus } from 'lucide-react'
 import type { FormData } from '../types'
 
 type Props = {
@@ -56,6 +56,7 @@ export function SavedMemberCard({ member, expanded, onToggle }: Props) {
             />
             <DetailItem Icon={Phone} label={member.phone || '—'} />
             <DetailItem Icon={Calendar} label={member.age ? `${member.age} Years` : '—'} />
+            <DetailItem Icon={IdCard} label={member.employeeId || '—'} />
             <div className="col-span-2 sm:col-span-1">
               <DetailItem Icon={Mail} label={member.email || '—'} />
             </div>

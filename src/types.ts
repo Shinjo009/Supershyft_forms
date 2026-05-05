@@ -5,7 +5,9 @@ export type FormData = {
   email: string
   age: string
   gender: '' | 'male' | 'female'
-  street: string
+  employeeId: string
+  houseBuilding: string
+  areaStreet: string
   landmark: string
   pincode: string
   city: string
@@ -23,7 +25,9 @@ export const defaultFormData: FormData = {
   email: '',
   age: '',
   gender: '',
-  street: '',
+  employeeId: '',
+  houseBuilding: '',
+  areaStreet: '',
   landmark: '',
   pincode: '',
   city: '',
