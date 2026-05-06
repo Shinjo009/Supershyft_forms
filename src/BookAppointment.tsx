@@ -38,7 +38,13 @@ const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
 const sanitizePincode = (value: string) => value.replace(/\D/g, '').slice(0, 6)
 const normalizeEmployeeId = (value: string) => value.trim().toUpperCase()
-const logClientError = (message: string) => console.error(`[BookAppointment] ${message}`)
+const BOOK_APPOINTMENT_ERROR_EVENT = 'book-appointment:error'
+const logClientError = (message: string) => {
+  console.error(`[BookAppointment] ${message}`)
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(BOOK_APPOINTMENT_ERROR_EVENT, { detail: message }))
+  }
+}
 const TEST_EMPLOYEE_ID = '0000IN000'
 const BOOKED_EMPLOYEE_IDS_STORAGE_KEY = 'bookedEmployeeIds'
 const ALLOWED_EMPLOYEE_IDS = new Set([
@@ -192,17 +198,30 @@ export default function BookAppointment() {
   const [savedMembers] = useState<FormData[]>([])
   const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
+  const [uiError, setUiError] = useState('')
   const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
   const [attemptedAddressContinue, setAttemptedAddressContinue] = useState(false)
   const [attemptedScheduleContinue, setAttemptedScheduleContinue] = useState(false)
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
+    if (uiError) setUiError('')
     setForm((f) => ({ ...f, [key]: value }))
-  }, [])
+  }, [uiError])
 
   useEffect(() => {
     setMaxReachedStep((prev) => Math.max(prev, step))
   }, [step])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<string>
+      const message = typeof custom.detail === 'string' ? custom.detail : 'Something went wrong.'
+      setUiError(message)
+    }
+    window.addEventListener(BOOK_APPOINTMENT_ERROR_EVENT, handler as EventListener)
+    return () => window.removeEventListener(BOOK_APPOINTMENT_ERROR_EVENT, handler as EventListener)
+  }, [])
 
   const primaryMember = savedMembers[0]
 
@@ -548,6 +567,12 @@ export default function BookAppointment() {
             </div>
           )}
 
+          {uiError ? (
+            <div className={`mb-3 rounded-lg border border-[#ff6b6b]/40 bg-[#ff6b6b]/10 px-3 py-2 text-sm text-[#ffd1d1] ${isMobile ? 'mx-5' : ''}`}>
+              {uiError}
+            </div>
+          ) : null}
+
           <div
             className={`flex min-h-0 flex-col ${stretchStepBody ? 'flex-1' : 'flex-none'} ${
               mobilePersonal
@@ -631,6 +656,7 @@ export default function BookAppointment() {
                 form={form}
                 members={allMembers}
                 isMobile={isMobile}
+                onClose={() => setStep(1)}
               />
             )}
           </div>
@@ -1792,17 +1818,19 @@ function formatBookingDate(iso: string): string {
   return `${DAY_LABELS[d.getDay()]}, ${d.getDate()} ${MONTH_LABELS[d.getMonth()]}`
 }
 
-/** Set to `true` to show the “Continue to Our App” button and subcopy on the confirm step. */
-const SHOW_BOOKING_CONFIRM_APP_CTA = false
+/** Set to `true` to show the “Download the App” button on the success step. */
+const SHOW_BOOKING_CONFIRM_APP_CTA = true
 
 function BookingConfirmedStep({
   form,
   members,
   isMobile,
+  onClose,
 }: {
   form: FormData
   members: FormData[]
   isMobile: boolean
+  onClose: () => void
 }) {
   const memberNames = members
     .map((m) => [m.firstName, m.lastName].filter(Boolean).join(' '))
@@ -1810,16 +1838,26 @@ function BookingConfirmedStep({
     .join(', ')
   const bookingDate = formatBookingDate(form.appointmentDate)
   const bookingDateTime = `${bookingDate} | ${form.appointmentTime || '—'}`
+  const bookingId = [form.employeeId?.trim(), form.appointmentDate?.replaceAll('-', '')]
+    .filter(Boolean)
+    .join('-') || 'XYZ123'
+  const locationLabel = [form.city?.trim(), 'Mumbai'].filter(Boolean).join(', ')
 
   if (isMobile) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center self-stretch">
-        <div
-          className={
-            'flex w-full flex-col items-center gap-6 pt-[60px]' +
-            (SHOW_BOOKING_CONFIRM_APP_CTA ? '' : ' pb-[50px]')
-          }
-        >
+        <div className="flex w-full items-center justify-end px-1 pb-8">
+          <h2 className="mx-auto text-[20px] font-semibold leading-none text-white">Book Appointment</h2>
+          <button
+            type="button"
+            aria-label="Close"
+            className="text-[28px] leading-none text-white"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+        <div className="flex w-full flex-col items-center gap-12">
           <div
             className="flex size-[80px] items-center justify-center rounded-full border border-[#90DF9E] bg-black/20 shadow-[0_1px_10px_0_#90DF9E]"
             aria-hidden
@@ -1839,27 +1877,30 @@ function BookingConfirmedStep({
             Booking Confirmed!
           </h2>
 
-          <div className="flex w-full flex-col items-center gap-5 self-stretch rounded-[8px] border border-[#90DF9E]/20 bg-[#4B8D83]/10 p-6">
-            <div className="flex w-full flex-col items-start gap-3.5">
-              <InfoRow icon={<UserIcon />} label="Name" value={memberNames || '—'} isMobile />
+          <div className="flex w-full flex-col items-center gap-5 self-stretch rounded-[8px] border border-[#90DF9E]/20 bg-[#4B8D83]/10 px-[25px] py-[25px]">
+            <div className="flex flex-col items-center">
+              <p className="text-[14px] text-[#9A9A9A]">Booking ID</p>
+              <p className="max-w-[280px] truncate text-[20px] font-bold leading-[28px] text-white">{bookingId}</p>
+            </div>
+            <div className="flex w-full flex-col items-start gap-4">
               <InfoRow icon={<CalendarIcon />} label="Date & Time" value={bookingDateTime} isMobile />
+              <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} isMobile />
+              <InfoRow icon={<LocationIcon />} label="Location" value={locationLabel} isMobile />
             </div>
           </div>
+          <p className="text-center text-[14px] text-[#CCC]">⚠️ Don’t miss the call from our collection team</p>
         </div>
 
         {SHOW_BOOKING_CONFIRM_APP_CTA ? (
-          <div className="mt-auto flex w-full flex-col items-center gap-3 pb-[50px] pt-6">
+          <div className="mt-auto flex w-full flex-col items-center gap-3 pb-[30px] pt-10">
             <a
               href="https://app.supershyft.com"
               target="_blank"
               rel="noopener noreferrer"
               className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[16px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
             >
-              Continue to Our App
+              Download the App
             </a>
-            <p className="text-center font-sans text-[13px] font-medium leading-normal text-[#999]">
-              Log in to complete your questionnaire and access your detailed health insights.
-            </p>
           </div>
         ) : null}
       </div>
@@ -1867,8 +1908,8 @@ function BookingConfirmedStep({
   }
 
   return (
-    <div className="flex flex-col items-center self-stretch">
-      <div className="flex flex-col items-center gap-6 pb-10">
+    <div className="flex w-full flex-col items-center self-stretch">
+      <div className="flex w-full max-w-[760px] flex-col items-center gap-6 pb-10">
         <div
           className="flex size-[100px] items-center justify-center rounded-full border border-[#90DF9E] bg-black/20 shadow-[0_1px_10px_0_#90DF9E]"
           aria-hidden
@@ -1888,12 +1929,18 @@ function BookingConfirmedStep({
           Booking Confirmed!
         </h2>
 
-        <div className="flex w-[517px] max-w-full flex-col items-center gap-[30px] rounded-[8px] border border-[#90DF9E]/20 bg-[#4B8D83]/10 p-6">
-          <div className="flex flex-col items-start gap-5 self-stretch">
-            <InfoRow icon={<UserIcon />} label="Name" value={memberNames || '—'} />
+        <div className="flex w-full max-w-[520px] flex-col items-center gap-5 rounded-[8px] border border-[#90DF9E]/20 bg-[#4B8D83]/10 p-6">
+          <div className="flex flex-col items-center">
+            <p className="text-[14px] text-[#9A9A9A]">Booking ID</p>
+            <p className="max-w-[360px] truncate text-[24px] font-bold leading-none text-white">{bookingId}</p>
+          </div>
+          <div className="flex w-full flex-col items-start gap-4">
             <InfoRow icon={<CalendarIcon />} label="Date & Time" value={bookingDateTime} />
+            <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} />
+            <InfoRow icon={<LocationIcon />} label="Location" value={locationLabel} />
           </div>
         </div>
+        <p className="text-center text-[16px] text-[#CCC]">⚠️ Don’t miss the call from our collection team</p>
       </div>
 
       {SHOW_BOOKING_CONFIRM_APP_CTA ? (
@@ -1902,13 +1949,10 @@ function BookingConfirmedStep({
             href="https://app.supershyft.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-[10px] flex h-[49px] w-[231.53px] items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[15px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
+            className="mt-[10px] flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[16px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
           >
-            Continue to Our App
+            Download the App
           </a>
-          <p className="mt-3 text-center text-[15px] font-medium leading-[22.5px] text-[#999]">
-            Log in to complete your questionnaire and access your detailed health insights.
-          </p>
         </>
       ) : null}
     </div>
@@ -1931,7 +1975,7 @@ function InfoRow({
       <span
         className={[
           isMobile
-            ? 'pl-[30px] font-sans text-[10px] font-normal leading-normal text-[#9A9A9A]'
+            ? 'pl-[36px] font-sans text-[10px] font-normal leading-normal text-[#9A9A9A]'
             : 'pl-8 text-[12px] font-normal leading-none text-[#9A9A9A]',
         ].join(' ')}
       >
@@ -1939,13 +1983,13 @@ function InfoRow({
       </span>
       <div className={isMobile ? 'mt-1 flex items-center gap-3' : 'mt-1 flex items-center gap-3'}>
         <span
-          className={isMobile ? 'flex size-[18px] shrink-0 items-center justify-center' : 'flex size-5 shrink-0 items-center justify-center'}
+          className={isMobile ? 'flex size-[20px] shrink-0 items-center justify-center' : 'flex size-5 shrink-0 items-center justify-center'}
           aria-hidden
         >
           {icon}
         </span>
         <span
-          className={isMobile ? 'min-w-0 font-sans text-[15px] font-medium leading-normal text-[#CCC]' : 'min-w-0 truncate text-[20px] font-medium leading-none text-[#CCC]'}
+          className={isMobile ? 'min-w-0 font-sans text-[15px] font-medium leading-normal text-[#CCC]' : 'min-w-0 truncate text-[15px] font-medium leading-normal text-[#CCC]'}
         >
           {value}
         </span>
@@ -1969,6 +2013,15 @@ function UserIcon() {
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
       <path d="M15.8332 17.5V15.8333C15.8332 13.9924 14.3408 12.5 12.4998 12.5H7.49984C5.65889 12.5 4.1665 13.9924 4.1665 15.8333V17.5" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M6.6665 5.83333C6.6665 7.67305 8.16012 9.16667 9.99984 9.16667C11.8396 9.16667 13.3332 7.67305 13.3332 5.83333C13.3332 3.99362 11.8396 2.5 9.99984 2.5C8.16012 2.5 6.6665 3.99362 6.6665 5.83333V5.83333" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function LocationIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M16.667 8.33268C16.667 13.3327 10.0003 18.3327 10.0003 18.3327C10.0003 18.3327 3.33366 13.3327 3.33366 8.33268C3.33366 6.56457 4.03604 4.86888 5.28628 3.61864C6.53652 2.3684 8.23221 1.66602 10.0003 1.66602C11.7684 1.66602 13.4641 2.3684 14.7144 3.61864C15.9646 4.86888 16.667 6.56457 16.667 8.33268Z" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10.0003 10.8327C11.381 10.8327 12.5003 9.71339 12.5003 8.33268C12.5003 6.95197 11.381 5.83268 10.0003 5.83268C8.61961 5.83268 7.50033 6.95197 7.50033 8.33268C7.50033 9.71339 8.61961 10.8327 10.0003 10.8327Z" stroke="#4B8D83" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }

@@ -51,16 +51,13 @@ function parseValidationMessage(data: unknown): string | null {
 export async function onboardUserForEngagement(
   payload: OnboardUserForEngagementPayload,
 ): Promise<string> {
-  const baseUrlFromEnv = firstNonEmpty(
+  const baseUrl = firstNonEmpty(
     import.meta.env.VITE_BACKEND_BASE_URL,
     import.meta.env.VITE_API_BASE_URL,
     import.meta.env.VITE_BASE_URL,
     import.meta.env.BACKEND_BASE_URL,
     import.meta.env.API_BASE_URL,
   )
-  const sameOriginFallback =
-    typeof window !== 'undefined' && window.location?.origin ? window.location.origin : ''
-  const baseUrl = baseUrlFromEnv || sameOriginFallback
 
   const engagementCode = firstNonEmpty(
     import.meta.env.VITE_ENGAGEMENT_CODE,
@@ -71,7 +68,7 @@ export async function onboardUserForEngagement(
 
   if (!baseUrl) {
     throw new Error(
-      'Missing API base URL. Set one of VITE_BACKEND_BASE_URL or VITE_API_BASE_URL in .env.',
+      'Missing API base URL. Set VITE_BACKEND_BASE_URL in .env and restart the dev server.',
     )
   }
 
@@ -94,26 +91,27 @@ export async function onboardUserForEngagement(
     const requestId = response.headers.get('x-request-id') || ''
     const statusPrefix = `Request failed (${response.status})`
     const traceSuffix = requestId ? ` [request-id: ${requestId}]` : ''
+    const endpointHint = ` [url: ${url}] [engagement: ${engagementCode}]`
     console.error('[onboard] request payload json', JSON.stringify(payload, null, 2))
     console.error('[onboard] error response json', JSON.stringify(data, null, 2))
 
     const validationMessage = parseValidationMessage(data)
     if (validationMessage) {
-      throw new Error(`${statusPrefix}: ${validationMessage}${traceSuffix}`)
+      throw new Error(`${statusPrefix}: ${validationMessage}${traceSuffix}${endpointHint}`)
     }
 
     if (data && typeof data === 'object') {
       const jsonText = JSON.stringify(data)
       if (jsonText && jsonText !== '{}') {
-        throw new Error(`${statusPrefix}: ${jsonText}${traceSuffix}`)
+        throw new Error(`${statusPrefix}: ${jsonText}${traceSuffix}${endpointHint}`)
       }
     }
 
     if (typeof data === 'string' && data.trim()) {
-      throw new Error(`${statusPrefix}: ${data}${traceSuffix}`)
+      throw new Error(`${statusPrefix}: ${data}${traceSuffix}${endpointHint}`)
     }
 
-    throw new Error(`${statusPrefix}. Please check engagement code and request payload.${traceSuffix}`)
+    throw new Error(`${statusPrefix}. Please check engagement code and request payload.${traceSuffix}${endpointHint}`)
   }
 
   if (typeof data === 'string') {
