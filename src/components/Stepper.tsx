@@ -1,4 +1,4 @@
-const STEPS = ['Personal Info', 'Schedule Date'] as const
+const STEPS = ['Personal', 'Address', 'Schedule'] as const
 
 type Props = {
   current: number
@@ -9,14 +9,15 @@ type Props = {
 }
 
 function activeStep(current: number) {
-  return current >= 3 ? 2 : Math.max(1, Math.min(2, current))
+  return current >= 4 ? 3 : Math.max(1, Math.min(3, current))
 }
 
 function lineFillPercent(current: number) {
-  if (current >= 3) return 100
+  if (current >= 4) return 100
   const step = activeStep(current)
-  if (step >= 2) return 100
-  if (step === 1) return Math.round(100 * (15 / 30))
+  if (step === 3) return 100
+  if (step === 2) return 50
+  if (step === 1) return Math.round(100 * (15 / 45))
   return 0
 }
 
@@ -28,7 +29,7 @@ export function Stepper({ current, compact = false, maxReachable, onStepClick }:
     <div
       className="w-full"
       role="navigation"
-      aria-label={`Form progress, step ${stepForA11y} of 2: ${STEPS[stepForA11y - 1]}`}
+      aria-label={`Form progress, step ${stepForA11y} of 3: ${STEPS[stepForA11y - 1]}`}
     >
       <div className={compact ? 'mx-auto w-full max-w-[360px]' : 'mx-auto w-[600px]'}>
         <div className="relative">
@@ -41,8 +42,8 @@ export function Stepper({ current, compact = false, maxReachable, onStepClick }:
           <div className="relative z-10 flex items-start justify-between">
             {STEPS.map((label, i) => {
               const step = i + 1
-              const active = current < 3 && step === current
-              const done = (current < 3 && step < current) || (current >= 3 && step <= 2)
+              const active = current < 4 && step === current
+              const done = (current < 4 && step < current) || (current >= 4 && step <= 3)
               const fill = active ? '#FFFFFF' : done ? '#4B8D83' : '#9A9A9A'
               const reachable = maxReachable ?? current
               const clickable = Boolean(onStepClick) && step !== current && step <= reachable

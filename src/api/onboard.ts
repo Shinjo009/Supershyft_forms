@@ -1,4 +1,4 @@
-export type OnboardUserPayload = {
+export type OnboardUserForEngagementPayload = {
   age: number
   first_name: string
   last_name: string
@@ -29,6 +29,13 @@ function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '')
 }
 
+function firstNonEmpty(...values: Array<string | undefined>): string {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) return value.trim()
+  }
+  return ''
+}
+
 function parseValidationMessage(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null
   const response = data as ValidationErrorResponse
@@ -42,20 +49,30 @@ function parseValidationMessage(data: unknown): string | null {
 }
 
 export async function onboardUserForEngagement(
-  engagementCode: string,
-  payload: OnboardUserPayload,
+  payload: OnboardUserForEngagementPayload,
 ): Promise<string> {
-  const baseUrl =
-    import.meta.env.VITE_BACKEND_BASE_URL ||
-    import.meta.env.BACKEND_BASE_URL ||
-    ''
+  const baseUrlFromEnv = firstNonEmpty(
+    import.meta.env.VITE_BACKEND_BASE_URL,
+    import.meta.env.VITE_API_BASE_URL,
+    import.meta.env.VITE_BASE_URL,
+    import.meta.env.BACKEND_BASE_URL,
+    import.meta.env.API_BASE_URL,
+  )
+  const sameOriginFallback =
+    typeof window !== 'undefined' && window.location?.origin ? window.location.origin : ''
+  const baseUrl = baseUrlFromEnv || sameOriginFallback
+
+  const engagementCode = firstNonEmpty(
+    import.meta.env.VITE_ENGAGEMENT_CODE,
+    import.meta.env.VITE_CBTW_ENGAGEMENT_CODE,
+    import.meta.env.ENGAGEMENT_CODE,
+    'CBMU0626',
+  )
 
   if (!baseUrl) {
-    throw new Error('Missing API base URL. Set VITE_BACKEND_BASE_URL in .env.')
-  }
-
-  if (!engagementCode) {
-    throw new Error('Missing engagement code. Set VITE_ENGAGEMENT_CODE in .env.')
+    throw new Error(
+      'Missing API base URL. Set one of VITE_BACKEND_BASE_URL or VITE_API_BASE_URL in .env.',
+    )
   }
 
   const url = `${trimTrailingSlash(baseUrl)}/users/code/${encodeURIComponent(engagementCode)}/onboard`
@@ -96,7 +113,7 @@ export async function onboardUserForEngagement(
       throw new Error(`${statusPrefix}: ${data}${traceSuffix}`)
     }
 
-    throw new Error(`${statusPrefix}. Please check engagement code configuration.${traceSuffix}`)
+    throw new Error(`${statusPrefix}. Please check engagement code and request payload.${traceSuffix}`)
   }
 
   if (typeof data === 'string') {

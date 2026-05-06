@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
+  Building2,
   Calendar,
+  House,
   Mail,
+  MapPin,
+  MapPinned,
   Mars,
   Phone,
+  Signpost,
   User,
   Users,
   Venus,
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
-import { onboardUserForEngagement, type OnboardUserPayload } from './api/onboard'
+import { onboardUserForEngagement, type OnboardUserForEngagementPayload } from './api/onboard'
 import { PageBackdrop } from './components/PageBackdrop'
 import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
@@ -25,16 +30,48 @@ const RELATION_OPTIONS = [
   'Grandparent',
   'Other',
 ] as const
-const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const NAME_REGEX = /^[A-Za-z\s]+$/
 const sanitizeName = (value: string) => value.replace(/[^A-Za-z\s]/g, '')
 const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
-const MALE_ENGAGEMENT_CODE = 'DMMU0526'
-const FEMALE_ENGAGEMENT_CODE = 'DFMU0526'
+const sanitizePincode = (value: string) => value.replace(/\D/g, '').slice(0, 6)
+const normalizeEmployeeId = (value: string) => value.trim().toUpperCase()
 const logClientError = (message: string) => console.error(`[BookAppointment] ${message}`)
+const TEST_EMPLOYEE_ID = '0000IN000'
+const BOOKED_EMPLOYEE_IDS_STORAGE_KEY = 'bookedEmployeeIds'
+const ALLOWED_EMPLOYEE_IDS = new Set([
+  TEST_EMPLOYEE_ID,
+  '0000IN0210', '0000IN0221', '0000IN0224', '0000IN0227', '0000IN0228', '0000IN0229',
+  '0000IN0232', '0000IN0233', '0000IN0235', '0000IN0237', '0000IN0245', '0000IN0277',
+  '0000IN0315', '0000IN0335', '0000IN0338', '0000IN0351', '0000IN0354', '0000IN0368',
+  '0000IN0406', '0000IN0424', '0000IN0426', '0000IN0428', '0000IN0442', '0000IN0451',
+  '0000IN0508', '0000IN0524', '0000IN0543', '0000IN0547', '0000IN0548', '0000IN0550',
+  '0000IN0551', '0000IN0554', '0000IN0555', '0000IN0560', '0000IN0561', '0000IN0564',
+  '0000IN0567', '0000IN0570', '0000IN0580', '0000IN0583', '0000IN0584', '0000IN0585',
+])
+
+function getBookedEmployeeIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set()
+  try {
+    const raw = window.localStorage.getItem(BOOKED_EMPLOYEE_IDS_STORAGE_KEY)
+    if (!raw) return new Set()
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return new Set()
+    return new Set(parsed.map((id) => normalizeEmployeeId(String(id))))
+  } catch {
+    return new Set()
+  }
+}
+
+function markEmployeeIdAsBooked(employeeId: string) {
+  const normalized = normalizeEmployeeId(employeeId)
+  if (normalized === TEST_EMPLOYEE_ID || typeof window === 'undefined') return
+  const booked = getBookedEmployeeIds()
+  booked.add(normalized)
+  window.localStorage.setItem(BOOKED_EMPLOYEE_IDS_STORAGE_KEY, JSON.stringify(Array.from(booked)))
+}
 const toApiTimeSlot = (slot: string) => {
   const normalized = slot.trim()
   if (!normalized) return '9:00'
@@ -66,37 +103,6 @@ function inputClass(short?: boolean) {
 /** Figma mobile: 20px icon, 8px gap, Lato Medium 14px #999. Desktop: ~14px icon, 13px label #9a9a9a */
 type IconType = React.ComponentType<{ className?: string; strokeWidth?: number }>
 
-const BloodGroupIcon: IconType = ({ className }) => (
-  <svg
-    className={className}
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 10 14"
-    aria-hidden
-    fill="none"
-  >
-    <path
-      d="M5 0L4.375 0.7C4.375 0.7 3.30833 1.90833 2.23333 3.475C1.15833 5.04167 0 6.91667 0 8.71667C0 10.0427 0.526784 11.3145 1.46447 12.2522C2.40215 13.1899 3.67392 13.7167 5 13.7167C6.32608 13.7167 7.59785 13.1899 8.53553 12.2522C9.47322 11.3145 10 10.0427 10 8.71667C10 6.91667 8.84167 5.04167 7.76667 3.475C6.69167 1.90833 5.625 0.7 5.625 0.7L5 0ZM5 2.60833C5.36667 3.04167 5.7 3.4 6.4 4.41667C7.40833 5.88333 8.33333 7.75 8.33333 8.71667C8.33333 10.5667 6.85 12.05 5 12.05C3.15 12.05 1.66667 10.5667 1.66667 8.71667C1.66667 7.75 2.59167 5.88333 3.6 4.41667C4.3 3.4 4.63333 3.04167 5 2.60833Z"
-      fill="#9A9A9A"
-    />
-  </svg>
-)
-
-const DepartmentIcon: IconType = ({ className }) => (
-  <svg
-    className={className}
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 15 15"
-    aria-hidden
-    fill="none"
-  >
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M10.0008 2.5007C10.0011 3.01791 9.84096 3.52247 9.54246 3.94485C9.24396 4.36723 8.8218 4.68663 8.33417 4.85904V6.66737H10.8342C11.4972 6.66737 12.1331 6.93076 12.6019 7.3996C13.0708 7.86844 13.3342 8.50433 13.3342 9.16737V10.1424C13.8904 10.339 14.3593 10.7259 14.6578 11.2347C14.9564 11.7435 15.0654 12.3416 14.9657 12.923C14.866 13.5045 14.5639 14.032 14.1128 14.4123C13.6618 14.7925 13.0908 15.0011 12.5008 15.0011C11.9109 15.0011 11.3399 14.7925 10.8889 14.4123C10.4378 14.032 10.1357 13.5045 10.036 12.923C9.93627 12.3416 10.0453 11.7435 10.3439 11.2347C10.6424 10.7259 11.1113 10.339 11.6675 10.1424V9.16737C11.6675 8.94635 11.5797 8.73439 11.4234 8.57811C11.2671 8.42183 11.0552 8.33404 10.8342 8.33404H4.1675C3.94649 8.33404 3.73453 8.42183 3.57825 8.57811C3.42197 8.73439 3.33417 8.94635 3.33417 9.16737V10.1424C3.89042 10.339 4.35925 10.7259 4.6578 11.2347C4.95636 11.7435 5.06541 12.3416 4.96568 12.923C4.86595 13.5045 4.56386 14.032 4.11281 14.4123C3.66177 14.7925 3.0908 15.0011 2.50084 15.0011C1.91088 15.0011 1.33991 14.7925 0.888862 14.4123C0.437813 14.032 0.135725 13.5045 0.0359959 12.923C-0.0637335 12.3416 0.045317 11.7435 0.343872 11.2347C0.642427 10.7259 1.11126 10.339 1.66751 10.1424V9.16737C1.66751 8.50433 1.9309 7.86844 2.39974 7.3996C2.86858 6.93076 3.50446 6.66737 4.1675 6.66737H6.6675V4.85904C6.23513 4.7064 5.85304 4.43782 5.56301 4.08267C5.27298 3.72753 5.08617 3.29948 5.02301 2.84532C4.95985 2.39116 5.02277 1.92838 5.20488 1.50757C5.38699 1.08676 5.6813 0.72412 6.05561 0.459291C6.42993 0.194462 6.86985 0.037641 7.32728 0.00597255C7.78472 -0.0256959 8.24205 0.0690073 8.64929 0.279729C9.05653 0.49045 9.398 0.809078 9.63636 1.20078C9.87473 1.59248 10.0008 2.04217 10.0008 2.5007ZM7.50084 1.66737C7.27982 1.66737 7.06786 1.75517 6.91158 1.91145C6.7553 2.06773 6.6675 2.27969 6.6675 2.5007C6.6675 2.72172 6.7553 2.93368 6.91158 3.08996C7.06786 3.24624 7.27982 3.33404 7.50084 3.33404C7.72185 3.33404 7.93381 3.24624 8.09009 3.08996C8.24637 2.93368 8.33417 2.72172 8.33417 2.5007C8.33417 2.27969 8.24637 2.06773 8.09009 1.91145C7.93381 1.75517 7.72185 1.66737 7.50084 1.66737ZM2.50084 11.6674C2.27982 11.6674 2.06786 11.7552 1.91158 11.9114C1.7553 12.0677 1.66751 12.2797 1.66751 12.5007C1.66751 12.7217 1.7553 12.9337 1.91158 13.09C2.06786 13.2462 2.27982 13.334 2.50084 13.334C2.72185 13.334 2.93381 13.2462 3.09009 13.09C3.24637 12.9337 3.33417 12.7217 3.33417 12.5007C3.33417 12.2797 3.24637 12.0677 3.09009 11.9114C2.93381 11.7552 2.72185 11.6674 2.50084 11.6674ZM12.5008 11.6674C12.2798 11.6674 12.0679 11.7552 11.9116 11.9114C11.7553 12.0677 11.6675 12.2797 11.6675 12.5007C11.6675 12.7217 11.7553 12.9337 11.9116 13.09C12.0679 13.2462 12.2798 13.334 12.5008 13.334C12.7219 13.334 12.9338 13.2462 13.0901 13.09C13.2464 12.9337 13.3342 12.7217 13.3342 12.5007C13.3342 12.2797 13.2464 12.0677 13.0901 11.9114C12.9338 11.7552 12.7219 11.6674 12.5008 11.6674Z"
-      fill="#9A9A9A"
-    />
-  </svg>
-)
 
 const EmployeeIdIcon: IconType = ({ className }) => (
   <svg
@@ -177,21 +183,6 @@ function labelRow(
   )
 }
 
-function SelectChevron() {
-  return (
-    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/50" aria-hidden>
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="none">
-        <path
-          d="M5 7.5L10 12.5L15 7.5"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </span>
-  )
-}
 
 export default function BookAppointment() {
   const isLg = useIsLg()
@@ -202,6 +193,7 @@ export default function BookAppointment() {
   const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
   const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
+  const [attemptedAddressContinue, setAttemptedAddressContinue] = useState(false)
   const [attemptedScheduleContinue, setAttemptedScheduleContinue] = useState(false)
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
@@ -253,12 +245,17 @@ export default function BookAppointment() {
       logClientError('Please enter a valid email address.')
       return
     }
-    if (!form.department.trim()) {
-      logClientError('Department is required.')
+    const normalizedEmployeeId = normalizeEmployeeId(form.employeeId)
+    if (!normalizedEmployeeId) {
+      logClientError('Employee ID is required.')
       return
     }
-    if (!form.employeeId.trim()) {
-      logClientError('Employee ID is required.')
+    if (!ALLOWED_EMPLOYEE_IDS.has(normalizedEmployeeId)) {
+      logClientError('This Employee ID is not allowed.')
+      return
+    }
+    if (normalizedEmployeeId !== TEST_EMPLOYEE_ID && getBookedEmployeeIds().has(normalizedEmployeeId)) {
+      logClientError('This Employee ID has already used the booking.')
       return
     }
     if (!trimmedAge) {
@@ -271,10 +268,6 @@ export default function BookAppointment() {
     }
     if (!form.gender) {
       logClientError('Gender is required.')
-      return
-    }
-    if (!form.bloodGroup.trim()) {
-      logClientError('Blood group is required.')
       return
     }
     if (!form.relation.trim()) {
@@ -295,8 +288,40 @@ export default function BookAppointment() {
       logClientError('Please select a time slot.')
       return
     }
-    if (!form.personalizedDoctorConsultation) {
-      logClientError('Please select an option for doctor consultation.')
+
+    setStep(4)
+  }
+
+  const goNextFromAddress = () => {
+    setAttemptedAddressContinue(true)
+    const trimmedHouseNumber = form.houseNumber.trim()
+    const trimmedStreet = form.street.trim()
+    const trimmedLandmark = form.landmark.trim()
+    const trimmedPincode = form.pincode.trim()
+    const trimmedCity = form.city.trim()
+
+    if (!trimmedHouseNumber) {
+      logClientError('House No./ Building is required.')
+      return
+    }
+    if (!trimmedStreet) {
+      logClientError('Area/ Street is required.')
+      return
+    }
+    if (!trimmedLandmark) {
+      logClientError('Landmark is required.')
+      return
+    }
+    if (!trimmedPincode) {
+      logClientError('Pincode is required.')
+      return
+    }
+    if (!/^\d{6}$/.test(trimmedPincode)) {
+      logClientError('Pincode must be 6 digits.')
+      return
+    }
+    if (!trimmedCity) {
+      logClientError('City is required.')
       return
     }
 
@@ -306,6 +331,7 @@ export default function BookAppointment() {
   const allMembers = useMemo(() => [...savedMembers, form], [savedMembers, form])
 
   const handleConfirmBooking = async () => {
+    const normalizedEmployeeId = normalizeEmployeeId(form.employeeId)
     if (isSubmittingBooking) return
 
     const trimmedPhone = form.phone.trim()
@@ -320,6 +346,18 @@ export default function BookAppointment() {
     }
     if (!form.lastName.trim()) {
       logClientError('Last Name is required.')
+      return
+    }
+    if (!normalizedEmployeeId) {
+      logClientError('Employee ID is required.')
+      return
+    }
+    if (!ALLOWED_EMPLOYEE_IDS.has(normalizedEmployeeId)) {
+      logClientError('This Employee ID is not allowed.')
+      return
+    }
+    if (normalizedEmployeeId !== TEST_EMPLOYEE_ID && getBookedEmployeeIds().has(normalizedEmployeeId)) {
+      logClientError('This Employee ID has already used the booking.')
       return
     }
     if (!trimmedEmail) {
@@ -356,7 +394,7 @@ export default function BookAppointment() {
     try {
       const wantsDoctorConsultation = form.personalizedDoctorConsultation === 'yes'
 
-      const payload: OnboardUserPayload = {
+      const payload: OnboardUserForEngagementPayload = {
         age: safeAge,
         first_name: form.firstName,
         last_name: form.lastName,
@@ -365,15 +403,15 @@ export default function BookAppointment() {
         gender: form.gender,
         blood_collection_date: form.appointmentDate,
         blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
-        participants_employee_id: form.employeeId.trim(),
-        participant_department: form.department.trim(),
-        participant_blood_group: form.bloodGroup.trim(),
+        participants_employee_id: normalizedEmployeeId,
+        participant_department: 'NA',
+        participant_blood_group: 'NA',
         want_doctor_consultation: wantsDoctorConsultation,
       }
 
-      const engagementCode = form.gender === 'female' ? FEMALE_ENGAGEMENT_CODE : MALE_ENGAGEMENT_CODE
-      await onboardUserForEngagement(engagementCode, payload)
-      setStep(4)
+      await onboardUserForEngagement(payload)
+      markEmployeeIdAsBooked(normalizedEmployeeId)
+      setStep(5)
     } catch (error) {
       logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
     } finally {
@@ -392,12 +430,12 @@ export default function BookAppointment() {
 
   const isMobile = !isLg
   const mobilePersonal = isMobile && step === 1
-  const showBack = step === 4 ? false : isLg ? step > 1 : step > 1
-  const stretchStepBody = !isLg || step === 3 || step === 4
-  const hideGlobalContinue = mobilePersonal || step === 4 || step === 1
+  const showBack = step === 5 ? false : isLg ? step > 1 : step > 1
+  const stretchStepBody = !isLg || step === 4 || step === 5
+  const hideGlobalContinue = mobilePersonal || step === 5 || step === 1
   const mobileHeader = isMobile
-  const hideStepper = step === 4
-  const showHeaderTitle = step !== 4
+  const hideStepper = step === 5
+  const showHeaderTitle = step !== 5
 
   return (
     <PageBackdrop>
@@ -515,7 +553,7 @@ export default function BookAppointment() {
               mobilePersonal
                 ? ''
                 : isMobile
-                  ? step === 4
+                  ? step === 5
                     ? 'px-5'
                     : 'px-5 pt-1'
                   : ''
@@ -563,6 +601,15 @@ export default function BookAppointment() {
               </>
             )}
             {step === 2 && (
+              <AddressStep
+                form={form}
+                update={update}
+                labelRow={labelRow}
+                isMobile={isMobile}
+                showMissingRequired={attemptedAddressContinue}
+              />
+            )}
+            {step === 3 && (
               <ScheduleStep
                 form={form}
                 update={update}
@@ -570,7 +617,7 @@ export default function BookAppointment() {
                 showMissingRequired={attemptedScheduleContinue}
               />
             )}
-            {step === 3 && (
+            {step === 4 && (
               <ConfirmStep
                 form={form}
                 members={allMembers}
@@ -579,7 +626,7 @@ export default function BookAppointment() {
                 isSubmitting={isSubmittingBooking}
               />
             )}
-            {step === 4 && (
+            {step === 5 && (
               <BookingConfirmedStep
                 form={form}
                 members={allMembers}
@@ -593,12 +640,13 @@ export default function BookAppointment() {
           {/* Footer CTA — mobile: full-width bar pinned to bottom with 30px safe-area; desktop: right-aligned pill */}
           {!hideGlobalContinue && (
             isMobile ? (
-              step < 3 ? (
+              step < 4 ? (
                 <div className="mt-auto shrink-0 px-6 pt-4 pb-[30px]">
                   <ContinueButton
                     variant="mobileBar"
                     onClick={() => {
                       if (step === 1) goNextFromPersonal()
+                      else if (step === 2) goNextFromAddress()
                       else goNextFromSchedule()
                     }}
                   >
@@ -609,14 +657,15 @@ export default function BookAppointment() {
             ) : (
               <div
                 className={[
-                  step < 3 ? 'mt-6 flex' : 'mt-auto flex pt-8',
+                  step < 4 ? 'mt-6 flex' : 'mt-auto flex pt-8',
                   'justify-end',
                 ].join(' ')}
               >
-                {step < 3 && (
+                {step < 4 && (
                   <ContinueButton
                     onClick={() => {
                       if (step === 1) goNextFromPersonal()
+                      else if (step === 2) goNextFromAddress()
                       else goNextFromSchedule()
                     }}
                   >
@@ -784,26 +833,6 @@ function PersonalStep({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            {labelRow(BloodGroupIcon, 'Blood Group', undefined, true, isMissing(form.bloodGroup))}
-            <div className="relative">
-              <select
-                className={`${mobileFieldInput14} appearance-none pr-10 ${form.bloodGroup ? 'text-white' : 'text-white/40'}`}
-                value={form.bloodGroup}
-                onChange={(e) => update('bloodGroup', e.target.value)}
-              >
-                <option value="" disabled className="bg-[#101a1a] text-[#d0d0d0]">
-                  Blood Group
-                </option>
-                {BLOOD_GROUP_OPTIONS.map((group) => (
-                  <option key={group} value={group} className="bg-[#101a1a] text-white">
-                    {group}
-                  </option>
-                ))}
-              </select>
-              <SelectChevron />
-            </div>
-          </div>
 
           <div className="flex flex-col gap-1">
             {labelRow(Users, 'Relation', undefined, true, isMissingRelation)}
@@ -884,15 +913,6 @@ function PersonalStep({
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            {labelRow(DepartmentIcon, 'Department', undefined, true, isMissing(form.department))}
-            <input
-              className={mobileFieldInput14}
-              placeholder="Department"
-              value={form.department}
-              onChange={(e) => update('department', e.target.value)}
-            />
-          </div>
 
           <div className="flex flex-col gap-1">
             {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true, isMissing(form.employeeId))}
@@ -954,7 +974,7 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(Mail, 'Company Email ID', undefined, true, Boolean(emailError), emailError)}
+            {labelRow(Mail, 'Email ID', undefined, true, Boolean(emailError), emailError)}
             <input
               className={mobileFieldInput14}
               type="email"
@@ -966,15 +986,6 @@ function PersonalStep({
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            {labelRow(DepartmentIcon, 'Department', undefined, true, isMissing(form.department))}
-            <input
-              className={mobileFieldInput14}
-              placeholder="Department"
-              value={form.department}
-              onChange={(e) => update('department', e.target.value)}
-            />
-          </div>
 
           <div className="flex flex-col gap-1">
             {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true, isMissing(form.employeeId))}
@@ -1030,26 +1041,6 @@ function PersonalStep({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            {labelRow(BloodGroupIcon, 'Blood Group', undefined, true, isMissing(form.bloodGroup))}
-            <div className="relative">
-              <select
-                className={`${mobileFieldInput14} appearance-none pr-10 ${form.bloodGroup ? 'text-white' : 'text-white/40'}`}
-                value={form.bloodGroup}
-                onChange={(e) => update('bloodGroup', e.target.value)}
-              >
-                <option value="" disabled className="bg-[#101a1a] text-[#d0d0d0]">
-                  Blood Group
-                </option>
-                {BLOOD_GROUP_OPTIONS.map((group) => (
-                  <option key={group} value={group} className="bg-[#101a1a] text-white">
-                    {group}
-                  </option>
-                ))}
-              </select>
-              <SelectChevron />
-            </div>
-          </div>
 
         </div>
 
@@ -1180,15 +1171,6 @@ function PersonalStep({
             />
           </div>
 
-          <div>
-            {labelRow(DepartmentIcon, 'Department', undefined, false, isMissing(form.department))}
-            <input
-              className={inputClass()}
-              placeholder="Department"
-              value={form.department}
-              onChange={(e) => update('department', e.target.value)}
-            />
-          </div>
 
           <div>
             {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false, isMissing(form.employeeId))}
@@ -1217,26 +1199,6 @@ function PersonalStep({
             {genderButtons}
           </div>
 
-          <div>
-            {labelRow(BloodGroupIcon, 'Blood Group', undefined, false, isMissing(form.bloodGroup))}
-            <div className="relative">
-              <select
-                className={`${inputClass()} appearance-none pr-10 ${form.bloodGroup ? 'text-white' : 'text-white/40'}`}
-                value={form.bloodGroup}
-                onChange={(e) => update('bloodGroup', e.target.value)}
-              >
-                <option value="" disabled className="bg-[#101a1a] text-[#d0d0d0]">
-                  Blood Group
-                </option>
-                {BLOOD_GROUP_OPTIONS.map((group) => (
-                  <option key={group} value={group} className="bg-[#101a1a] text-white">
-                    {group}
-                  </option>
-                ))}
-              </select>
-              <SelectChevron />
-            </div>
-          </div>
 
           <div>
             {labelRow(Users, 'Relation', undefined, false, isMissingRelation)}
@@ -1320,7 +1282,7 @@ function PersonalStep({
         </div>
 
         <div>
-          {labelRow(Mail, 'Company Email Id', undefined, false, Boolean(emailError), emailError)}
+          {labelRow(Mail, 'Email ID', undefined, false, Boolean(emailError), emailError)}
           <input
             className={inputClass()}
             placeholder="Email"
@@ -1332,15 +1294,6 @@ function PersonalStep({
           />
         </div>
 
-        <div>
-          {labelRow(DepartmentIcon, 'Department', undefined, false, isMissing(form.department))}
-          <input
-            className={inputClass()}
-            placeholder="Department"
-            value={form.department}
-            onChange={(e) => update('department', e.target.value)}
-          />
-        </div>
 
         <div>
           {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false, isMissing(form.employeeId))}
@@ -1369,26 +1322,6 @@ function PersonalStep({
           {genderButtons}
         </div>
 
-        <div>
-          {labelRow(BloodGroupIcon, 'Blood Group', undefined, false, isMissing(form.bloodGroup))}
-          <div className="relative">
-            <select
-              className={`${inputClass()} appearance-none pr-10 ${form.bloodGroup ? 'text-white' : 'text-white/40'}`}
-              value={form.bloodGroup}
-              onChange={(e) => update('bloodGroup', e.target.value)}
-            >
-              <option value="" disabled className="bg-[#101a1a] text-[#d0d0d0]">
-                Blood Group
-              </option>
-              {BLOOD_GROUP_OPTIONS.map((group) => (
-                <option key={group} value={group} className="bg-[#101a1a] text-white">
-                  {group}
-                </option>
-              ))}
-            </select>
-            <SelectChevron />
-          </div>
-        </div>
 
       </div>
 
@@ -1442,6 +1375,95 @@ function UseSameToggle({
   )
 }
 
+function AddressStep({
+  form,
+  update,
+  labelRow,
+  isMobile,
+  showMissingRequired,
+}: {
+  form: FormData
+  update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
+  labelRow: (
+    Icon: IconType,
+    label: string,
+    extra?: React.ReactNode,
+    mobile?: boolean,
+    showRequired?: boolean,
+    errorType?: 'missing' | 'invalid',
+  ) => React.ReactNode
+  isMobile: boolean
+  showMissingRequired?: boolean
+}) {
+  const showRequired = Boolean(showMissingRequired)
+  const isMissing = (value: string) => showRequired && !value.trim()
+  const pincodeError: 'missing' | 'invalid' | undefined = !showRequired
+    ? undefined
+    : !form.pincode.trim()
+      ? 'missing'
+      : !/^\d{6}$/.test(form.pincode.trim())
+        ? 'invalid'
+        : undefined
+
+  const fieldClass = isMobile ? mobileFieldInput : inputClass(true)
+
+  return (
+    <div className={`flex flex-col ${isMobile ? 'gap-6' : 'gap-5'}`}>
+      <div className="flex flex-col gap-1">
+        {labelRow(House, 'House No./ Building', undefined, isMobile, isMissing(form.houseNumber))}
+        <input
+          className={fieldClass}
+          placeholder="350 A, Avenue Street"
+          value={form.houseNumber}
+          onChange={(e) => update('houseNumber', e.target.value)}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {labelRow(Signpost, 'Area/ Street', undefined, isMobile, isMissing(form.street))}
+        <input
+          className={fieldClass}
+          placeholder="Area/ Street"
+          value={form.street}
+          onChange={(e) => update('street', e.target.value)}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {labelRow(Building2, 'Landmark', undefined, isMobile, isMissing(form.landmark))}
+        <input
+          className={fieldClass}
+          placeholder="opp. Pink Salt Cafe"
+          value={form.landmark}
+          onChange={(e) => update('landmark', e.target.value)}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {labelRow(MapPinned, 'Pincode', undefined, isMobile, Boolean(pincodeError), pincodeError)}
+        <input
+          className={fieldClass}
+          inputMode="numeric"
+          placeholder="402201"
+          maxLength={6}
+          value={form.pincode}
+          onChange={(e) => update('pincode', sanitizePincode(e.target.value))}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {labelRow(MapPin, 'City', undefined, isMobile, isMissing(form.city))}
+        <input
+          className={fieldClass}
+          placeholder="Mumbai"
+          value={form.city}
+          onChange={(e) => update('city', e.target.value)}
+        />
+      </div>
+    </div>
+  )
+}
+
 function ConfirmStep({
   form,
   members,
@@ -1455,69 +1477,72 @@ function ConfirmStep({
   onProceed: () => void
   isSubmitting: boolean
 }) {
-  const schedulePreview = formatSchedulePreview(form.appointmentDate, form.appointmentTime)
+  const primary = members[0] ?? form
+  const fullAddress = [form.houseNumber, form.street].filter(Boolean).join(', ')
   return (
-    <>
-      <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Details Preview</h2>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-8">
-        <section className="flex-1 rounded-lg bg-white/5 p-5">
-          <div className="mb-5 flex items-center justify-between border-b border-white/20 pb-2">
-            <h3 className="text-[15px] font-semibold text-white">Personal Information</h3>
-            <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(1)}>
-              Edit
-            </button>
-          </div>
-          {members.map((m, i) => (
-            <div key={i}>
-              {i > 0 && (
-                <div
-                  className="my-5 h-px w-full bg-gradient-to-r from-transparent via-[#4b8d83]/60 to-transparent"
-                  aria-hidden
-                />
-              )}
-              <MemberSummary
-                member={m}
-                showRelation={i > 0}
-              />
-            </div>
-          ))}
-        </section>
+    <div className="flex flex-col gap-3">
+      <h2 className="mb-1 text-[18px] font-semibold text-white">Confirm Details</h2>
 
-        <section className="flex flex-1 flex-col gap-6">
-          <div className="rounded-lg bg-white/5 p-5">
-            <div className="mb-4 flex items-center justify-between border-b border-white/20 pb-2">
-              <h3 className="text-[15px] font-semibold text-white">Schedule Date</h3>
-              <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(2)}>
-                Edit
-              </button>
-            </div>
-            <ul className="space-y-4 text-sm text-[#ccc]">
-              <li className="flex gap-2">
-                <Calendar className="mt-0.5 size-5 shrink-0 opacity-70" />
-                {schedulePreview}
-              </li>
-            </ul>
+      <section className="rounded-[8px] bg-white/5 p-3">
+        <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
+          <h3 className="text-[15px] font-semibold text-white">Personal Information</h3>
+          <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(1)}>
+            Edit
+          </button>
+        </div>
+        <MemberSummary member={primary} showRelation={false} dense />
+      </section>
+
+      <section className="rounded-[8px] bg-white/5 p-3">
+        <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
+          <h3 className="text-[15px] font-semibold text-white">Address Details</h3>
+          <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(2)}>
+            Edit
+          </button>
+        </div>
+        <div className="space-y-2.5 text-[11px] font-light text-[#ccc]">
+          <SummaryItem Icon={House} label={fullAddress || '—'} dense />
+          <SummaryItem Icon={Building2} label={form.landmark || '—'} dense />
+          <div className="grid grid-cols-2 gap-3">
+            <SummaryItem Icon={MapPin} label={form.city || '—'} dense />
+            <SummaryItem Icon={MapPinned} label={form.pincode || '—'} dense />
           </div>
-          <ContinueButton
-            className="w-full max-w-none"
-            showChevron={false}
-            disabled={isSubmitting}
-            onClick={onProceed}
-          >
-            {isSubmitting ? 'Confirming...' : 'Confirm Booking'}
-          </ContinueButton>
-        </section>
-      </div>
-    </>
+        </div>
+      </section>
+
+      <section className="rounded-[8px] bg-white/5 p-3">
+        <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
+          <h3 className="text-[15px] font-semibold text-white">Sample Collection</h3>
+          <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(3)}>
+            Edit
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-3 text-[11px] font-light text-[#ccc]">
+          <SummaryItem Icon={Calendar} label={formatBookingDate(form.appointmentDate)} dense />
+          <SummaryItem Icon={Phone} label={form.appointmentTime || '—'} dense />
+        </div>
+      </section>
+
+      <ContinueButton
+        className="mt-3 w-full max-w-none"
+        showChevron={false}
+        disabled={isSubmitting}
+        onClick={onProceed}
+      >
+        {isSubmitting ? 'Confirming...' : 'Confirm'}
+      </ContinueButton>
+    </div>
   )
 }
 
 function MemberSummary({
   member,
   showRelation,
+  dense = false,
 }: {
   member: FormData
   showRelation: boolean
+  dense?: boolean
 }) {
   const name = [member.firstName, member.lastName].filter(Boolean).join(' ') || '—'
   const GenderIcon = member.gender === 'female' ? Venus : Mars
@@ -1529,24 +1554,23 @@ function MemberSummary({
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-4 text-sm text-[#cccccc]">
+      <div className={`grid grid-cols-2 gap-x-3 ${dense ? 'gap-y-3 text-[11px]' : 'gap-y-4 text-sm'} text-[#cccccc]`}>
         {showRelation ? (
           <>
-            <SummaryItem Icon={User} label={name} />
-            <SummaryItem Icon={User} label={relationLabel || '—'} capitalize />
+            <SummaryItem Icon={User} label={name} dense={dense} />
+            <SummaryItem Icon={User} label={relationLabel || '—'} capitalize dense={dense} />
           </>
         ) : (
           <div className="col-span-2">
-            <SummaryItem Icon={User} label={name} />
+            <SummaryItem Icon={User} label={name} dense={dense} />
           </div>
         )}
-        <SummaryItem Icon={Calendar} label={member.age ? `${member.age} Years` : '—'} />
-        <SummaryItem Icon={GenderIcon} label={genderLabel} />
+        <SummaryItem Icon={Phone} label={member.phone || '—'} dense={dense} />
+        <SummaryItem Icon={GenderIcon} label={genderLabel} dense={dense} />
+        <SummaryItem Icon={Calendar} label={member.age ? `${member.age} Years` : '—'} dense={dense} />
+        <SummaryItem Icon={EmployeeIdIcon} label={member.employeeId || '—'} dense={dense} />
         <div className="col-span-2">
-          <SummaryItem Icon={Phone} label={member.phone || '—'} />
-        </div>
-        <div className="col-span-2">
-          <SummaryItem Icon={Mail} label={member.email || '—'} />
+          <SummaryItem Icon={Mail} label={member.email || '—'} dense={dense} />
         </div>
       </div>
     </div>
@@ -1557,15 +1581,19 @@ function SummaryItem({
   Icon,
   label,
   capitalize,
+  dense = false,
 }: {
-  Icon: typeof User
+  Icon: IconType
   label: string
   capitalize?: boolean
+  dense?: boolean
 }) {
   return (
     <div className="flex items-start gap-2 leading-snug">
-      <Icon className="mt-0.5 size-[18px] shrink-0 opacity-70" strokeWidth={1.75} />
-      <span className={['truncate', capitalize ? 'capitalize' : ''].join(' ')}>{label}</span>
+      <Icon className={`${dense ? 'mt-0.5 size-[14px]' : 'mt-0.5 size-[18px]'} shrink-0 opacity-70`} strokeWidth={1.75} />
+      <span className={[dense ? 'text-[11px] font-light text-[#ccc]' : '', 'truncate', capitalize ? 'capitalize' : ''].join(' ')}>
+        {label}
+      </span>
     </div>
   )
 }
@@ -1574,20 +1602,14 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
 type UpcomingDate = { iso: string; day: string; date: number }
 
-function getOrdinalDay(day: number): string {
-  if (day % 100 >= 11 && day % 100 <= 13) return `${day}th`
-  const last = day % 10
-  if (last === 1) return `${day}st`
-  if (last === 2) return `${day}nd`
-  if (last === 3) return `${day}rd`
-  return `${day}th`
-}
-
 function getMayDates(): UpcomingDate[] {
   const pad = (n: number) => String(n).padStart(2, '0')
-  const year = new Date().getFullYear()
-  return [5, 6].map((dayOfMonth) => {
-    const d = new Date(year, 4, dayOfMonth)
+  const base = new Date()
+  base.setHours(0, 0, 0, 0)
+  base.setDate(base.getDate() + 2)
+  return Array.from({ length: 4 }, (_, index) => {
+    const d = new Date(base)
+    d.setDate(base.getDate() + index)
     return {
       iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
       day: DAY_LABELS[d.getDay()],
@@ -1627,7 +1649,23 @@ function ScheduleStep({
   showMissingRequired?: boolean
 }) {
   const dates = useMemo(() => getMayDates(), [])
-  const timeSlots = ['9:00AM - 10:00AM', '10:00AM - 11:00AM', '11:00AM - 12:00PM']
+  const timeSlots = [
+    '06:00 AM',
+    '06:30 AM',
+    '07:00 AM',
+    '07:30 AM',
+    '08:00 AM',
+    '08:30 AM',
+    '09:00 AM',
+    '09:30 AM',
+    '10:00 AM',
+    '10:30 AM',
+    '11:00 AM',
+    '11:30 AM',
+    '12:00 PM',
+    '12:30 PM',
+    '01:00 PM',
+  ]
 
   const selectedDateClass =
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
@@ -1661,7 +1699,7 @@ function ScheduleStep({
         <div
           className={
             isMobile
-              ? 'grid w-full grid-cols-2 gap-3 self-stretch'
+              ? 'grid w-full grid-cols-4 gap-2 self-stretch'
               : 'flex h-[79px] items-center gap-6 self-stretch overflow-x-auto lg:overflow-visible'
           }
         >
@@ -1675,7 +1713,7 @@ function ScheduleStep({
                 aria-pressed={selected}
                 className={[
                   isMobile
-                    ? 'flex h-[78px] w-full flex-col items-center justify-center gap-1 rounded-[8px] border transition'
+                    ? 'flex h-[75px] w-full flex-col items-center justify-center gap-1 rounded-[6px] border transition'
                     : 'flex aspect-[85/78] h-[78px] w-[85px] shrink-0 flex-col items-center justify-center gap-1 rounded-[6px] border px-[18.39px] transition',
                   selected ? selectedDateClass : idleDateClass,
                 ].join(' ')}
@@ -1690,11 +1728,11 @@ function ScheduleStep({
                 </span>
                 <span
                   className={[
-                    'font-sans text-[15px] font-semibold leading-none',
+                    'font-sans text-[18px] font-semibold leading-none',
                     selected ? 'text-white' : 'text-[#cccccc]/80',
                   ].join(' ')}
                 >
-                  {`${getOrdinalDay(d.date)} May`}
+                  {d.date}
                 </span>
               </button>
             )
@@ -1705,14 +1743,17 @@ function ScheduleStep({
       <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
         <div className="flex items-center gap-2">
           <PreferredTimeSlotIcon />
-          <h2 className={sectionLabelClass}>
-            Preferred Time Slot
-            {showMissingRequired && !form.appointmentTime ? (
-              <span className="text-[#ff6b6b]"> * Field is required</span>
-            ) : null}
-          </h2>
+          <div className="flex flex-col">
+            <h2 className={sectionLabelClass}>
+              Preferred Time Slot
+              {showMissingRequired && !form.appointmentTime ? (
+                <span className="text-[#ff6b6b]"> * Field is required</span>
+              ) : null}
+            </h2>
+            <p className="text-[10px] font-light text-[#ccc]">Collection window is of 1 hour</p>
+          </div>
         </div>
-        <div className={isMobile ? 'grid w-full grid-cols-2 gap-3' : 'grid w-full grid-cols-3 gap-4'}>
+        <div className={isMobile ? 'grid w-full grid-cols-3 gap-2' : 'grid w-full grid-cols-3 gap-4'}>
           {timeSlots.map((slot) => {
             const selected = form.appointmentTime === slot
             return (
@@ -1723,58 +1764,15 @@ function ScheduleStep({
                 aria-pressed={selected}
                 className={[
                   isMobile
-                    ? 'flex h-10 w-full items-center justify-center rounded-[8px] border text-sm transition'
+                    ? 'flex h-10 w-full items-center justify-center rounded-full border text-[14px] transition'
                     : 'flex h-[44px] w-full items-center justify-center rounded-[6px] border text-sm transition',
                   selected ? selectedDateClass : idleDateClass,
                 ].join(' ')}
               >
-                <span className={selected ? 'text-white' : 'text-[#cccccc]/80'}>{slot}</span>
+                <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>{slot}</span>
               </button>
             )
           })}
-        </div>
-      </section>
-
-      <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
-        <h2 className={sectionLabelClass}>
-          Would you like to have personalised Doctor consultations after the reports?
-          {showMissingRequired && !form.personalizedDoctorConsultation ? (
-            <span className="text-[#ff6b6b]"> * Field is required</span>
-          ) : null}
-        </h2>
-        <div className={isMobile ? 'flex h-10 w-full gap-6' : 'flex w-full gap-3'}>
-          <button
-            type="button"
-            onClick={() => update('personalizedDoctorConsultation', 'yes')}
-            className={[
-              isMobile
-                ? 'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs leading-4 transition'
-                : 'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm text-[#9a9a9a]',
-              form.personalizedDoctorConsultation === 'yes'
-                ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-                : isMobile
-                  ? 'bg-white/5 text-[#999]'
-                  : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)]',
-            ].join(' ')}
-          >
-            Yes
-          </button>
-          <button
-            type="button"
-            onClick={() => update('personalizedDoctorConsultation', 'no')}
-            className={[
-              isMobile
-                ? 'flex flex-1 items-center justify-center gap-2 rounded-full px-2.5 py-1 text-xs leading-4 transition'
-                : 'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm',
-              form.personalizedDoctorConsultation === 'no'
-                ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-                : isMobile
-                  ? 'bg-white/5 text-[#999]'
-                  : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#9a9a9a]',
-            ].join(' ')}
-          >
-            No
-          </button>
         </div>
       </section>
 
@@ -1792,14 +1790,6 @@ function formatBookingDate(iso: string): string {
   const d = new Date(`${iso}T00:00:00`)
   if (Number.isNaN(d.getTime())) return iso
   return `${DAY_LABELS[d.getDay()]}, ${d.getDate()} ${MONTH_LABELS[d.getMonth()]}`
-}
-
-function formatSchedulePreview(iso: string, slot: string): string {
-  if (!iso) return '—'
-  const d = new Date(`${iso}T00:00:00`)
-  const safeSlot = slot || '—'
-  if (Number.isNaN(d.getTime())) return `${iso} | ${safeSlot}`
-  return `${getOrdinalDay(d.getDate())} ${MONTH_LABELS[d.getMonth()]} | ${safeSlot}`
 }
 
 /** Set to `true` to show the “Continue to Our App” button and subcopy on the confirm step. */
