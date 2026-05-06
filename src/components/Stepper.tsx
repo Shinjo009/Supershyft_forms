@@ -1,4 +1,4 @@
-const STEPS = ['Personal', 'Address', 'Schedule'] as const
+const STEPS = ['Personal', 'Address', 'Schedule Test'] as const
 
 type Props = {
   current: number
@@ -36,10 +36,10 @@ export function Stepper({ current, compact = false, maxReachable, onStepClick }:
     >
       <div className={compact ? 'mx-auto w-full max-w-[360px]' : 'mx-auto w-[600px]'}>
         <div className="relative">
-          <div className="pointer-events-none absolute left-[15px] right-[15px] top-[15px] h-px bg-[#9A9A9A]/50" />
+          <div className="pointer-events-none absolute left-[36px] right-[36px] top-[15px] h-px bg-[#C5D2CF]/55" />
           <div
-            className="pointer-events-none absolute left-[15px] top-[14.5px] h-[2px] bg-[#4B8D83] shadow-[0_0_10px_rgba(75,141,131,0.7)]"
-            style={{ width: `calc((100% - 30px) * ${fillPercent / 100})` }}
+            className="pointer-events-none absolute left-[36px] top-[14.5px] h-[2px] bg-[#4B8D83] shadow-[0_0_10px_rgba(75,141,131,0.7)]"
+            style={{ width: `calc((100% - 72px) * ${fillPercent / 100})` }}
           />
 
           <div className="relative z-10 flex items-start justify-between">
@@ -47,7 +47,7 @@ export function Stepper({ current, compact = false, maxReachable, onStepClick }:
               const step = i + 1
               const active = current < 4 && step === current
               const done = (current < 4 && step < current) || (current >= 4 && step <= 3)
-              const fill = active ? '#FFFFFF' : done ? '#4B8D83' : '#9A9A9A'
+              const fill = active ? '#F6FFFC' : done ? '#64D6BE' : '#C5D2CF'
               const reachable = maxReachable ?? current
               const clickable = Boolean(onStepClick) && step !== current && step <= reachable
 
@@ -57,12 +57,12 @@ export function Stepper({ current, compact = false, maxReachable, onStepClick }:
                   ? 'border-[#4B8D83] bg-[#063533] text-white shadow-[0_0_18px_rgba(75,141,131,0.8)]'
                   : done
                     ? 'border-[#4B8D83] bg-[#063533] text-[#4B8D83]'
-                    : 'border-[#9A9A9A]/40 bg-[#061214] text-[#9A9A9A]',
+                    : 'border-[#C5D2CF]/45 bg-[#061214] text-[#C5D2CF]',
                 clickable ? 'cursor-pointer transition hover:brightness-125' : '',
               ].join(' ')
 
               return (
-                <div key={label} className="flex w-[30px] flex-col items-center">
+                <div key={label} className="flex w-[72px] flex-col items-center">
                   {clickable ? (
                     <button
                       type="button"
@@ -78,7 +78,7 @@ export function Stepper({ current, compact = false, maxReachable, onStepClick }:
                     </div>
                   )}
                   <span
-                    className="mt-2 text-center text-[12px] font-medium leading-none"
+                    className="mt-2 text-center text-[10px] font-medium leading-none"
                     style={{ fontFamily: 'Lato, sans-serif', color: fill, fontStyle: 'normal' }}
                   >
                     {label}

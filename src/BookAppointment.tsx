@@ -36,6 +36,7 @@ const ALLOWED_EMPLOYEE_IDS = new Set([
 
 const REUSABLE_TEST_EMPLOYEE_IDS = new Set(['0000IN000'])
 const USED_EMPLOYEE_IDS_STORAGE_KEY = 'supershyft-used-employee-ids'
+const BRAND_LOGO_SRC = '/SuperShyft - Logo [Final]-03 1.png'
 
 function normalizeEmployeeId(value: string): string {
   return value.trim().toUpperCase()
@@ -43,6 +44,10 @@ function normalizeEmployeeId(value: string): string {
 
 function normalizePhoneDigits(value: string): string {
   return value.replace(/\D/g, '').slice(0, 10)
+}
+
+function normalizeAgeDigits(value: string): string {
+  return value.replace(/\D/g, '').slice(0, 2)
 }
 
 function getUsedEmployeeIds(): Set<string> {
@@ -98,7 +103,7 @@ function useIsLg() {
 
 function inputClass(short?: boolean) {
   return [
-    'w-full rounded-[8px] bg-white/5 px-4 text-base lg:text-sm text-white outline-none ring-1 ring-white/5 placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]/70',
+    'w-full rounded-[8px] bg-white/5 px-4 text-base lg:text-[12px] text-[#F2F7F6] outline-none ring-1 ring-white/10 placeholder:text-white/60 focus:ring-[#6FCBBB]/70',
     short ? 'h-10' : 'h-[44px]',
   ].join(' ')
 }
@@ -113,12 +118,12 @@ function labelRow(
   return (
     <div className={`flex items-center gap-2 ${mobile ? 'mb-1' : 'mb-1.5'}`}>
       <span
-        className={`flex shrink-0 items-center justify-center ${mobile ? 'size-5 text-[#999]' : 'size-3.5 text-[#9a9a9a]'}`}
+        className={`flex shrink-0 items-center justify-center ${mobile ? 'size-5 text-[#AEBBB8]' : 'size-3.5 text-[#AEBBB8]'}`}
       >
         <Icon className={mobile ? 'size-5' : 'size-3.5'} strokeWidth={1.75} />
       </span>
       <span
-        className={`font-medium ${mobile ? 'text-[13px] text-[#999]' : 'text-[13px] text-[#9a9a9a]'}`}
+        className={`font-medium ${mobile ? 'text-[11px] text-[#B8C6C3]' : 'text-[11px] text-[#B8C6C3]'}`}
       >
         {label}
       </span>
@@ -309,6 +314,9 @@ export default function BookAppointment() {
   }
 
   const headerTitle = 'Book Appointment'
+  const desktopHeroTitle = 'Welcome to the world of Bio AI technology.'
+  const desktopHeroSubtitle =
+    'Book your Bio-marker sample collection & schedule your personalised doctor consultation.'
 
   const glassPanel =
     'rounded-[18px] border border-white/12 bg-black/18 shadow-[0_26px_70px_rgba(0,0,0,0.35)] backdrop-blur-[2px]'
@@ -325,13 +333,20 @@ export default function BookAppointment() {
 
   return (
     <PageBackdrop>
+      {!mobileHeader && (
+        <img
+          src={BRAND_LOGO_SRC}
+          alt="SuperShyft"
+          className="pointer-events-none fixed left-1/2 top-[11.7vh] z-30 h-[4.4vw] w-[4.4vw] min-h-[45px] min-w-[45px] -translate-x-1/2 -translate-y-1/2 object-contain"
+        />
+      )}
       <div
-        className={`mx-auto flex flex-col lg:max-w-none lg:min-h-svh lg:px-10 lg:py-14 ${
+        className={`mx-auto flex flex-col lg:max-w-none lg:min-h-svh lg:items-center lg:justify-center lg:px-10 lg:py-14 ${
           mobilePersonal
             ? 'h-dvh max-h-dvh min-h-0 overflow-hidden px-0 py-0'
             : isMobile
               ? 'min-h-svh px-0 py-0'
-              : 'min-h-svh max-w-[980px] px-4 py-6 pb-24'
+              : `min-h-svh px-4 py-6 pb-24 ${step === 4 ? 'max-w-[1140px]' : 'max-w-[980px]'}`
         }`}
       >
         <div
@@ -340,7 +355,7 @@ export default function BookAppointment() {
               ? mobileStep1Layout
               : isMobile
                 ? 'w-full'
-                : `${glassPanel} p-5 lg:relative lg:mx-auto lg:w-full lg:max-w-[970px] lg:p-7`
+                : `${glassPanel} p-5 lg:relative lg:mx-auto lg:w-full ${step === 4 ? 'lg:max-w-[1120px] lg:p-4' : 'lg:max-w-[970px] lg:p-7'}`
           }`}
         >
           {/* Header — Figma mobile: back | centered title | close */}
@@ -353,6 +368,13 @@ export default function BookAppointment() {
           >
             {mobileHeader ? (
               <>
+                <div className="col-span-3 mb-1 flex justify-center">
+                  <img
+                    src={BRAND_LOGO_SRC}
+                    alt="SuperShyft"
+                    className="h-10 w-auto object-contain"
+                  />
+                </div>
                 {showBack ? (
                   <button
                     type="button"
@@ -365,29 +387,32 @@ export default function BookAppointment() {
                 ) : (
                   <span aria-hidden />
                 )}
-                <h1 className="text-center font-sans text-[20px] font-semibold leading-normal text-white">
+                <h1 className="text-center font-sans text-[18px] font-semibold leading-normal text-white">
                   {headerTitle}
                 </h1>
                 <span aria-hidden />
               </>
             ) : (
-              <>
-                {showBack ? (
+              <div className="relative w-full">
+                {showBack && (
                   <button
                     type="button"
                     onClick={() => goToStep(Math.max(1, step - 1))}
-                    className="shrink-0 rounded-lg p-1 text-white hover:bg-white/10"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 rounded-lg p-1 text-white hover:bg-white/10"
                     aria-label="Back"
                   >
                     <ArrowLeft className="size-5 lg:size-6" />
                   </button>
-                ) : (
-                  <span className="w-6 shrink-0" aria-hidden />
                 )}
-                <h1 className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight text-white lg:text-[24px] lg:leading-none lg:tracking-[-0.5px]">
-                  {headerTitle}
-                </h1>
-              </>
+                <div className="mx-auto flex w-full max-w-[620px] flex-col items-center text-center">
+                  <h1 className="text-[18px] font-semibold leading-[1.2] text-white">
+                    {desktopHeroTitle}
+                  </h1>
+                  <p className="mt-1 whitespace-nowrap text-[16px] font-medium leading-[1.2] text-[#D1DEDA]">
+                    {desktopHeroSubtitle}
+                  </p>
+                </div>
+              </div>
             )}
           </header>
 
@@ -547,12 +572,12 @@ export default function BookAppointment() {
 }
 
 const mobileFieldInput =
-  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-[16px] text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
+  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 font-sans text-[15px] text-[#F2F7F6] outline-none ring-1 ring-white/10 placeholder:text-white/60 focus:ring-[#6FCBBB]'
 const mobileFieldInput14 = mobileFieldInput
 const mobileFieldTextarea =
-  'h-10 w-full resize-none overflow-hidden rounded-lg border-0 bg-white/5 px-4 py-2.5 text-[16px] text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
+  'h-10 w-full resize-none overflow-hidden rounded-lg border-0 bg-white/5 px-4 py-2.5 font-sans text-[15px] text-[#F2F7F6] outline-none ring-1 ring-white/10 placeholder:text-white/60 focus:ring-[#6FCBBB]'
 const desktopFieldTextarea =
-  'h-[44px] w-full resize-none overflow-hidden rounded-[8px] bg-white/5 px-4 py-3 text-base lg:text-sm text-white outline-none ring-1 ring-white/5 placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]/70'
+  'h-[44px] w-full resize-none overflow-hidden rounded-[8px] bg-white/5 px-4 py-3 text-base lg:text-sm text-[#F2F7F6] outline-none ring-1 ring-white/10 placeholder:text-white/60 focus:ring-[#6FCBBB]/70'
 
 function PersonalStep({
   form,
@@ -624,7 +649,7 @@ function PersonalStep({
             <div className="flex gap-2">
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
-                placeholder="First name"
+                placeholder="First Name"
                 autoComplete="given-name"
                 value={form.firstName}
                 onChange={(e) => update('firstName', e.target.value)}
@@ -649,7 +674,7 @@ function PersonalStep({
                   'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs leading-4 transition',
                   form.gender === 'male'
                     ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
-                    : 'bg-white/5 text-[#999]',
+                    : 'bg-white/5 text-white/60',
                 ].join(' ')}
               >
                 <Mars className="size-3.5 shrink-0 opacity-90" strokeWidth={2} />
@@ -662,7 +687,7 @@ function PersonalStep({
                   'flex flex-1 items-center justify-center gap-2 rounded-full px-2.5 py-1 text-xs leading-4 transition',
                   form.gender === 'female'
                     ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
-                    : 'bg-white/5 text-[#999]',
+                    : 'bg-white/5 text-white/60',
                 ].join(' ')}
               >
                 <Venus className="size-4 shrink-0 opacity-90" strokeWidth={2} />
@@ -709,9 +734,10 @@ function PersonalStep({
             <input
               className={mobileFieldInput14}
               inputMode="numeric"
+              maxLength={2}
               placeholder="Age"
               value={form.age}
-              onChange={(e) => update('age', e.target.value)}
+              onChange={(e) => update('age', normalizeAgeDigits(e.target.value))}
             />
           </div>
 
@@ -768,7 +794,7 @@ function PersonalStep({
             <div className="flex gap-2">
               <input
                 className={`${mobileFieldInput14} min-w-0 flex-1`}
-                placeholder="First name"
+                placeholder="First Name"
                 autoComplete="given-name"
                 value={form.firstName}
                 onChange={(e) => update('firstName', e.target.value)}
@@ -784,14 +810,44 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(Phone, 'Phone', undefined, true)}
+            {labelRow(User, 'Gender', undefined, true)}
+            <div className="flex h-10 gap-6">
+              <button
+                type="button"
+                onClick={() => update('gender', 'male')}
+                className={[
+                  'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs leading-4 transition',
+                  form.gender === 'male'
+                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
+                    : 'bg-white/5 text-white/60',
+                ].join(' ')}
+              >
+                <Mars className="size-3.5 shrink-0 opacity-90" strokeWidth={2} />
+                Male
+              </button>
+              <button
+                type="button"
+                onClick={() => update('gender', 'female')}
+                className={[
+                  'flex flex-1 items-center justify-center gap-2 rounded-full px-2.5 py-1 text-xs leading-4 transition',
+                  form.gender === 'female'
+                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
+                    : 'bg-white/5 text-white/60',
+                ].join(' ')}
+              >
+                <Venus className="size-4 shrink-0 opacity-90" strokeWidth={2} />
+                Female
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {labelRow(IdCard, 'Employee ID', undefined, true)}
             <input
               className={mobileFieldInput14}
-              inputMode="tel"
-              placeholder="Phone"
-              maxLength={10}
-              value={form.phone}
-              onChange={(e) => update('phone', normalizePhoneDigits(e.target.value))}
+              placeholder="Employee ID"
+              value={form.employeeId}
+              onChange={(e) => update('employeeId', e.target.value)}
             />
           </div>
 
@@ -813,51 +869,22 @@ function PersonalStep({
             <input
               className={mobileFieldInput14}
               inputMode="numeric"
+              maxLength={2}
               placeholder="Age"
               value={form.age}
-              onChange={(e) => update('age', e.target.value)}
+              onChange={(e) => update('age', normalizeAgeDigits(e.target.value))}
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(User, 'Gender', undefined, true)}
-            <div className="flex h-10 gap-6">
-              <button
-                type="button"
-                onClick={() => update('gender', 'male')}
-                className={[
-                  'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs leading-4 transition',
-                  form.gender === 'male'
-                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
-                    : 'bg-white/5 text-[#999]',
-                ].join(' ')}
-              >
-                <Mars className="size-3.5 shrink-0 opacity-90" strokeWidth={2} />
-                Male
-              </button>
-              <button
-                type="button"
-                onClick={() => update('gender', 'female')}
-                className={[
-                  'flex flex-1 items-center justify-center gap-2 rounded-full px-2.5 py-1 text-xs leading-4 transition',
-                  form.gender === 'female'
-                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
-                    : 'bg-white/5 text-[#999]',
-                ].join(' ')}
-              >
-                <Venus className="size-4 shrink-0 opacity-90" strokeWidth={2} />
-                Female
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            {labelRow(IdCard, 'Employee ID', undefined, true)}
+            {labelRow(Phone, 'Phone', undefined, true)}
             <input
               className={mobileFieldInput14}
-              placeholder="Employee ID"
-              value={form.employeeId}
-              onChange={(e) => update('employeeId', e.target.value)}
+              inputMode="tel"
+              placeholder="Phone"
+              maxLength={10}
+              value={form.phone}
+              onChange={(e) => update('phone', normalizePhoneDigits(e.target.value))}
             />
           </div>
         </div>
@@ -879,7 +906,7 @@ function PersonalStep({
         type="button"
         onClick={() => update('gender', 'male')}
         className={[
-          'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm text-[#9a9a9a]',
+          'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm text-white/60',
           form.gender === 'male'
             ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
             : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)]',
@@ -895,7 +922,7 @@ function PersonalStep({
           'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm',
           form.gender === 'female'
             ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-            : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#9a9a9a]',
+            : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-white/60',
         ].join(' ')}
       >
         <Venus className="size-4" />
@@ -907,7 +934,7 @@ function PersonalStep({
   if (hasSavedMembers) {
     return (
       <>
-        <h2 className="mb-5 text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
+        <h2 className="mb-5 text-2xl font-medium text-white lg:text-[26px] lg:leading-none">
           Personal Information
         </h2>
 
@@ -928,7 +955,7 @@ function PersonalStep({
             <div className="flex gap-3">
               <input
                 className={inputClass()}
-                placeholder="First name"
+                placeholder="First Name"
                 autoComplete="given-name"
                 value={form.firstName}
                 onChange={(e) => update('firstName', e.target.value)}
@@ -988,8 +1015,9 @@ function PersonalStep({
               className={inputClass()}
               placeholder="Age"
               inputMode="numeric"
+              maxLength={2}
               value={form.age}
-              onChange={(e) => update('age', e.target.value)}
+              onChange={(e) => update('age', normalizeAgeDigits(e.target.value))}
             />
           </div>
 
@@ -1008,7 +1036,7 @@ function PersonalStep({
                       'flex h-[44px] items-center justify-center gap-2 rounded-[6px] text-sm transition',
                       selected
                         ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-                        : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#9a9a9a]',
+                        : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#C5D2CF]',
                     ].join(' ')}
                   >
                     <User className="size-3.5 opacity-80" strokeWidth={1.75} />
@@ -1040,7 +1068,7 @@ function PersonalStep({
 
   return (
     <>
-      <h2 className="mb-7 text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
+      <h2 className="mb-7 text-2xl font-medium text-white lg:text-[26px] lg:leading-none">
         Personal Information
       </h2>
 
@@ -1050,7 +1078,7 @@ function PersonalStep({
           <div className="flex gap-3">
             <input
               className={inputClass()}
-              placeholder="First name"
+              placeholder="First Name"
               autoComplete="given-name"
               value={form.firstName}
               onChange={(e) => update('firstName', e.target.value)}
@@ -1095,8 +1123,10 @@ function PersonalStep({
           <input
             className={inputClass()}
             placeholder="Age"
+            inputMode="numeric"
+            maxLength={2}
             value={form.age}
-            onChange={(e) => update('age', e.target.value)}
+            onChange={(e) => update('age', normalizeAgeDigits(e.target.value))}
           />
         </div>
 
@@ -1130,7 +1160,7 @@ function UseSameToggle({
       type="button"
       onClick={() => onChange(!checked)}
       aria-pressed={checked}
-      className="ml-auto flex items-center gap-1.5 text-[12px] font-medium text-[#9a9a9a] transition hover:text-white/90"
+      className="ml-auto flex items-center gap-1.5 text-[12px] font-medium text-[#C5D2CF] transition hover:text-white/90"
     >
       <span>{label}</span>
       {checked ? (
@@ -1327,13 +1357,20 @@ function ConfirmStep({
 
   return (
     <>
-      <h2 className="mb-3 text-[18px] font-semibold text-white lg:mb-8 lg:text-2xl lg:font-medium">
+      <h2 className="mb-3 text-[18px] font-semibold text-white lg:mb-3 lg:text-2xl lg:font-medium">
         Confirm Details
       </h2>
-      <div className="flex flex-col gap-3 lg:gap-4">
-        <section className="rounded-lg bg-white/5 p-3 lg:p-5">
-          <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
+      <div className="flex flex-col gap-3 lg:gap-2.5">
+        <section className="rounded-lg bg-white/5 p-3 lg:p-3.5">
+          <div className="mb-1.5 flex items-center justify-between border-b border-white/20 pb-1">
             <h3 className="text-[15px] font-semibold text-white">Personal Information</h3>
+            <button
+              type="button"
+              className="text-[13px] font-medium text-[#4b8d83]"
+              onClick={() => onEditMember(Math.max(0, members.length - 1))}
+            >
+              Edit
+            </button>
           </div>
           {members.map((m, i) => (
             <div key={i}>
@@ -1347,19 +1384,20 @@ function ConfirmStep({
                 member={m}
                 showRelation={i > 0}
                 onEdit={() => onEditMember(i)}
+                showEdit={i > 0}
               />
             </div>
           ))}
         </section>
 
-        <section className="rounded-lg bg-white/5 p-3 lg:p-5">
-          <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
+        <section className="rounded-lg bg-white/5 p-3 lg:p-3.5">
+          <div className="mb-1.5 flex items-center justify-between border-b border-white/20 pb-1">
             <h3 className="text-[15px] font-semibold text-white">Address Details</h3>
             <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(2)}>
               Edit
             </button>
           </div>
-          <ul className="space-y-3 text-[11px] leading-[1.15] text-[#ccc]">
+          <ul className="space-y-3 text-[11px] leading-[1.15] text-[#E3ECE9]">
             <li className="flex items-start gap-2">
               <Home className="mt-0.5 size-[14px] shrink-0 opacity-70" strokeWidth={1.75} />
               <span>{mergedAddress || '—'}</span>
@@ -1381,14 +1419,14 @@ function ConfirmStep({
           </ul>
         </section>
 
-        <section className="rounded-lg bg-white/5 p-3 lg:p-5">
-          <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
+        <section className="rounded-lg bg-white/5 p-3 lg:p-3.5">
+          <div className="mb-1.5 flex items-center justify-between border-b border-white/20 pb-1">
             <h3 className="text-[15px] font-semibold text-white">Sample Collection</h3>
             <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(3)}>
               Edit
             </button>
           </div>
-          <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] leading-[1.15] text-[#ccc]">
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] leading-[1.15] text-[#E3ECE9]">
             <li className="flex items-start gap-2">
               <PreferredDateIcon className="mt-0.5 size-[14px] shrink-0 opacity-70" />
               <span>{form.appointmentDate || '—'}</span>
@@ -1401,7 +1439,7 @@ function ConfirmStep({
         </section>
 
         <ContinueButton
-          className="mt-3 w-full max-w-none"
+          className="mt-2 w-full max-w-none"
           showChevron={false}
           onClick={onProceed}
         >
@@ -1419,10 +1457,12 @@ function MemberSummary({
   member,
   showRelation,
   onEdit,
+  showEdit = true,
 }: {
   member: FormData
   showRelation: boolean
   onEdit: () => void
+  showEdit?: boolean
 }) {
   const name = [member.firstName, member.lastName].filter(Boolean).join(' ') || '—'
   const GenderIcon = member.gender === 'female' ? Venus : Mars
@@ -1434,13 +1474,15 @@ function MemberSummary({
 
   return (
     <div className="relative">
-      <button
-        type="button"
-        onClick={onEdit}
-        className="absolute right-0 top-0 text-[13px] font-medium text-[#4b8d83]"
-      >
-        Edit
-      </button>
+      {showEdit && (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="absolute right-0 top-0 text-[13px] font-medium text-[#4b8d83]"
+        >
+          Edit
+        </button>
+      )}
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 pr-10 text-[11px] leading-[1.15] text-[#cccccc]">
         {showRelation ? (

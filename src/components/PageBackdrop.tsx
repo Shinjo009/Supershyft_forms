@@ -1,18 +1,15 @@
-import backgroundImage from '../assets/bg.png'
-import backgroundImageMobile from '../assets/bgm.png'
-
 /** Full-viewport background image (mobile + desktop); light scrim keeps form text readable */
 export function PageBackdrop({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative min-h-svh overflow-x-hidden font-sans text-white">
+    <div className="relative min-h-svh overflow-x-hidden font-sans text-white antialiased [text-rendering:optimizeLegibility]">
       <div
         className="pointer-events-none fixed inset-0 bg-cover bg-center bg-no-repeat lg:hidden"
-        style={{ backgroundImage: `url(${backgroundImageMobile})` }}
+        style={{ backgroundImage: 'url("/texture 1.svg")' }}
         aria-hidden
       />
       <div
         className="pointer-events-none fixed inset-0 hidden bg-cover bg-center bg-no-repeat lg:block"
-        style={{ backgroundImage: `url(${backgroundImage})` }}
+        style={{ backgroundImage: 'url("/texture 1.svg")' }}
         aria-hidden
       />
       <div
