@@ -1615,8 +1615,8 @@ function SummaryItem({
   dense?: boolean
 }) {
   return (
-    <div className="flex items-start gap-2 leading-snug">
-      <Icon className={`${dense ? 'mt-0.5 size-[14px]' : 'mt-0.5 size-[18px]'} shrink-0 opacity-70`} strokeWidth={1.75} />
+    <div className="flex items-center gap-2 leading-snug">
+      <Icon className={`${dense ? 'size-[14px]' : 'size-[18px]'} shrink-0 opacity-70`} strokeWidth={1.75} />
       <span className={[dense ? 'text-[11px] font-light text-[#ccc]' : '', 'truncate', capitalize ? 'capitalize' : ''].join(' ')}>
         {label}
       </span>
@@ -1769,7 +1769,7 @@ function ScheduleStep({
       <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
         <div className="flex items-center gap-2">
           <PreferredTimeSlotIcon />
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-1">
             <h2 className={sectionLabelClass}>
               Preferred Time Slot
               {showMissingRequired && !form.appointmentTime ? (
