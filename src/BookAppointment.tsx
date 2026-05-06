@@ -41,6 +41,10 @@ function normalizeEmployeeId(value: string): string {
   return value.trim().toUpperCase()
 }
 
+function normalizePhoneDigits(value: string): string {
+  return value.replace(/\D/g, '').slice(0, 10)
+}
+
 function getUsedEmployeeIds(): Set<string> {
   if (typeof window === 'undefined') return new Set()
   try {
@@ -175,18 +179,19 @@ export default function BookAppointment() {
   const validateStep = (targetStep: number): boolean => {
     if (targetStep === 1) {
       const normalizedEmployeeId = normalizeEmployeeId(form.employeeId)
+      const normalizedPhone = normalizePhoneDigits(phoneForValidation)
       const personalValid =
         hasText(form.firstName) &&
         hasText(form.lastName) &&
         hasText(form.age) &&
         hasText(form.gender) &&
         hasText(form.employeeId) &&
-        hasText(phoneForValidation) &&
+        normalizedPhone.length === 10 &&
         hasText(emailForValidation) &&
         (!hasSavedMembers || hasText(form.relation))
 
       if (!personalValid) {
-        setStepError('Please fill all Personal details to continue.')
+        setStepError('Please fill all Personal details. Phone must be exactly 10 digits.')
         return false
       }
 
@@ -542,10 +547,10 @@ export default function BookAppointment() {
 }
 
 const mobileFieldInput =
-  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-[15px] text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
+  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-[16px] text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
 const mobileFieldInput14 = mobileFieldInput
 const mobileFieldTextarea =
-  'h-10 w-full resize-none overflow-hidden rounded-lg border-0 bg-white/5 px-4 py-2.5 text-[15px] text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
+  'h-10 w-full resize-none overflow-hidden rounded-lg border-0 bg-white/5 px-4 py-2.5 text-[16px] text-white outline-none ring-1 ring-transparent placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]'
 const desktopFieldTextarea =
   'h-[44px] w-full resize-none overflow-hidden rounded-[8px] bg-white/5 px-4 py-3 text-base lg:text-sm text-white outline-none ring-1 ring-white/5 placeholder:text-[#9a9a9a] focus:ring-[#4b8d83]/70'
 
@@ -726,8 +731,9 @@ function PersonalStep({
               inputMode="tel"
               placeholder="+91 999999999"
               disabled={form.useSamePhone}
+              maxLength={10}
               value={phoneValue}
-              onChange={(e) => update('phone', e.target.value)}
+              onChange={(e) => update('phone', normalizePhoneDigits(e.target.value))}
             />
           </div>
 
@@ -783,8 +789,9 @@ function PersonalStep({
               className={mobileFieldInput14}
               inputMode="tel"
               placeholder="Phone"
+              maxLength={10}
               value={form.phone}
-              onChange={(e) => update('phone', e.target.value)}
+              onChange={(e) => update('phone', normalizePhoneDigits(e.target.value))}
             />
           </div>
 
@@ -916,18 +923,24 @@ function PersonalStep({
         </div>
 
         <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
-          <div>
+          <div className="lg:col-span-2">
             {labelRow(User, 'Full Name')}
-            <input
-              className={inputClass()}
-              placeholder="Full Name"
-              value={[form.firstName, form.lastName].filter(Boolean).join(' ')}
-              onChange={(e) => {
-                const parts = e.target.value.split(' ')
-                update('firstName', parts[0] ?? '')
-                update('lastName', parts.slice(1).join(' '))
-              }}
-            />
+            <div className="flex gap-3">
+              <input
+                className={inputClass()}
+                placeholder="First name"
+                autoComplete="given-name"
+                value={form.firstName}
+                onChange={(e) => update('firstName', e.target.value)}
+              />
+              <input
+                className={inputClass()}
+                placeholder="Last Name"
+                autoComplete="family-name"
+                value={form.lastName}
+                onChange={(e) => update('lastName', e.target.value)}
+              />
+            </div>
           </div>
 
           <div>
@@ -944,8 +957,9 @@ function PersonalStep({
               placeholder="+91 999999999"
               inputMode="tel"
               disabled={form.useSamePhone}
+              maxLength={10}
               value={phoneValue}
-              onChange={(e) => update('phone', e.target.value)}
+              onChange={(e) => update('phone', normalizePhoneDigits(e.target.value))}
             />
           </div>
 
@@ -1031,18 +1045,24 @@ function PersonalStep({
       </h2>
 
       <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
-        <div>
+        <div className="lg:col-span-2">
           {labelRow(User, 'Full Name')}
-          <input
-            className={inputClass()}
-            placeholder="Full Name"
-            value={[form.firstName, form.lastName].filter(Boolean).join(' ')}
-            onChange={(e) => {
-              const parts = e.target.value.split(' ')
-              update('firstName', parts[0] ?? '')
-              update('lastName', parts.slice(1).join(' '))
-            }}
-          />
+          <div className="flex gap-3">
+            <input
+              className={inputClass()}
+              placeholder="First name"
+              autoComplete="given-name"
+              value={form.firstName}
+              onChange={(e) => update('firstName', e.target.value)}
+            />
+            <input
+              className={inputClass()}
+              placeholder="Last Name"
+              autoComplete="family-name"
+              value={form.lastName}
+              onChange={(e) => update('lastName', e.target.value)}
+            />
+          </div>
         </div>
 
         <div>
@@ -1085,8 +1105,10 @@ function PersonalStep({
           <input
             className={inputClass()}
             placeholder="Phone"
+            inputMode="tel"
+            maxLength={10}
             value={form.phone}
-            onChange={(e) => update('phone', e.target.value)}
+            onChange={(e) => update('phone', normalizePhoneDigits(e.target.value))}
           />
         </div>
       </div>
@@ -1301,17 +1323,23 @@ function ConfirmStep({
   onProceed: () => void
   errorMessage?: string
 }) {
+  const mergedAddress = [form.houseBuilding, form.areaStreet].filter(Boolean).join(', ')
+
   return (
     <>
-      <h2 className="mb-6 text-2xl font-medium text-white lg:mb-8">Confirm Details</h2>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-8">
-        <section className="flex-1 rounded-lg bg-white/5 p-5">
-          <h3 className="mb-5 text-[15px] font-semibold text-white">Personal Information</h3>
+      <h2 className="mb-3 text-[18px] font-semibold text-white lg:mb-8 lg:text-2xl lg:font-medium">
+        Confirm Details
+      </h2>
+      <div className="flex flex-col gap-3 lg:gap-4">
+        <section className="rounded-lg bg-white/5 p-3 lg:p-5">
+          <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
+            <h3 className="text-[15px] font-semibold text-white">Personal Information</h3>
+          </div>
           {members.map((m, i) => (
             <div key={i}>
               {i > 0 && (
                 <div
-                  className="my-5 h-px w-full bg-gradient-to-r from-transparent via-[#4b8d83]/60 to-transparent"
+                  className="my-3 h-px w-full bg-white/20"
                   aria-hidden
                 />
               )}
@@ -1324,67 +1352,64 @@ function ConfirmStep({
           ))}
         </section>
 
-        <section className="flex-1 rounded-lg bg-white/5 p-5">
-          <div className="mb-4 flex items-center justify-between border-b border-white/20 pb-2">
+        <section className="rounded-lg bg-white/5 p-3 lg:p-5">
+          <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
             <h3 className="text-[15px] font-semibold text-white">Address Details</h3>
             <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(2)}>
               Edit
             </button>
           </div>
-          <ul className="space-y-4 text-sm text-[#ccc]">
-            <li className="flex gap-2">
-              <Home className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.houseBuilding}
+          <ul className="space-y-3 text-[11px] leading-[1.15] text-[#ccc]">
+            <li className="flex items-start gap-2">
+              <Home className="mt-0.5 size-[14px] shrink-0 opacity-70" strokeWidth={1.75} />
+              <span>{mergedAddress || '—'}</span>
             </li>
-            <li className="flex gap-2">
-              <AreaStreetIcon className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.areaStreet}
+            <li className="flex items-start gap-2">
+              <LandmarkIcon className="mt-0.5 size-[14px] shrink-0 opacity-70" />
+              <span>{form.landmark || '—'}</span>
             </li>
-            <li className="flex gap-2">
-              <LandmarkIcon className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.landmark}
-            </li>
-            <li className="flex gap-2">
-              <PincodeIcon className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.pincode}
-            </li>
-            <li className="flex gap-2">
-              <MapPin className="mt-0.5 size-5 shrink-0 opacity-70" />
-              {form.city}
+            <li className="grid grid-cols-2 gap-x-4 gap-y-2">
+              <div className="flex items-start gap-2">
+                <MapPin className="mt-0.5 size-[14px] shrink-0 opacity-70" strokeWidth={1.75} />
+                <span>{form.city || '—'}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <PincodeIcon className="mt-0.5 size-[14px] shrink-0 opacity-70" />
+                <span>{form.pincode || '—'}</span>
+              </div>
             </li>
           </ul>
         </section>
 
-        <section className="flex flex-1 flex-col gap-6">
-          <div className="rounded-lg bg-white/5 p-5">
-            <div className="mb-4 flex items-center justify-between border-b border-white/20 pb-2">
-              <h3 className="text-[15px] font-semibold text-white">Sample Collection</h3>
-              <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(3)}>
-                Edit
-              </button>
-            </div>
-            <ul className="space-y-4 text-sm text-[#ccc]">
-              <li className="flex gap-2">
-                <Calendar className="mt-0.5 size-5 shrink-0 opacity-70" />
-                {form.appointmentDate}
-              </li>
-              <li className="flex gap-2">
-                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center opacity-70">🕐</span>
-                {form.appointmentTime}
-              </li>
-            </ul>
+        <section className="rounded-lg bg-white/5 p-3 lg:p-5">
+          <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
+            <h3 className="text-[15px] font-semibold text-white">Sample Collection</h3>
+            <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(3)}>
+              Edit
+            </button>
           </div>
-          <ContinueButton
-            className="w-full max-w-none"
-            showChevron={false}
-            onClick={onProceed}
-          >
-            Confirm
-          </ContinueButton>
-          {errorMessage && (
-            <p className="text-center text-xs text-[#ffb4b4]">{errorMessage}</p>
-          )}
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] leading-[1.15] text-[#ccc]">
+            <li className="flex items-start gap-2">
+              <PreferredDateIcon className="mt-0.5 size-[14px] shrink-0 opacity-70" />
+              <span>{form.appointmentDate || '—'}</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <PreferredTimeIcon className="mt-0.5 size-[14px] shrink-0 opacity-70" />
+              <span>{form.appointmentTime || '—'}</span>
+            </li>
+          </ul>
         </section>
+
+        <ContinueButton
+          className="mt-3 w-full max-w-none"
+          showChevron={false}
+          onClick={onProceed}
+        >
+          Confirm
+        </ContinueButton>
+        {errorMessage && (
+          <p className="text-center text-xs text-[#ffb4b4]">{errorMessage}</p>
+        )}
       </div>
     </>
   )
@@ -1412,31 +1437,27 @@ function MemberSummary({
       <button
         type="button"
         onClick={onEdit}
-        className="absolute right-0 top-0 text-[13px] font-medium text-[#4b8d83] hover:text-[#90df9e]"
+        className="absolute right-0 top-0 text-[13px] font-medium text-[#4b8d83]"
       >
         Edit
       </button>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-4 pr-10 text-sm text-[#cccccc]">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3 pr-10 text-[11px] leading-[1.15] text-[#cccccc]">
         {showRelation ? (
           <>
             <SummaryItem Icon={User} label={name} />
             <SummaryItem Icon={User} label={relationLabel || '—'} capitalize />
           </>
         ) : (
-          <div className="col-span-2">
+          <>
             <SummaryItem Icon={User} label={name} />
-          </div>
+            <SummaryItem Icon={GenderIcon} label={genderLabel} />
+          </>
         )}
+        <SummaryItem Icon={Phone} label={member.phone || '—'} />
         <SummaryItem Icon={Calendar} label={member.age ? `${member.age} Years` : '—'} />
-        <SummaryItem Icon={GenderIcon} label={genderLabel} />
+        <SummaryItem Icon={Mail} label={member.email || '—'} />
         <SummaryItem Icon={IdCard} label={member.employeeId || '—'} />
-        <div className="col-span-2">
-          <SummaryItem Icon={Phone} label={member.phone || '—'} />
-        </div>
-        <div className="col-span-2">
-          <SummaryItem Icon={Mail} label={member.email || '—'} />
-        </div>
       </div>
     </div>
   )
@@ -1452,9 +1473,11 @@ function SummaryItem({
   capitalize?: boolean
 }) {
   return (
-    <div className="flex items-start gap-2 leading-snug">
-      <Icon className="mt-0.5 size-[18px] shrink-0 opacity-70" strokeWidth={1.75} />
-      <span className={['truncate', capitalize ? 'capitalize' : ''].join(' ')}>{label}</span>
+    <div className="flex min-w-0 items-start gap-1.5 leading-[1.15]">
+      <Icon className="mt-0.5 size-[13px] shrink-0 opacity-70" strokeWidth={1.75} />
+      <span className={['min-w-0 break-words', capitalize ? 'capitalize' : ''].join(' ')}>
+        {label}
+      </span>
     </div>
   )
 }
@@ -1486,9 +1509,15 @@ function getUpcomingDates(count: number, startOffsetDays = 0): UpcomingDate[] {
   return out
 }
 
-function PreferredDateIcon() {
+function PreferredDateIcon({ className = 'size-5' }: { className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden
+      className={className}
+    >
       <path d="M6.66699 1.66699V5.00033M13.3337 1.66699V5.00033" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4.16667 3.33398H15.8333C16.7538 3.33398 17.5 4.08018 17.5 5.00065V16.6673C17.5 17.5878 16.7538 18.334 15.8333 18.334H4.16667C3.24619 18.334 2.5 17.5878 2.5 16.6673V5.00065C2.5 4.08018 3.24619 3.33398 4.16667 3.33398V3.33398" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M2.5 8.33398H17.5" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
@@ -1496,9 +1525,15 @@ function PreferredDateIcon() {
   )
 }
 
-function PreferredTimeIcon() {
+function PreferredTimeIcon({ className = 'size-5' }: { className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden
+      className={className}
+    >
       <path d="M10.5932 19.4902L10.5822 19.492L10.5112 19.5241L10.4912 19.5278L10.4772 19.5241L10.4062 19.492C10.3955 19.4889 10.3875 19.4905 10.3822 19.4966L10.3782 19.5057L10.3612 19.8981L10.3662 19.9165L10.3762 19.9284L10.4802 19.9962L10.4952 19.9999L10.5072 19.9962L10.6112 19.9284L10.6232 19.9137L10.6272 19.8981L10.6102 19.5067C10.6075 19.4969 10.6018 19.4914 10.5932 19.4902ZM10.8582 19.3866L10.8452 19.3884L10.6602 19.4737L10.6502 19.4828L10.6472 19.4929L10.6652 19.8871L10.6702 19.8981L10.6782 19.9046L10.8792 19.9898C10.8918 19.9929 10.9015 19.9904 10.9082 19.9825L10.9122 19.9696L10.8782 19.4067C10.8748 19.3957 10.8682 19.389 10.8582 19.3866ZM10.1432 19.3884C10.1388 19.3859 10.1335 19.3852 10.1285 19.3862C10.1234 19.3872 10.119 19.39 10.1162 19.3939L10.1102 19.4067L10.0762 19.9696C10.0768 19.9806 10.0825 19.988 10.0932 19.9917L10.1082 19.9898L10.3092 19.9046L10.3192 19.8972L10.3232 19.8871L10.3402 19.4929L10.3372 19.4819L10.3272 19.4727L10.1432 19.3884Z" fill="#9A9A9A" />
       <path d="M10 0C15.523 0 20 4.1045 20 9.16798C20 14.2315 15.523 18.336 10 18.336C4.477 18.336 0 14.2315 0 9.16798C0 4.1045 4.477 0 10 0ZM10 1.8336C7.87827 1.8336 5.84344 2.60632 4.34315 3.98179C2.84285 5.35725 2 7.22278 2 9.16798C2 11.1132 2.84285 12.9787 4.34315 14.3542C5.84344 15.7296 7.87827 16.5024 10 16.5024C12.1217 16.5024 14.1566 15.7296 15.6569 14.3542C17.1571 12.9787 18 11.1132 18 9.16798C18 7.22278 17.1571 5.35725 15.6569 3.98179C14.1566 2.60632 12.1217 1.8336 10 1.8336ZM10 3.66719C10.2449 3.66722 10.4813 3.74966 10.6644 3.89888C10.8474 4.0481 10.9643 4.25371 10.993 4.47672L11 4.58399V8.78842L13.707 11.2702C13.8863 11.4352 13.9905 11.6566 13.9982 11.8894C14.006 12.1222 13.9168 12.349 13.7488 12.5237C13.5807 12.6984 13.3464 12.8079 13.0935 12.83C12.8406 12.8521 12.588 12.7851 12.387 12.6426L12.293 12.5665L9.293 9.81615C9.13758 9.67354 9.03776 9.48794 9.009 9.28808L9 9.16798V4.58399C9 4.34084 9.10536 4.10765 9.29289 3.93571C9.48043 3.76378 9.73478 3.66719 10 3.66719Z" fill="#9A9A9A" />
     </svg>
