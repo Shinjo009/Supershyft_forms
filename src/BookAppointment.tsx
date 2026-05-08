@@ -1782,7 +1782,7 @@ function ScheduleStep({
                 aria-pressed={selected}
                 className={[
                   isMobile
-                    ? 'flex h-10 w-full items-center justify-center rounded-full border text-[14px] transition'
+                    ? 'flex h-10 w-full items-center justify-center rounded-full border text-[13px] transition'
                     : 'flex h-[44px] w-full items-center justify-center rounded-[6px] border text-sm transition',
                   selected ? selectedDateClass : idleDateClass,
                 ].join(' ')}
