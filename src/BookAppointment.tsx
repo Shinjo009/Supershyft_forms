@@ -313,7 +313,6 @@ export default function BookAppointment() {
     goToStep(1)
   }
 
-  const headerTitle = 'Book Appointment'
   const desktopHeroTitle = 'Welcome to the world of Bio AI technology.'
   const desktopHeroSubtitle =
     'Book your Bio-marker sample collection & schedule your personalised doctor consultation.'
@@ -337,7 +336,7 @@ export default function BookAppointment() {
         <img
           src={BRAND_LOGO_SRC}
           alt="SuperShyft"
-          className="pointer-events-none fixed left-1/2 top-[11.7vh] z-30 h-[4.4vw] w-[4.4vw] min-h-[45px] min-w-[45px] -translate-x-1/2 -translate-y-1/2 object-contain"
+          className="pointer-events-none fixed left-1/2 top-[11.7vh] z-30 h-[clamp(45px,4.4vw,64px)] w-[clamp(45px,4.4vw,64px)] -translate-x-1/2 -translate-y-1/2 object-contain"
         />
       )}
       <div
@@ -372,7 +371,7 @@ export default function BookAppointment() {
                   <img
                     src={BRAND_LOGO_SRC}
                     alt="SuperShyft"
-                    className="h-10 w-auto object-contain"
+                    className="h-12 w-auto object-contain"
                   />
                 </div>
                 {showBack ? (
@@ -387,9 +386,14 @@ export default function BookAppointment() {
                 ) : (
                   <span aria-hidden />
                 )}
-                <h1 className="text-center font-sans text-[18px] font-semibold leading-normal text-white">
-                  {headerTitle}
-                </h1>
+                <div className="flex max-w-[320px] flex-col items-center text-center">
+                  <h1 className="font-sans text-[17px] font-semibold leading-[1.18] text-white">
+                    {desktopHeroTitle}
+                  </h1>
+                  <p className="mt-2 px-2 text-[12px] font-medium leading-[1.22] text-[#D1DEDA]">
+                    {desktopHeroSubtitle}
+                  </p>
+                </div>
                 <span aria-hidden />
               </>
             ) : (
@@ -408,7 +412,7 @@ export default function BookAppointment() {
                   <h1 className="text-[18px] font-semibold leading-[1.2] text-white">
                     {desktopHeroTitle}
                   </h1>
-                  <p className="mt-1 whitespace-nowrap text-[16px] font-medium leading-[1.2] text-[#D1DEDA]">
+                  <p className="mt-1 text-[14px] font-medium leading-[1.25] text-[#D1DEDA] lg:text-[16px]">
                     {desktopHeroSubtitle}
                   </p>
                 </div>
@@ -423,7 +427,7 @@ export default function BookAppointment() {
                   ? 'mt-5 mb-8 shrink-0 px-5'
                   : isMobile
                     ? 'mt-6 mb-8 shrink-0 px-5'
-                    : 'mb-8 px-1 lg:mx-auto lg:w-[600px] lg:px-0'
+                    : 'mb-8 px-1 lg:mx-auto lg:w-full lg:max-w-[600px] lg:px-0'
               }
             >
               <Stepper
@@ -1525,10 +1529,8 @@ function SummaryItem({
 }
 
 const TIME_SLOTS = [
-  '06:00 AM', '06:30 AM', '07:00 AM', '07:30 AM', '08:00 AM',
-  '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
-  '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM',
-  '01:30 PM',
+  '06:00 AM', '07:00 AM', '08:00 AM', '09:00 AM',
+  '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM',
 ] as const
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const

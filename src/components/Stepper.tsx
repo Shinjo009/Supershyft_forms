@@ -34,7 +34,7 @@ export function Stepper({ current, compact = false, maxReachable, onStepClick }:
       role="navigation"
       aria-label={`Form progress, step ${stepForA11y} of 3: ${STEPS[stepForA11y - 1]}`}
     >
-      <div className={compact ? 'mx-auto w-full max-w-[360px]' : 'mx-auto w-[600px]'}>
+      <div className={compact ? 'mx-auto w-full max-w-[360px]' : 'mx-auto w-full max-w-[600px]'}>
         <div className="relative">
           <div className="pointer-events-none absolute left-[36px] right-[36px] top-[15px] h-px bg-[#C5D2CF]/55" />
           <div
