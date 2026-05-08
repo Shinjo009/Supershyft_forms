@@ -1676,13 +1676,14 @@ function ScheduleStep({
 }) {
   const dates = useMemo(() => getMayDates(), [])
   const timeSlots = [
-    '06:00 AM - 07:00 AM',
-    '07:00 AM - 08:00 AM',
-    '08:00 AM - 09:00 AM',
-    '09:00 AM - 10:00 AM',
-    '10:00 AM - 11:00 AM',
-    '11:00 AM - 12:00 PM',
-    '12:00 PM - 01:00 PM',
+    '06:00 AM',
+    '07:00 AM',
+    '08:00 AM',
+    '09:00 AM',
+    '10:00 AM',
+    '11:00 AM',
+    '12:00 PM',
+    '01:00 PM',
   ]
 
   const selectedDateClass =
