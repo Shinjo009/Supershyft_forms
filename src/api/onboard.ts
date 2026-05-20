@@ -36,6 +36,13 @@ function firstNonEmpty(...values: Array<string | undefined>): string {
   return ''
 }
 
+function engagementCodeForGender(gender: string): string {
+  const normalized = gender.trim().toLowerCase()
+  if (normalized === 'male') return 'CBJP0626'
+  if (normalized === 'female') return 'CBJF0626'
+  throw new Error('Engagement code requires gender to be male or female.')
+}
+
 function parseValidationMessage(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null
   const response = data as ValidationErrorResponse
@@ -63,7 +70,7 @@ export async function onboardUserForEngagement(
     import.meta.env.VITE_ENGAGEMENT_CODE,
     import.meta.env.VITE_CBTW_ENGAGEMENT_CODE,
     import.meta.env.ENGAGEMENT_CODE,
-    'CBMU0626',
+    engagementCodeForGender(payload.gender),
   )
 
   if (!baseUrl) {
