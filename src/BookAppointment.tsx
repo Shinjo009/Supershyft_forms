@@ -1586,7 +1586,7 @@ function getOrdinalDay(day: number): string {
 function getMayDates(): UpcomingDate[] {
   const pad = (n: number) => String(n).padStart(2, '0')
   const year = new Date().getFullYear()
-  return [5, 6].map((dayOfMonth) => {
+  return [26].map((dayOfMonth) => {
     const d = new Date(year, 4, dayOfMonth)
     return {
       iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
