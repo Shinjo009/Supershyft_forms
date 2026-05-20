@@ -46,7 +46,8 @@ const logClientError = (message: string) => {
   }
 }
 const TEST_EMPLOYEE_ID = '0000IN000'
-const BOOKED_EMPLOYEE_IDS_STORAGE_KEY = 'bookedEmployeeIds'
+/** Celebal-only; do not share key with CBTW or other company forms on the same domain. */
+const BOOKED_EMPLOYEE_IDS_STORAGE_KEY = 'celebalBookedEmployeeIds'
 const ALLOWED_EMPLOYEE_IDS = new Set([
   TEST_EMPLOYEE_ID,
   '0000IN0210', '0000IN0221', '0000IN0224', '0000IN0227', '0000IN0228', '0000IN0229',
