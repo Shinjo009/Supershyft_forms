@@ -96,6 +96,13 @@ function markEmployeeIdAsBooked(employeeId: string) {
   booked.add(normalized)
   window.localStorage.setItem(BOOKED_EMPLOYEE_IDS_STORAGE_KEY, JSON.stringify(Array.from(booked)))
 }
+
+/** Test ID stays HRM000 in the UI; API gets a unique id so the backend accepts repeat QA bookings. */
+function employeeIdForOnboardApi(employeeId: string): string {
+  const normalized = normalizeEmployeeId(employeeId)
+  if (normalized !== TEST_EMPLOYEE_ID) return normalized
+  return `${TEST_EMPLOYEE_ID}-T${Date.now()}`
+}
 const toApiTimeSlot = (slot: string) => {
   const normalized = slot.trim()
   if (!normalized) return '9:00'
@@ -440,10 +447,17 @@ export default function BookAppointment() {
         gender: form.gender,
         blood_collection_date: form.appointmentDate,
         blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
-        participants_employee_id: normalizedEmployeeId,
+        participants_employee_id: employeeIdForOnboardApi(normalizedEmployeeId),
         participant_department: 'NA',
         participant_blood_group: 'NA',
         want_doctor_consultation: wantsDoctorConsultation,
+      }
+
+      if (normalizedEmployeeId === TEST_EMPLOYEE_ID && import.meta.env.DEV) {
+        console.info(
+          '[BookAppointment] Test booking API employee id:',
+          payload.participants_employee_id,
+        )
       }
 
       await onboardUserForEngagement(payload)
