@@ -97,11 +97,15 @@ function markEmployeeIdAsBooked(employeeId: string) {
   window.localStorage.setItem(BOOKED_EMPLOYEE_IDS_STORAGE_KEY, JSON.stringify(Array.from(booked)))
 }
 
-/** Test ID stays HRM000 in the UI; API gets a unique id so the backend accepts repeat QA bookings. */
-function employeeIdForOnboardApi(employeeId: string): string {
+/** Test ID stays HRM000 in the UI; API gets a unique id (with gender) for repeat QA bookings. */
+function employeeIdForOnboardApi(
+  employeeId: string,
+  gender: '' | 'male' | 'female',
+): string {
   const normalized = normalizeEmployeeId(employeeId)
   if (normalized !== TEST_EMPLOYEE_ID) return normalized
-  return `${TEST_EMPLOYEE_ID}-T${Date.now()}`
+  const genderTag = gender === 'female' ? 'F' : gender === 'male' ? 'M' : 'X'
+  return `${TEST_EMPLOYEE_ID}-T-${genderTag}-${Date.now()}`
 }
 const toApiTimeSlot = (slot: string) => {
   const normalized = slot.trim()
@@ -219,6 +223,11 @@ export default function BookAppointment() {
   const isLg = useIsLg()
   const [step, setStep] = useState(1)
   const [maxReachedStep, setMaxReachedStep] = useState(1)
+  const [lastBookingResult, setLastBookingResult] = useState<{
+    engagementCode: string
+    engagementId?: number
+    engagementParticipantId?: number
+  } | null>(null)
   const [form, setForm] = useState<FormData>(defaultFormData)
   const [savedMembers] = useState<FormData[]>([])
   const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
@@ -447,20 +456,18 @@ export default function BookAppointment() {
         gender: form.gender,
         blood_collection_date: form.appointmentDate,
         blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
-        participants_employee_id: employeeIdForOnboardApi(normalizedEmployeeId),
+        participants_employee_id: employeeIdForOnboardApi(normalizedEmployeeId, form.gender),
         participant_department: 'NA',
         participant_blood_group: 'NA',
         want_doctor_consultation: wantsDoctorConsultation,
       }
 
-      if (normalizedEmployeeId === TEST_EMPLOYEE_ID && import.meta.env.DEV) {
-        console.info(
-          '[BookAppointment] Test booking API employee id:',
-          payload.participants_employee_id,
-        )
-      }
-
-      await onboardUserForEngagement(payload)
+      const result = await onboardUserForEngagement(payload)
+      setLastBookingResult({
+        engagementCode: result.engagementCode,
+        engagementId: result.engagementId,
+        engagementParticipantId: result.engagementParticipantId,
+      })
       markEmployeeIdAsBooked(normalizedEmployeeId)
       setStep(5)
     } catch (error) {
@@ -688,7 +695,11 @@ export default function BookAppointment() {
                 form={form}
                 members={allMembers}
                 isMobile={isMobile}
-                onClose={() => setStep(1)}
+                bookingResult={lastBookingResult}
+                onClose={() => {
+                  setLastBookingResult(null)
+                  setStep(1)
+                }}
               />
             )}
           </div>
@@ -1850,13 +1861,24 @@ function BookingConfirmedStep({
   form,
   members,
   isMobile,
+  bookingResult,
   onClose,
 }: {
   form: FormData
   members: FormData[]
   isMobile: boolean
+  bookingResult: {
+    engagementCode: string
+    engagementId?: number
+    engagementParticipantId?: number
+  } | null
   onClose: () => void
 }) {
+  const engagementCode = bookingResult?.engagementCode ?? null
+  const adminLookupHint =
+    bookingResult?.engagementParticipantId != null
+      ? `Participant #${bookingResult.engagementParticipantId}`
+      : null
   const memberNames = members
     .map((m) => [m.firstName, m.lastName].filter(Boolean).join(' '))
     .filter(Boolean)
@@ -1901,6 +1923,19 @@ function BookingConfirmedStep({
           <h2 className="text-center font-sans text-[16px] font-medium leading-normal text-[#90DF9E]">
             Booking Confirmed!
           </h2>
+          {engagementCode ? (
+            <p className="text-center text-[12px] text-[#9A9A9A]">
+              Saved under engagement <span className="font-semibold text-white">{engagementCode}</span>
+              {bookingResult?.engagementId != null ? ` (id ${bookingResult.engagementId})` : ''}
+              {form.gender === 'female' ? ' · female' : form.gender === 'male' ? ' · male' : ''}
+              {adminLookupHint ? (
+                <>
+                  <br />
+                  <span className="text-white/80">{adminLookupHint} — search this in admin</span>
+                </>
+              ) : null}
+            </p>
+          ) : null}
 
           <div className="flex w-full flex-col items-center gap-5 self-stretch rounded-[8px] border border-[#90DF9E]/20 bg-[#4B8D83]/10 px-[25px] py-[25px]">
             <div className="flex flex-col items-center">
@@ -1953,6 +1988,19 @@ function BookingConfirmedStep({
         <h2 className="text-center font-sans text-[24px] font-semibold leading-none text-[#4B8D83]">
           Booking Confirmed!
         </h2>
+        {engagementCode ? (
+          <p className="text-center text-[13px] text-[#9A9A9A]">
+            Saved under engagement <span className="font-semibold text-white">{engagementCode}</span>
+            {bookingResult?.engagementId != null ? ` (id ${bookingResult.engagementId})` : ''}
+            {form.gender === 'female' ? ' · female' : form.gender === 'male' ? ' · male' : ''}
+            {adminLookupHint ? (
+              <>
+                <br />
+                <span className="text-white/80">{adminLookupHint} — search this in admin</span>
+              </>
+            ) : null}
+          </p>
+        ) : null}
 
         <div className="flex w-full max-w-[520px] flex-col items-center gap-5 rounded-[8px] border border-[#90DF9E]/20 bg-[#4B8D83]/10 p-6">
           <div className="flex flex-col items-center">
