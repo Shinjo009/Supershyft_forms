@@ -142,7 +142,16 @@ function parseValidationMessage(data: unknown): string | null {
   return messages.length > 0 ? messages.join(', ') : null
 }
 
-function parseOnboardSuccess(data: unknown, expectedEngagementCode: string): OnboardResult {
+function isTestParticipantEmployeeId(employeeId: string): boolean {
+  const normalized = employeeId.trim().toUpperCase()
+  return normalized === 'HRM000' || normalized.startsWith('HRM000-T-')
+}
+
+function parseOnboardSuccess(
+  data: unknown,
+  expectedEngagementCode: string,
+  participantsEmployeeId: string,
+): OnboardResult {
   const expected = expectedEngagementCode.trim().toUpperCase()
 
   if (!data || typeof data !== 'object') {
@@ -159,7 +168,7 @@ function parseOnboardSuccess(data: unknown, expectedEngagementCode: string): Onb
     )
   }
 
-  if (row?.created === false) {
+  if (row?.created === false && !isTestParticipantEmployeeId(participantsEmployeeId)) {
     throw new Error(
       `Booking was not created for engagement ${expectedEngagementCode}. The employee may already exist in this engagement.`,
     )
@@ -252,7 +261,7 @@ export async function onboardUserForEngagement(
     return { message: data.trim() || 'Booking confirmed', engagementCode }
   }
 
-  const result = parseOnboardSuccess(data, engagementCode)
+  const result = parseOnboardSuccess(data, engagementCode, apiPayload.participants_employee_id)
   console.info('[onboard] Celebal booking saved', result)
   return result
 }

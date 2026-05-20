@@ -45,7 +45,7 @@ const logClientError = (message: string) => {
     window.dispatchEvent(new CustomEvent(BOOK_APPOINTMENT_ERROR_EVENT, { detail: message }))
   }
 }
-/** Reusable for QA; not blocked by one-booking-per-browser rule. */
+/** QA only: unlimited bookings (no localStorage cap); API uses unique employee/email/phone per submit. */
 const TEST_EMPLOYEE_ID = 'HRM000'
 /** Celebal-only; do not share key with CBTW or other company forms on the same domain. */
 const BOOKED_EMPLOYEE_IDS_STORAGE_KEY = 'celebalBookedEmployeeIds'
@@ -90,22 +90,36 @@ function getBookedEmployeeIds(): Set<string> {
 }
 
 function markEmployeeIdAsBooked(employeeId: string) {
+  if (isTestEmployeeId(employeeId) || typeof window === 'undefined') return
   const normalized = normalizeEmployeeId(employeeId)
-  if (normalized === TEST_EMPLOYEE_ID || typeof window === 'undefined') return
   const booked = getBookedEmployeeIds()
   booked.add(normalized)
   window.localStorage.setItem(BOOKED_EMPLOYEE_IDS_STORAGE_KEY, JSON.stringify(Array.from(booked)))
 }
 
-/** Test ID stays HRM000 in the UI; API gets a unique id (with gender) for repeat QA bookings. */
+function isTestEmployeeId(employeeId: string): boolean {
+  return normalizeEmployeeId(employeeId) === TEST_EMPLOYEE_ID
+}
+
+/** Test ID stays HRM000 in the UI; API gets unique values so repeat QA bookings always register. */
 function employeeIdForOnboardApi(
   employeeId: string,
   gender: '' | 'male' | 'female',
 ): string {
   const normalized = normalizeEmployeeId(employeeId)
-  if (normalized !== TEST_EMPLOYEE_ID) return normalized
+  if (!isTestEmployeeId(normalized)) return normalized
   const genderTag = gender === 'female' ? 'F' : gender === 'male' ? 'M' : 'X'
   return `${TEST_EMPLOYEE_ID}-T-${genderTag}-${Date.now()}`
+}
+
+function contactForOnboardApi(employeeId: string, email: string, phone: string) {
+  if (!isTestEmployeeId(employeeId)) return { email, phone }
+  const tag = String(Date.now())
+  const at = email.indexOf('@')
+  const apiEmail =
+    at > 0 ? `${email.slice(0, at)}+t${tag}${email.slice(at)}` : `${email}+t${tag}@celebal-test.local`
+  const apiPhone = `9${tag.slice(-9)}`
+  return { email: apiEmail, phone: apiPhone }
 }
 const toApiTimeSlot = (slot: string) => {
   const normalized = slot.trim()
@@ -446,13 +460,14 @@ export default function BookAppointment() {
 
     try {
       const wantsDoctorConsultation = form.personalizedDoctorConsultation === 'yes'
+      const apiContact = contactForOnboardApi(normalizedEmployeeId, trimmedEmail, trimmedPhone)
 
       const payload: OnboardUserForEngagementPayload = {
         age: safeAge,
         first_name: form.firstName,
         last_name: form.lastName,
-        email: trimmedEmail,
-        phone: trimmedPhone,
+        email: apiContact.email,
+        phone: apiContact.phone,
         gender: form.gender,
         blood_collection_date: form.appointmentDate,
         blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
