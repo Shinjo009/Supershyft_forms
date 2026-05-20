@@ -45,9 +45,11 @@ const logClientError = (message: string) => {
     window.dispatchEvent(new CustomEvent(BOOK_APPOINTMENT_ERROR_EVENT, { detail: message }))
   }
 }
+/** Reusable for QA; not blocked by one-booking-per-browser rule. */
 const TEST_EMPLOYEE_ID = 'HRM000'
 /** Celebal-only; do not share key with CBTW or other company forms on the same domain. */
 const BOOKED_EMPLOYEE_IDS_STORAGE_KEY = 'celebalBookedEmployeeIds'
+/** 130 Celebal employee IDs plus {@link TEST_EMPLOYEE_ID}. */
 const ALLOWED_EMPLOYEE_IDS = new Set([
   TEST_EMPLOYEE_ID,
   'HRM4196', 'HRM4039', 'HRM4032', 'HRM3803', 'HRM3666', 'HRM3598',
