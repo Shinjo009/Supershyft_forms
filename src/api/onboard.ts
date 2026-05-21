@@ -5,6 +5,11 @@ export type OnboardUserForEngagementPayload = {
   email: string
   phone: string
   gender: string
+  address: string
+  pincode: string
+  city: string
+  state: string
+  country: string
   blood_collection_date: string
   blood_collection_time_slot: string
   participants_employee_id: string

@@ -121,6 +121,13 @@ function contactForOnboardApi(employeeId: string, email: string, phone: string) 
   const apiPhone = `9${tag.slice(-9)}`
   return { email: apiEmail, phone: apiPhone }
 }
+
+function formatAddressForApi(form: FormData): string {
+  return [form.houseNumber, form.street, form.landmark]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(', ')
+}
 const toApiTimeSlot = (slot: string) => {
   const normalized = slot.trim()
   if (!normalized) return '9:00'
@@ -455,6 +462,21 @@ export default function BookAppointment() {
       logClientError('Please select a schedule date.')
       return
     }
+    const apiAddress = formatAddressForApi(form)
+    const apiPincode = form.pincode.trim()
+    const apiCity = form.city.trim()
+    if (!apiAddress) {
+      logClientError('House No./ Building is required.')
+      return
+    }
+    if (!apiPincode || !/^\d{6}$/.test(apiPincode)) {
+      logClientError('Pincode must be 6 digits.')
+      return
+    }
+    if (!apiCity) {
+      logClientError('City is required.')
+      return
+    }
 
     setIsSubmittingBooking(true)
 
@@ -469,6 +491,11 @@ export default function BookAppointment() {
         email: apiContact.email,
         phone: apiContact.phone,
         gender: form.gender,
+        address: apiAddress,
+        pincode: apiPincode,
+        city: apiCity,
+        state: 'Maharashtra',
+        country: 'India',
         blood_collection_date: form.appointmentDate,
         blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
         participants_employee_id: employeeIdForOnboardApi(normalizedEmployeeId, form.gender),
