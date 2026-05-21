@@ -302,6 +302,20 @@ function parseOnboardSuccess(
   }
 
   if (row?.created === false && !isTestParticipantEmployeeId(participantsEmployeeId)) {
+    const savedParticipantId = row.engagement_participant_id
+    const savedUserId = row.user_id
+    if (savedParticipantId != null || (savedUserId != null && savedUserId > 0)) {
+      console.info('[onboard] created=false but booking saved; continuing', {
+        engagement_participant_id: savedParticipantId,
+        user_id: savedUserId,
+      })
+      return {
+        message: 'Booking confirmed',
+        engagementCode: row?.engagement_code?.trim() || expectedEngagementCode,
+        engagementId: row.engagement_id,
+        engagementParticipantId: savedParticipantId,
+      }
+    }
     throw new Error(
       `Booking was not created for engagement ${expectedEngagementCode}. This phone number or email may already be registered for this program.`,
     )
