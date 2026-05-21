@@ -243,15 +243,6 @@ export function contactForOnboardBooking(
   }
 }
 
-export function isDuplicateRegistrationError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  const message = error.message.toLowerCase()
-  return (
-    message.includes('already be registered') ||
-    message.includes('was not created for engagement')
-  )
-}
-
 function applyContactToPayload(
   payload: OnboardUserForEngagementPayload,
   contact: OnboardBookingContact,
@@ -266,8 +257,8 @@ function applyContactToPayload(
 }
 
 /**
- * Uses real phone/email when possible. If that contact is already in the program,
- * retries once with uniquified phone/email (same form name) so booking can continue.
+ * One API call per Proceed to Payment.
+ * First booking (browser): real phone/email. Later bookings with same contact: uniquified.
  */
 export async function submitOnboardBooking(
   payload: OnboardUserForEngagementPayload,
@@ -279,32 +270,14 @@ export async function submitOnboardBooking(
     uniquifyContact: boolean
   },
 ): Promise<OnboardResult> {
-  const primary = contactForOnboardBooking(
+  const contact = contactForOnboardBooking(
     bookingContact.email,
     bookingContact.phone,
     bookingContact.appointmentDate,
     bookingContact.employeeId,
     bookingContact.uniquifyContact,
   )
-
-  try {
-    return await onboardUserForEngagement(applyContactToPayload(payload, primary))
-  } catch (error) {
-    if (!isDuplicateRegistrationError(error) || bookingContact.uniquifyContact) {
-      throw error
-    }
-    console.info(
-      '[onboard] Phone/email already in program; saving booking with alternate API contact',
-    )
-    const fallback = contactForOnboardBooking(
-      bookingContact.email,
-      bookingContact.phone,
-      bookingContact.appointmentDate,
-      bookingContact.employeeId,
-      true,
-    )
-    return await onboardUserForEngagement(applyContactToPayload(payload, fallback))
-  }
+  return onboardUserForEngagement(applyContactToPayload(payload, contact))
 }
 
 function parseOnboardSuccess(
