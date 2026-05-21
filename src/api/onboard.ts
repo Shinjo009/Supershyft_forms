@@ -188,7 +188,6 @@ function participantsEmployeeIdFromInput(
 }
 
 export type OnboardBookingContact = {
-  /** Unique per submit so the same user can book again (backend dedupes on phone/email). */
   email: string
   phone: string
   participantsEmployeeId: string
@@ -196,27 +195,28 @@ export type OnboardBookingContact = {
   participantDepartment: string
 }
 
-/**
- * Phone/email are uniquified per booking so repeat submissions with the same details work.
- * participant_department keeps the exact employee id; participants_employee_id embeds
- * employee id + real phone digits + a unique suffix for admin lookup.
- */
 export function contactForOnboardBooking(
   email: string,
   phone: string,
   appointmentDate?: string,
   employeeId?: string,
+  uniquifyContact = false,
 ): OnboardBookingContact {
-  const tag = String(Date.now())
   const trimmedPhone = phone.trim()
   const trimmedEmail = email.trim()
   const trimmedEmployeeId = employeeId?.trim() ?? ''
-  const at = trimmedEmail.indexOf('@')
-  const apiEmail =
-    at > 0
-      ? `${trimmedEmail.slice(0, at)}+ss${tag}${trimmedEmail.slice(at)}`
-      : `${trimmedEmail}+ss${tag}@booking.local`
-  const apiPhone = `8${tag.slice(-9)}`
+
+  let apiEmail = trimmedEmail
+  let apiPhone = trimmedPhone
+  if (uniquifyContact) {
+    const tag = String(Date.now())
+    const at = trimmedEmail.indexOf('@')
+    apiEmail =
+      at > 0
+        ? `${trimmedEmail.slice(0, at)}+ss${tag}${trimmedEmail.slice(at)}`
+        : `${trimmedEmail}+ss${tag}@booking.local`
+    apiPhone = `8${tag.slice(-9)}`
+  }
 
   if (trimmedEmployeeId) {
     return {
@@ -236,6 +236,62 @@ export function contactForOnboardBooking(
     phone: apiPhone,
     participantsEmployeeId: participantsEmployeeIdForBooking(trimmedPhone, appointmentDate),
     participantDepartment: 'NA',
+  }
+}
+
+function isDuplicateRegistrationError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  const message = error.message.toLowerCase()
+  return (
+    message.includes('already be registered') ||
+    message.includes('was not created for engagement')
+  )
+}
+
+function mergeContactIntoPayload(
+  payload: OnboardUserForEngagementPayload,
+  contact: OnboardBookingContact,
+): OnboardUserForEngagementPayload {
+  return {
+    ...payload,
+    email: contact.email,
+    phone: contact.phone,
+    participants_employee_id: contact.participantsEmployeeId,
+    participant_department: contact.participantDepartment,
+  }
+}
+
+/** Sends real phone/email first; retries with uniquified contact only if the API rejects a duplicate. */
+export async function onboardUserForEngagementWithRepeatSupport(
+  payload: OnboardUserForEngagementPayload,
+  bookingContact: {
+    email: string
+    phone: string
+    appointmentDate?: string
+    employeeId?: string
+  },
+): Promise<OnboardResult> {
+  const primary = contactForOnboardBooking(
+    bookingContact.email,
+    bookingContact.phone,
+    bookingContact.appointmentDate,
+    bookingContact.employeeId,
+    false,
+  )
+
+  try {
+    return await onboardUserForEngagement(mergeContactIntoPayload(payload, primary))
+  } catch (error) {
+    if (!isDuplicateRegistrationError(error)) throw error
+    console.info('[onboard] Duplicate contact detected; retrying with uniquified phone/email')
+    const fallback = contactForOnboardBooking(
+      bookingContact.email,
+      bookingContact.phone,
+      bookingContact.appointmentDate,
+      bookingContact.employeeId,
+      true,
+    )
+    return await onboardUserForEngagement(mergeContactIntoPayload(payload, fallback))
   }
 }
 
