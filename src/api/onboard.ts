@@ -179,9 +179,7 @@ function participantsEmployeeIdFromInput(
 }
 
 export type OnboardBookingContact = {
-  /** API-only email (unique per booking); form still shows the user's email. */
   email: string
-  /** API-only phone (unique per booking); form still shows the user's phone. */
   phone: string
   participantsEmployeeId: string
   /** Exact employee id for backend when provided; otherwise "NA". */
@@ -189,9 +187,8 @@ export type OnboardBookingContact = {
 }
 
 /**
- * Phone/email are uniquified per booking so repeat submissions work.
- * When the user enters an employee id, it is stored on the backend via
- * participant_department and a participants_employee_id that keeps that id as the prefix.
+ * Sends the user's real phone and email so bookings appear in the admin backend.
+ * participants_employee_id stays unique per submit so repeat bookings are allowed.
  */
 export function contactForOnboardBooking(
   email: string,
@@ -199,26 +196,22 @@ export function contactForOnboardBooking(
   appointmentDate?: string,
   employeeId?: string,
 ): OnboardBookingContact {
-  const tag = String(Date.now())
   const trimmedPhone = phone.trim()
+  const trimmedEmail = email.trim()
   const trimmedEmployeeId = employeeId?.trim() ?? ''
-  const at = email.indexOf('@')
-  const apiEmail =
-    at > 0 ? `${email.slice(0, at)}+ss${tag}${email.slice(at)}` : `${email}+ss${tag}@booking.local`
-  const apiPhone = `8${tag.slice(-9)}`
 
   if (trimmedEmployeeId) {
     return {
-      email: apiEmail,
-      phone: apiPhone,
+      email: trimmedEmail,
+      phone: trimmedPhone,
       participantsEmployeeId: participantsEmployeeIdFromInput(trimmedEmployeeId, appointmentDate),
       participantDepartment: normalizeEmployeeId(trimmedEmployeeId),
     }
   }
 
   return {
-    email: apiEmail,
-    phone: apiPhone,
+    email: trimmedEmail,
+    phone: trimmedPhone,
     participantsEmployeeId: participantsEmployeeIdForBooking(trimmedPhone, appointmentDate),
     participantDepartment: 'NA',
   }

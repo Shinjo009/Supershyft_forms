@@ -26,13 +26,18 @@ import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
 import {
   clearBookingDraft,
+  clearOnboardInFlight,
+  clearPendingOnboardAfterPayment,
   clearPaymentReturnHandled,
   clearPaymentReturnQueryFromUrl,
+  hasPendingOnboardAfterPayment,
   loadBookingDraft,
   markPaymentReturnHandled,
   parsePaymentReturnFromUrl,
   redirectToRazorpayPayment,
+  setPendingOnboardAfterPayment,
   shouldHandlePaymentReturn,
+  tryBeginOnboardInFlight,
 } from './lib/bookingPayment'
 import {
   clearBookingSession,
@@ -197,7 +202,9 @@ function readInitialWizardState(): { form: FormData; step: number; maxReachedSte
     if (paymentStatus === 'failed') {
       return { form, step: 6, maxReachedStep: 6 }
     }
-    return { form, step: 4, maxReachedStep: 6 }
+    if (paymentStatus === 'success' || hasPendingOnboardAfterPayment()) {
+      return { form, step: 4, maxReachedStep: 6 }
+    }
   }
 
   let step = parseStepFromHash() ?? restored?.step ?? 1
@@ -333,48 +340,62 @@ export default function BookAppointment() {
     if (typeof window === 'undefined' || !shouldHandlePaymentReturn()) return
 
     const paymentStatus = parsePaymentReturnFromUrl()
-    if (!paymentStatus) return
+    const pendingOnboard = hasPendingOnboardAfterPayment()
 
-    markPaymentReturnHandled()
-    clearPaymentReturnQueryFromUrl()
+    if (paymentStatus === 'success') {
+      setPendingOnboardAfterPayment()
+      clearPaymentReturnQueryFromUrl()
+    }
+
+    if (paymentStatus === 'failed') {
+      markPaymentReturnHandled()
+      clearPendingOnboardAfterPayment()
+      clearPaymentReturnQueryFromUrl()
+      const draft = loadBookingDraft()
+      const session = loadBookingSession()
+      const restoredForm = draft?.form ?? session?.form
+      if (restoredForm) setForm(restoredForm)
+      goToStep(6, { replace: true })
+      return
+    }
+
+    if (!paymentStatus && !pendingOnboard) return
+    if (!tryBeginOnboardInFlight()) return
 
     const draft = loadBookingDraft()
     const session = loadBookingSession()
     const restoredForm = draft?.form ?? session?.form
     if (restoredForm) setForm(restoredForm)
 
-    if (paymentStatus === 'failed') {
-      goToStep(6, { replace: true })
-      return
-    }
-
     const formForBooking = restoredForm
     if (!formForBooking) {
+      clearOnboardInFlight()
+      clearPendingOnboardAfterPayment()
       logClientError('Booking details were not found after payment. Please try again from Confirm Details.')
       goToStep(4, { replace: true })
       return
     }
 
-    let cancelled = false
     setIsSubmittingBooking(true)
 
     completeBookingAfterPayment(formForBooking)
       .then(() => {
-        if (!cancelled) clearBookingDraft()
+        clearPendingOnboardAfterPayment()
+        markPaymentReturnHandled()
+        clearBookingDraft()
       })
       .catch((error) => {
-        if (!cancelled) {
-          logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
-          goToStep(4, { replace: true })
-        }
+        logClientError(
+          error instanceof Error
+            ? error.message
+            : 'Payment received but booking could not be saved. Refresh this page to retry.',
+        )
+        goToStep(4, { replace: true })
       })
       .finally(() => {
-        if (!cancelled) setIsSubmittingBooking(false)
+        clearOnboardInFlight()
+        setIsSubmittingBooking(false)
       })
-
-    return () => {
-      cancelled = true
-    }
   }, [goToStep, completeBookingAfterPayment])
 
   const primaryMember = savedMembers[0]
