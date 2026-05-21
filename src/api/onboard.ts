@@ -196,26 +196,31 @@ export type OnboardBookingContact = {
 }
 
 /**
- * Uniquifies API phone/email per submit so another person (or re-booking) with the same
- * contact details still creates a new participant with the entered name.
- * Real phone digits stay in participants_employee_id for admin lookup.
+ * First booking with a phone+email uses real contact for the admin UI.
+ * Repeat bookings with the same contact in this browser pass uniquifyContact=true.
  */
 export function contactForOnboardBooking(
   email: string,
   phone: string,
   appointmentDate?: string,
   employeeId?: string,
+  uniquifyContact = false,
 ): OnboardBookingContact {
-  const tag = String(Date.now())
   const trimmedPhone = phone.trim()
   const trimmedEmail = email.trim()
   const trimmedEmployeeId = employeeId?.trim() ?? ''
-  const at = trimmedEmail.indexOf('@')
-  const apiEmail =
-    at > 0
-      ? `${trimmedEmail.slice(0, at)}+ss${tag}${trimmedEmail.slice(at)}`
-      : `${trimmedEmail}+ss${tag}@booking.local`
-  const apiPhone = `8${tag.slice(-9)}`
+
+  let apiEmail = trimmedEmail
+  let apiPhone = trimmedPhone
+  if (uniquifyContact) {
+    const tag = String(Date.now())
+    const at = trimmedEmail.indexOf('@')
+    apiEmail =
+      at > 0
+        ? `${trimmedEmail.slice(0, at)}+ss${tag}${trimmedEmail.slice(at)}`
+        : `${trimmedEmail}+ss${tag}@booking.local`
+    apiPhone = `8${tag.slice(-9)}`
+  }
 
   if (trimmedEmployeeId) {
     return {

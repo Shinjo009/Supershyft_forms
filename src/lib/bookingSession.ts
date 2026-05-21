@@ -2,6 +2,40 @@ import type { FormData } from '../types'
 import { defaultFormData } from '../types'
 
 const BOOKING_SESSION_KEY = 'supershyft_booking_session'
+const USED_BOOKING_CONTACTS_KEY = 'supershyft_used_booking_contacts'
+
+export function bookingContactKey(phone: string, email: string): string {
+  const digits = phone.replace(/\D/g, '')
+  const normalizedPhone = digits.length >= 10 ? digits.slice(-10) : digits
+  return `${normalizedPhone}|${email.trim().toLowerCase()}`
+}
+
+/** True when this phone+email already completed a successful onboard in this browser. */
+export function shouldUniquifyBookingContact(phone: string, email: string): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const raw = window.localStorage.getItem(USED_BOOKING_CONTACTS_KEY)
+    if (!raw) return false
+    const used = JSON.parse(raw) as string[]
+    return Array.isArray(used) && used.includes(bookingContactKey(phone, email))
+  } catch {
+    return false
+  }
+}
+
+export function markBookingContactUsed(phone: string, email: string): void {
+  if (typeof window === 'undefined') return
+  const key = bookingContactKey(phone, email)
+  try {
+    const raw = window.localStorage.getItem(USED_BOOKING_CONTACTS_KEY)
+    const used: string[] = raw ? JSON.parse(raw) : []
+    if (!Array.isArray(used) || used.includes(key)) return
+    used.push(key)
+    window.localStorage.setItem(USED_BOOKING_CONTACTS_KEY, JSON.stringify(used))
+  } catch {
+    window.localStorage.setItem(USED_BOOKING_CONTACTS_KEY, JSON.stringify([key]))
+  }
+}
 
 export type BookingSession = {
   form: FormData

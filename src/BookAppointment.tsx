@@ -41,8 +41,10 @@ import {
 import {
   clearBookingSession,
   loadBookingSession,
+  markBookingContactUsed,
   parseStepFromHash,
   saveBookingSession,
+  shouldUniquifyBookingContact,
   syncHistoryForStep,
 } from './lib/bookingSession'
 import { defaultFormData, type FormData } from './types'
@@ -260,11 +262,13 @@ export default function BookAppointment() {
     const apiAddress = formatAddressForApi(bookingForm)
     const apiPincode = bookingForm.pincode.trim()
     const apiCity = bookingForm.city.trim()
+    const uniquifyContact = shouldUniquifyBookingContact(trimmedPhone, trimmedEmail)
     const apiContact = contactForOnboardBooking(
       trimmedEmail,
       trimmedPhone,
       bookingForm.appointmentDate,
       bookingForm.employeeId,
+      uniquifyContact,
     )
 
     const payload: OnboardUserForEngagementPayload = {
@@ -288,6 +292,7 @@ export default function BookAppointment() {
     }
 
     const result = await onboardUserForEngagement(payload)
+    markBookingContactUsed(trimmedPhone, trimmedEmail)
     const bookingResult: SavedBookingResult = {
       engagementCode: result.engagementCode,
       engagementId: result.engagementId,
