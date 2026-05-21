@@ -17,7 +17,8 @@ import {
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
 import {
-  onboardUserForEngagementWithRepeatSupport,
+  contactForOnboardBooking,
+  onboardUserForEngagement,
   type OnboardUserForEngagementPayload,
 } from './api/onboard'
 import { PageBackdrop } from './components/PageBackdrop'
@@ -228,6 +229,7 @@ export default function BookAppointment() {
   const historyReadyRef = useRef(false)
   const prevStepRef = useRef(initialWizard.step)
   const initialStepRef = useRef(initialWizard.step)
+  const onboardInFlightRef = useRef(false)
   const [savedMembers] = useState<FormData[]>([])
   const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
@@ -258,12 +260,19 @@ export default function BookAppointment() {
     const apiAddress = formatAddressForApi(bookingForm)
     const apiPincode = bookingForm.pincode.trim()
     const apiCity = bookingForm.city.trim()
+    const apiContact = contactForOnboardBooking(
+      trimmedEmail,
+      trimmedPhone,
+      bookingForm.appointmentDate,
+      bookingForm.employeeId,
+    )
+
     const payload: OnboardUserForEngagementPayload = {
       age: safeAge,
       first_name: bookingForm.firstName,
       last_name: bookingForm.lastName,
-      email: trimmedEmail,
-      phone: trimmedPhone,
+      email: apiContact.email,
+      phone: apiContact.phone,
       gender: bookingForm.gender,
       address: apiAddress,
       pincode: apiPincode,
@@ -272,18 +281,13 @@ export default function BookAppointment() {
       country: 'India',
       blood_collection_date: bookingForm.appointmentDate,
       blood_collection_time_slot: toApiTimeSlot(bookingForm.appointmentTime),
-      participants_employee_id: '',
-      participant_department: 'NA',
+      participants_employee_id: apiContact.participantsEmployeeId,
+      participant_department: apiContact.participantDepartment,
       participant_blood_group: 'NA',
       want_doctor_consultation: wantsDoctorConsultation,
     }
 
-    const result = await onboardUserForEngagementWithRepeatSupport(payload, {
-      email: trimmedEmail,
-      phone: trimmedPhone,
-      appointmentDate: bookingForm.appointmentDate,
-      employeeId: bookingForm.employeeId,
-    })
+    const result = await onboardUserForEngagement(payload)
     const bookingResult: SavedBookingResult = {
       engagementCode: result.engagementCode,
       engagementId: result.engagementId,
@@ -478,7 +482,7 @@ export default function BookAppointment() {
   const allMembers = useMemo(() => [...savedMembers, form], [savedMembers, form])
 
   const handleProceedToPayment = async () => {
-    if (isSubmittingBooking) return
+    if (isSubmittingBooking || onboardInFlightRef.current) return
 
     const trimmedPhone = form.phone.trim()
     const trimmedEmail = form.email.trim()
@@ -539,6 +543,7 @@ export default function BookAppointment() {
     }
 
     setIsSubmittingBooking(true)
+    onboardInFlightRef.current = true
 
     try {
       if (import.meta.env.VITE_PAYMENT_TEST_FAIL === 'true') {
@@ -556,6 +561,7 @@ export default function BookAppointment() {
     } catch (error) {
       logClientError(error instanceof Error ? error.message : 'Unable to start payment.')
     } finally {
+      onboardInFlightRef.current = false
       setIsSubmittingBooking(false)
     }
   }

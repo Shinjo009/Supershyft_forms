@@ -195,33 +195,21 @@ export type OnboardBookingContact = {
   participantDepartment: string
 }
 
+/** Real phone/email; unique participants_employee_id per submit for repeat bookings. */
 export function contactForOnboardBooking(
   email: string,
   phone: string,
   appointmentDate?: string,
   employeeId?: string,
-  uniquifyContact = false,
 ): OnboardBookingContact {
   const trimmedPhone = phone.trim()
   const trimmedEmail = email.trim()
   const trimmedEmployeeId = employeeId?.trim() ?? ''
 
-  let apiEmail = trimmedEmail
-  let apiPhone = trimmedPhone
-  if (uniquifyContact) {
-    const tag = String(Date.now())
-    const at = trimmedEmail.indexOf('@')
-    apiEmail =
-      at > 0
-        ? `${trimmedEmail.slice(0, at)}+ss${tag}${trimmedEmail.slice(at)}`
-        : `${trimmedEmail}+ss${tag}@booking.local`
-    apiPhone = `8${tag.slice(-9)}`
-  }
-
   if (trimmedEmployeeId) {
     return {
-      email: apiEmail,
-      phone: apiPhone,
+      email: trimmedEmail,
+      phone: trimmedPhone,
       participantsEmployeeId: participantsEmployeeIdFromInput(
         trimmedEmployeeId,
         trimmedPhone,
@@ -232,66 +220,10 @@ export function contactForOnboardBooking(
   }
 
   return {
-    email: apiEmail,
-    phone: apiPhone,
+    email: trimmedEmail,
+    phone: trimmedPhone,
     participantsEmployeeId: participantsEmployeeIdForBooking(trimmedPhone, appointmentDate),
     participantDepartment: 'NA',
-  }
-}
-
-function isDuplicateRegistrationError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  const message = error.message.toLowerCase()
-  return (
-    message.includes('already be registered') ||
-    message.includes('was not created for engagement')
-  )
-}
-
-function mergeContactIntoPayload(
-  payload: OnboardUserForEngagementPayload,
-  contact: OnboardBookingContact,
-): OnboardUserForEngagementPayload {
-  return {
-    ...payload,
-    email: contact.email,
-    phone: contact.phone,
-    participants_employee_id: contact.participantsEmployeeId,
-    participant_department: contact.participantDepartment,
-  }
-}
-
-/** Sends real phone/email first; retries with uniquified contact only if the API rejects a duplicate. */
-export async function onboardUserForEngagementWithRepeatSupport(
-  payload: OnboardUserForEngagementPayload,
-  bookingContact: {
-    email: string
-    phone: string
-    appointmentDate?: string
-    employeeId?: string
-  },
-): Promise<OnboardResult> {
-  const primary = contactForOnboardBooking(
-    bookingContact.email,
-    bookingContact.phone,
-    bookingContact.appointmentDate,
-    bookingContact.employeeId,
-    false,
-  )
-
-  try {
-    return await onboardUserForEngagement(mergeContactIntoPayload(payload, primary))
-  } catch (error) {
-    if (!isDuplicateRegistrationError(error)) throw error
-    console.info('[onboard] Duplicate contact detected; retrying with uniquified phone/email')
-    const fallback = contactForOnboardBooking(
-      bookingContact.email,
-      bookingContact.phone,
-      bookingContact.appointmentDate,
-      bookingContact.employeeId,
-      true,
-    )
-    return await onboardUserForEngagement(mergeContactIntoPayload(payload, fallback))
   }
 }
 
@@ -317,6 +249,14 @@ function parseOnboardSuccess(
   }
 
   if (row?.created === false && !isTestParticipantEmployeeId(participantsEmployeeId)) {
+    if (row.engagement_participant_id != null) {
+      return {
+        message: 'Booking confirmed',
+        engagementCode: row?.engagement_code?.trim() || expectedEngagementCode,
+        engagementId: row.engagement_id,
+        engagementParticipantId: row.engagement_participant_id,
+      }
+    }
     throw new Error(
       `Booking was not created for engagement ${expectedEngagementCode}. This phone number or email may already be registered for this program.`,
     )
