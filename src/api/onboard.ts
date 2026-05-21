@@ -152,9 +152,14 @@ function isTestParticipantEmployeeId(employeeId: string): boolean {
   return normalized === 'HRM000' || normalized.startsWith('HRM000-T-')
 }
 
-/** Stable id for admin lookup; includes the user's real phone. */
+function phoneDigitsForId(phone: string): string {
+  const digits = phone.replace(/\D/g, '')
+  return digits.length >= 10 ? digits.slice(-10) : digits || '0000000000'
+}
+
+/** Stable id for admin lookup; includes the user's real phone digits. */
 export function participantsEmployeeIdForBooking(phone: string, appointmentDate?: string): string {
-  const base = phone.trim()
+  const base = phoneDigitsForId(phone)
   const dateTag = appointmentDate?.replaceAll('-', '') ?? ''
   const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   return dateTag ? `${base}-${dateTag}-${unique}` : `${base}-${unique}`
@@ -170,15 +175,20 @@ function normalizeEmployeeId(value: string): string {
  */
 function participantsEmployeeIdFromInput(
   employeeId: string,
+  phone: string,
   appointmentDate?: string,
 ): string {
   const normalized = normalizeEmployeeId(employeeId)
+  const phoneTag = phoneDigitsForId(phone)
   const dateTag = appointmentDate?.replaceAll('-', '') ?? ''
   const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  return dateTag ? `${normalized}-${dateTag}-${unique}` : `${normalized}-${unique}`
+  return dateTag
+    ? `${normalized}-${phoneTag}-${dateTag}-${unique}`
+    : `${normalized}-${phoneTag}-${unique}`
 }
 
 export type OnboardBookingContact = {
+  /** Unique per submit so the same user can book again (backend dedupes on phone/email). */
   email: string
   phone: string
   participantsEmployeeId: string
@@ -187,8 +197,9 @@ export type OnboardBookingContact = {
 }
 
 /**
- * Sends the user's real phone and email so bookings appear in the admin backend.
- * participants_employee_id stays unique per submit so repeat bookings are allowed.
+ * Phone/email are uniquified per booking so repeat submissions with the same details work.
+ * participant_department keeps the exact employee id; participants_employee_id embeds
+ * employee id + real phone digits + a unique suffix for admin lookup.
  */
 export function contactForOnboardBooking(
   email: string,
@@ -196,22 +207,33 @@ export function contactForOnboardBooking(
   appointmentDate?: string,
   employeeId?: string,
 ): OnboardBookingContact {
+  const tag = String(Date.now())
   const trimmedPhone = phone.trim()
   const trimmedEmail = email.trim()
   const trimmedEmployeeId = employeeId?.trim() ?? ''
+  const at = trimmedEmail.indexOf('@')
+  const apiEmail =
+    at > 0
+      ? `${trimmedEmail.slice(0, at)}+ss${tag}${trimmedEmail.slice(at)}`
+      : `${trimmedEmail}+ss${tag}@booking.local`
+  const apiPhone = `8${tag.slice(-9)}`
 
   if (trimmedEmployeeId) {
     return {
-      email: trimmedEmail,
-      phone: trimmedPhone,
-      participantsEmployeeId: participantsEmployeeIdFromInput(trimmedEmployeeId, appointmentDate),
+      email: apiEmail,
+      phone: apiPhone,
+      participantsEmployeeId: participantsEmployeeIdFromInput(
+        trimmedEmployeeId,
+        trimmedPhone,
+        appointmentDate,
+      ),
       participantDepartment: normalizeEmployeeId(trimmedEmployeeId),
     }
   }
 
   return {
-    email: trimmedEmail,
-    phone: trimmedPhone,
+    email: apiEmail,
+    phone: apiPhone,
     participantsEmployeeId: participantsEmployeeIdForBooking(trimmedPhone, appointmentDate),
     participantDepartment: 'NA',
   }

@@ -26,18 +26,17 @@ import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
 import {
   clearBookingDraft,
-  clearOnboardInFlight,
-  clearPendingOnboardAfterPayment,
   clearPaymentReturnHandled,
   clearPaymentReturnQueryFromUrl,
-  hasPendingOnboardAfterPayment,
+  clearPrePaymentOnboardResult,
   loadBookingDraft,
+  loadPrePaymentOnboardResult,
   markPaymentReturnHandled,
   parsePaymentReturnFromUrl,
   redirectToRazorpayPayment,
-  setPendingOnboardAfterPayment,
+  savePrePaymentOnboardResult,
   shouldHandlePaymentReturn,
-  tryBeginOnboardInFlight,
+  type SavedBookingResult,
 } from './lib/bookingPayment'
 import {
   clearBookingSession,
@@ -202,8 +201,8 @@ function readInitialWizardState(): { form: FormData; step: number; maxReachedSte
     if (paymentStatus === 'failed') {
       return { form, step: 6, maxReachedStep: 6 }
     }
-    if (paymentStatus === 'success' || hasPendingOnboardAfterPayment()) {
-      return { form, step: 4, maxReachedStep: 6 }
+    if (paymentStatus === 'success') {
+      return { form, step: 5, maxReachedStep: 6 }
     }
   }
 
@@ -250,53 +249,59 @@ export default function BookAppointment() {
     prevStepRef.current = next
   }, [])
 
+  const submitBookingToBackend = useCallback(async (bookingForm: FormData): Promise<SavedBookingResult> => {
+    const trimmedPhone = bookingForm.phone.trim()
+    const trimmedEmail = bookingForm.email.trim()
+    const parsedAge = Number.parseInt(bookingForm.age, 10)
+    const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
+
+    const wantsDoctorConsultation = bookingForm.personalizedDoctorConsultation === 'yes'
+    const apiAddress = formatAddressForApi(bookingForm)
+    const apiPincode = bookingForm.pincode.trim()
+    const apiCity = bookingForm.city.trim()
+    const apiContact = contactForOnboardBooking(
+      trimmedEmail,
+      trimmedPhone,
+      bookingForm.appointmentDate,
+      bookingForm.employeeId,
+    )
+
+    const payload: OnboardUserForEngagementPayload = {
+      age: safeAge,
+      first_name: bookingForm.firstName,
+      last_name: bookingForm.lastName,
+      email: apiContact.email,
+      phone: apiContact.phone,
+      gender: bookingForm.gender,
+      address: apiAddress,
+      pincode: apiPincode,
+      city: apiCity,
+      state: 'Maharashtra',
+      country: 'India',
+      blood_collection_date: bookingForm.appointmentDate,
+      blood_collection_time_slot: toApiTimeSlot(bookingForm.appointmentTime),
+      participants_employee_id: apiContact.participantsEmployeeId,
+      participant_department: apiContact.participantDepartment,
+      participant_blood_group: 'NA',
+      want_doctor_consultation: wantsDoctorConsultation,
+    }
+
+    const result = await onboardUserForEngagement(payload)
+    const bookingResult: SavedBookingResult = {
+      engagementCode: result.engagementCode,
+      engagementId: result.engagementId,
+      engagementParticipantId: result.engagementParticipantId,
+    }
+    setLastBookingResult(bookingResult)
+    return bookingResult
+  }, [])
+
   const completeBookingAfterPayment = useCallback(
     async (bookingForm: FormData) => {
-      const trimmedPhone = bookingForm.phone.trim()
-      const trimmedEmail = bookingForm.email.trim()
-      const parsedAge = Number.parseInt(bookingForm.age, 10)
-      const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
-
-      const wantsDoctorConsultation = bookingForm.personalizedDoctorConsultation === 'yes'
-      const apiAddress = formatAddressForApi(bookingForm)
-      const apiPincode = bookingForm.pincode.trim()
-      const apiCity = bookingForm.city.trim()
-      const apiContact = contactForOnboardBooking(
-        trimmedEmail,
-        trimmedPhone,
-        bookingForm.appointmentDate,
-        bookingForm.employeeId,
-      )
-
-      const payload: OnboardUserForEngagementPayload = {
-        age: safeAge,
-        first_name: bookingForm.firstName,
-        last_name: bookingForm.lastName,
-        email: apiContact.email,
-        phone: apiContact.phone,
-        gender: bookingForm.gender,
-        address: apiAddress,
-        pincode: apiPincode,
-        city: apiCity,
-        state: 'Maharashtra',
-        country: 'India',
-        blood_collection_date: bookingForm.appointmentDate,
-        blood_collection_time_slot: toApiTimeSlot(bookingForm.appointmentTime),
-        participants_employee_id: apiContact.participantsEmployeeId,
-        participant_department: apiContact.participantDepartment,
-        participant_blood_group: 'NA',
-        want_doctor_consultation: wantsDoctorConsultation,
-      }
-
-      const result = await onboardUserForEngagement(payload)
-      setLastBookingResult({
-        engagementCode: result.engagementCode,
-        engagementId: result.engagementId,
-        engagementParticipantId: result.engagementParticipantId,
-      })
+      await submitBookingToBackend(bookingForm)
       goToStep(5)
     },
-    [goToStep],
+    [goToStep, submitBookingToBackend],
   )
 
   useEffect(() => {
@@ -340,63 +345,27 @@ export default function BookAppointment() {
     if (typeof window === 'undefined' || !shouldHandlePaymentReturn()) return
 
     const paymentStatus = parsePaymentReturnFromUrl()
-    const pendingOnboard = hasPendingOnboardAfterPayment()
+    if (!paymentStatus) return
 
-    if (paymentStatus === 'success') {
-      setPendingOnboardAfterPayment()
-      clearPaymentReturnQueryFromUrl()
-    }
-
-    if (paymentStatus === 'failed') {
-      markPaymentReturnHandled()
-      clearPendingOnboardAfterPayment()
-      clearPaymentReturnQueryFromUrl()
-      const draft = loadBookingDraft()
-      const session = loadBookingSession()
-      const restoredForm = draft?.form ?? session?.form
-      if (restoredForm) setForm(restoredForm)
-      goToStep(6, { replace: true })
-      return
-    }
-
-    if (!paymentStatus && !pendingOnboard) return
-    if (!tryBeginOnboardInFlight()) return
+    markPaymentReturnHandled()
+    clearPaymentReturnQueryFromUrl()
 
     const draft = loadBookingDraft()
     const session = loadBookingSession()
     const restoredForm = draft?.form ?? session?.form
     if (restoredForm) setForm(restoredForm)
 
-    const formForBooking = restoredForm
-    if (!formForBooking) {
-      clearOnboardInFlight()
-      clearPendingOnboardAfterPayment()
-      logClientError('Booking details were not found after payment. Please try again from Confirm Details.')
-      goToStep(4, { replace: true })
+    if (paymentStatus === 'failed') {
+      goToStep(6, { replace: true })
       return
     }
 
-    setIsSubmittingBooking(true)
-
-    completeBookingAfterPayment(formForBooking)
-      .then(() => {
-        clearPendingOnboardAfterPayment()
-        markPaymentReturnHandled()
-        clearBookingDraft()
-      })
-      .catch((error) => {
-        logClientError(
-          error instanceof Error
-            ? error.message
-            : 'Payment received but booking could not be saved. Refresh this page to retry.',
-        )
-        goToStep(4, { replace: true })
-      })
-      .finally(() => {
-        clearOnboardInFlight()
-        setIsSubmittingBooking(false)
-      })
-  }, [goToStep, completeBookingAfterPayment])
+    const savedResult = loadPrePaymentOnboardResult()
+    if (savedResult) setLastBookingResult(savedResult)
+    clearPrePaymentOnboardResult()
+    clearBookingDraft()
+    goToStep(5, { replace: true })
+  }, [goToStep])
 
   const primaryMember = savedMembers[0]
 
@@ -583,6 +552,9 @@ export default function BookAppointment() {
         await completeBookingAfterPayment(form)
         return
       }
+
+      const bookingResult = await submitBookingToBackend(form)
+      savePrePaymentOnboardResult(bookingResult)
       redirectToRazorpayPayment(form)
     } catch (error) {
       logClientError(error instanceof Error ? error.message : 'Unable to start payment.')

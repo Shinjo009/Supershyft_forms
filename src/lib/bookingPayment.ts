@@ -2,8 +2,13 @@ import type { FormData } from '../types'
 
 const BOOKING_DRAFT_KEY = 'supershyft_booking_draft'
 const PAYMENT_RETURN_HANDLED_KEY = 'supershyft_payment_return_handled'
-const PENDING_ONBOARD_AFTER_PAYMENT_KEY = 'supershyft_pending_onboard_after_payment'
-const ONBOARD_IN_FLIGHT_KEY = 'supershyft_onboard_in_flight'
+const PRE_PAYMENT_ONBOARD_RESULT_KEY = 'supershyft_pre_payment_onboard_result'
+
+export type SavedBookingResult = {
+  engagementCode: string
+  engagementId?: number
+  engagementParticipantId?: number
+}
 
 const DEFAULT_RAZORPAY_PAYMENT_LINK = 'https://rzp.io/rzp/Xml9FK3'
 
@@ -45,34 +50,27 @@ function paymentReturnAlreadyHandled(): boolean {
   return typeof window !== 'undefined' && window.sessionStorage.getItem(PAYMENT_RETURN_HANDLED_KEY) === '1'
 }
 
-export function hasPendingOnboardAfterPayment(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    window.sessionStorage.getItem(PENDING_ONBOARD_AFTER_PAYMENT_KEY) === '1'
-  )
-}
-
-export function setPendingOnboardAfterPayment(): void {
+export function savePrePaymentOnboardResult(result: SavedBookingResult): void {
   if (typeof window === 'undefined') return
-  window.sessionStorage.setItem(PENDING_ONBOARD_AFTER_PAYMENT_KEY, '1')
+  window.sessionStorage.setItem(PRE_PAYMENT_ONBOARD_RESULT_KEY, JSON.stringify(result))
 }
 
-export function clearPendingOnboardAfterPayment(): void {
+export function loadPrePaymentOnboardResult(): SavedBookingResult | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.sessionStorage.getItem(PRE_PAYMENT_ONBOARD_RESULT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as SavedBookingResult
+    if (!parsed?.engagementCode || typeof parsed.engagementCode !== 'string') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+export function clearPrePaymentOnboardResult(): void {
   if (typeof window === 'undefined') return
-  window.sessionStorage.removeItem(PENDING_ONBOARD_AFTER_PAYMENT_KEY)
-}
-
-/** Prevents duplicate onboard POSTs when React remounts after Razorpay return. */
-export function tryBeginOnboardInFlight(): boolean {
-  if (typeof window === 'undefined') return false
-  if (window.sessionStorage.getItem(ONBOARD_IN_FLIGHT_KEY) === '1') return false
-  window.sessionStorage.setItem(ONBOARD_IN_FLIGHT_KEY, '1')
-  return true
-}
-
-export function clearOnboardInFlight(): void {
-  if (typeof window === 'undefined') return
-  window.sessionStorage.removeItem(ONBOARD_IN_FLIGHT_KEY)
+  window.sessionStorage.removeItem(PRE_PAYMENT_ONBOARD_RESULT_KEY)
 }
 
 export function markPaymentReturnHandled(): void {
@@ -117,7 +115,6 @@ export function clearPaymentReturnQueryFromUrl(): void {
 }
 
 export function shouldHandlePaymentReturn(): boolean {
-  if (hasPendingOnboardAfterPayment()) return true
   const status = parsePaymentReturnFromUrl()
   return status !== null && !paymentReturnAlreadyHandled()
 }
