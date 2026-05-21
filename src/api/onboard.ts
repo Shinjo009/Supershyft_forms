@@ -195,21 +195,32 @@ export type OnboardBookingContact = {
   participantDepartment: string
 }
 
-/** Real phone/email; unique participants_employee_id per submit for repeat bookings. */
+/**
+ * Uniquifies API phone/email per submit so another person (or re-booking) with the same
+ * contact details still creates a new participant with the entered name.
+ * Real phone digits stay in participants_employee_id for admin lookup.
+ */
 export function contactForOnboardBooking(
   email: string,
   phone: string,
   appointmentDate?: string,
   employeeId?: string,
 ): OnboardBookingContact {
+  const tag = String(Date.now())
   const trimmedPhone = phone.trim()
   const trimmedEmail = email.trim()
   const trimmedEmployeeId = employeeId?.trim() ?? ''
+  const at = trimmedEmail.indexOf('@')
+  const apiEmail =
+    at > 0
+      ? `${trimmedEmail.slice(0, at)}+ss${tag}${trimmedEmail.slice(at)}`
+      : `${trimmedEmail}+ss${tag}@booking.local`
+  const apiPhone = `8${tag.slice(-9)}`
 
   if (trimmedEmployeeId) {
     return {
-      email: trimmedEmail,
-      phone: trimmedPhone,
+      email: apiEmail,
+      phone: apiPhone,
       participantsEmployeeId: participantsEmployeeIdFromInput(
         trimmedEmployeeId,
         trimmedPhone,
@@ -220,8 +231,8 @@ export function contactForOnboardBooking(
   }
 
   return {
-    email: trimmedEmail,
-    phone: trimmedPhone,
+    email: apiEmail,
+    phone: apiPhone,
     participantsEmployeeId: participantsEmployeeIdForBooking(trimmedPhone, appointmentDate),
     participantDepartment: 'NA',
   }
@@ -249,14 +260,6 @@ function parseOnboardSuccess(
   }
 
   if (row?.created === false && !isTestParticipantEmployeeId(participantsEmployeeId)) {
-    if (row.engagement_participant_id != null) {
-      return {
-        message: 'Booking confirmed',
-        engagementCode: row?.engagement_code?.trim() || expectedEngagementCode,
-        engagementId: row.engagement_id,
-        engagementParticipantId: row.engagement_participant_id,
-      }
-    }
     throw new Error(
       `Booking was not created for engagement ${expectedEngagementCode}. This phone number or email may already be registered for this program.`,
     )
