@@ -243,6 +243,70 @@ export function contactForOnboardBooking(
   }
 }
 
+export function isDuplicateRegistrationError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  const message = error.message.toLowerCase()
+  return (
+    message.includes('already be registered') ||
+    message.includes('was not created for engagement')
+  )
+}
+
+function applyContactToPayload(
+  payload: OnboardUserForEngagementPayload,
+  contact: OnboardBookingContact,
+): OnboardUserForEngagementPayload {
+  return {
+    ...payload,
+    email: contact.email,
+    phone: contact.phone,
+    participants_employee_id: contact.participantsEmployeeId,
+    participant_department: contact.participantDepartment,
+  }
+}
+
+/**
+ * Uses real phone/email when possible. If that contact is already in the program,
+ * retries once with uniquified phone/email (same form name) so booking can continue.
+ */
+export async function submitOnboardBooking(
+  payload: OnboardUserForEngagementPayload,
+  bookingContact: {
+    email: string
+    phone: string
+    appointmentDate?: string
+    employeeId?: string
+    uniquifyContact: boolean
+  },
+): Promise<OnboardResult> {
+  const primary = contactForOnboardBooking(
+    bookingContact.email,
+    bookingContact.phone,
+    bookingContact.appointmentDate,
+    bookingContact.employeeId,
+    bookingContact.uniquifyContact,
+  )
+
+  try {
+    return await onboardUserForEngagement(applyContactToPayload(payload, primary))
+  } catch (error) {
+    if (!isDuplicateRegistrationError(error) || bookingContact.uniquifyContact) {
+      throw error
+    }
+    console.info(
+      '[onboard] Phone/email already in program; saving booking with alternate API contact',
+    )
+    const fallback = contactForOnboardBooking(
+      bookingContact.email,
+      bookingContact.phone,
+      bookingContact.appointmentDate,
+      bookingContact.employeeId,
+      true,
+    )
+    return await onboardUserForEngagement(applyContactToPayload(payload, fallback))
+  }
+}
+
 function parseOnboardSuccess(
   data: unknown,
   expectedEngagementCode: string,
