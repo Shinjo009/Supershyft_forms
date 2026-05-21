@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Building2,
   Calendar,
+  Clock,
   House,
   Mail,
   MapPin,
@@ -1687,7 +1688,7 @@ function ConfirmStep({
         </div>
         <div className="grid grid-cols-2 gap-3 text-[11px] font-light text-[#ccc]">
           <SummaryItem Icon={Calendar} label={formatBookingDate(form.appointmentDate)} dense />
-          <SummaryItem Icon={Phone} label={form.appointmentTime || '—'} dense />
+          <SummaryItem Icon={Clock} label={form.appointmentTime || '—'} dense />
         </div>
       </section>
 
