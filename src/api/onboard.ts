@@ -11,6 +11,11 @@ export type OnboardUserForEngagementPayload = {
   participant_department: string
   participant_blood_group: string
   want_doctor_consultation: boolean
+  address: string
+  pincode: string
+  city: string
+  state: string
+  country: string
 }
 
 type ValidationErrorDetail = {

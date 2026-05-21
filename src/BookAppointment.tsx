@@ -38,6 +38,15 @@ const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
 const sanitizePincode = (value: string) => value.replace(/\D/g, '').slice(0, 6)
 const normalizeEmployeeId = (value: string) => value.trim().toUpperCase()
+const DEFAULT_ADDRESS_STATE = 'Maharashtra'
+const DEFAULT_ADDRESS_COUNTRY = 'India'
+
+function buildOnboardAddress(form: FormData): string {
+  return [form.houseNumber, form.street, form.landmark]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(', ')
+}
 const BOOK_APPOINTMENT_ERROR_EVENT = 'book-appointment:error'
 const logClientError = (message: string) => {
   console.error(`[BookAppointment] ${message}`)
@@ -408,6 +417,27 @@ export default function BookAppointment() {
       return
     }
 
+    const onboardAddress = buildOnboardAddress(form)
+    const trimmedPincode = form.pincode.trim()
+    const trimmedCity = form.city.trim()
+
+    if (!onboardAddress) {
+      logClientError('Address is required.')
+      return
+    }
+    if (!trimmedPincode) {
+      logClientError('Pincode is required.')
+      return
+    }
+    if (!/^\d{6}$/.test(trimmedPincode)) {
+      logClientError('Pincode must be 6 digits.')
+      return
+    }
+    if (!trimmedCity) {
+      logClientError('City is required.')
+      return
+    }
+
     setIsSubmittingBooking(true)
 
     try {
@@ -426,6 +456,11 @@ export default function BookAppointment() {
         participant_department: 'NA',
         participant_blood_group: 'NA',
         want_doctor_consultation: wantsDoctorConsultation,
+        address: onboardAddress,
+        pincode: trimmedPincode,
+        city: trimmedCity,
+        state: DEFAULT_ADDRESS_STATE,
+        country: DEFAULT_ADDRESS_COUNTRY,
       }
 
       await onboardUserForEngagement(payload)
