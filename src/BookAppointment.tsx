@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Building2,
@@ -15,10 +15,31 @@ import {
   Venus,
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
-import { onboardUserForEngagement, type OnboardUserForEngagementPayload } from './api/onboard'
+import {
+  contactForOnboardBooking,
+  onboardUserForEngagement,
+  type OnboardUserForEngagementPayload,
+} from './api/onboard'
 import { PageBackdrop } from './components/PageBackdrop'
 import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
+import {
+  clearBookingDraft,
+  clearPaymentReturnHandled,
+  clearPaymentReturnQueryFromUrl,
+  loadBookingDraft,
+  markPaymentReturnHandled,
+  parsePaymentReturnFromUrl,
+  redirectToRazorpayPayment,
+  shouldHandlePaymentReturn,
+} from './lib/bookingPayment'
+import {
+  clearBookingSession,
+  loadBookingSession,
+  parseStepFromHash,
+  saveBookingSession,
+  syncHistoryForStep,
+} from './lib/bookingSession'
 import { defaultFormData, type FormData } from './types'
 import supershyftWhiteLogo from './assets/SuperShyft - Logo [Final]-03 7 (1).svg'
 
@@ -37,7 +58,7 @@ const sanitizeName = (value: string) => value.replace(/[^A-Za-z\s]/g, '')
 const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
 const sanitizePincode = (value: string) => value.replace(/\D/g, '').slice(0, 6)
-const normalizeEmployeeId = (value: string) => value.trim().toUpperCase()
+const sanitizeEmployeeId = (value: string) => value.replace(/[^A-Za-z0-9-]/g, '').slice(0, 32)
 const BOOK_APPOINTMENT_ERROR_EVENT = 'book-appointment:error'
 const logClientError = (message: string) => {
   console.error(`[BookAppointment] ${message}`)
@@ -45,83 +66,6 @@ const logClientError = (message: string) => {
     window.dispatchEvent(new CustomEvent(BOOK_APPOINTMENT_ERROR_EVENT, { detail: message }))
   }
 }
-/** QA only: unlimited bookings (no localStorage cap); API uses unique employee/email/phone per submit. */
-const TEST_EMPLOYEE_ID = 'HRM000'
-/** Celebal-only; do not share key with CBTW or other company forms on the same domain. */
-const BOOKED_EMPLOYEE_IDS_STORAGE_KEY = 'celebalBookedEmployeeIds'
-/** 130 Celebal employee IDs plus {@link TEST_EMPLOYEE_ID}. */
-const ALLOWED_EMPLOYEE_IDS = new Set([
-  TEST_EMPLOYEE_ID,
-  'HRM4196', 'HRM4039', 'HRM4032', 'HRM3803', 'HRM3666', 'HRM3598',
-  'HRM3444', 'HRM2864', 'HRM2839', 'HRM2820', 'HRM2665', 'HRM2532',
-  'HRM2195', 'HRM2108', 'HRM2104', 'HRM2100', 'HRM2068', 'HRM2022',
-  'HRM1725', 'HRM1638', 'HRM1628', 'HRM1623', 'HRM1611', 'HRM1572',
-  'HRM1493', 'HRM1479', 'HRM1336', 'HRM1259', 'HRM1235', 'HRM1068',
-  'HRM1045', 'HRM760', 'HRM666', 'HRM431', 'HRM345', 'HRM254',
-  'HRM154', 'HRM150', 'HRM3', 'HRM122', 'HRM41', 'HRM2089',
-  'HRM2039', 'HRM146', 'HRM3806', 'HRM3643', 'HRM3599', 'HRM3443',
-  'HRM3442', 'HRM2932', 'HRM2528', 'HRM2310', 'HRM2093', 'HRM1681',
-  'HRM1141', 'HRM989', 'HRM965', 'HRM851', 'HRM405', 'HRM4106',
-  'HRM1039', 'HRM4244', 'HRM4246', 'HRM4304', 'HRM255', 'HRM4332',
-  'HRM4461', 'HRM4467', 'HRM4580', 'HRM4605', 'HRM4648', 'HRM4652',
-  'HRM4650', 'HRM4672', 'HRM4697', 'HRM4707', 'HRM4710', 'HRM4906',
-  'HRM4800', 'HRM4815', 'HRM4844', 'HRM4951', 'HRM4982', 'HRM4994',
-  'HRM4989', 'HRM5011', 'HRM5021', 'HRM5081', 'HRM5090', 'HRM5192',
-  'HRM5180', 'HRM5191', 'HRM5201', 'HRM5202', 'HRM5203', 'HRM5205',
-  'HRM5297', 'HRM5412', 'HRM5498', 'HRM5608', 'HRM5667', 'HRM5732',
-  'HRM5786', 'HRM5766', 'HRM5781', 'HRM5782', 'HRM5789', 'HRM5834',
-  'HRM5821', 'HRM5844', 'HRM5846', 'HRM5872', 'HRM5932', 'HRM5937',
-  'HRM5952', 'HRM5955', 'HRM5977', 'HRM6086', 'HRM6158', 'HRM6164',
-  'HRM6441', 'HRM6539', 'HRM6597', 'HRM6596', 'HRM6643', 'HRM6649',
-  'HRM3392', 'HRM4103', 'HRM4687', 'HRM5338',
-])
-
-function getBookedEmployeeIds(): Set<string> {
-  if (typeof window === 'undefined') return new Set()
-  try {
-    const raw = window.localStorage.getItem(BOOKED_EMPLOYEE_IDS_STORAGE_KEY)
-    if (!raw) return new Set()
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return new Set()
-    return new Set(parsed.map((id) => normalizeEmployeeId(String(id))))
-  } catch {
-    return new Set()
-  }
-}
-
-function markEmployeeIdAsBooked(employeeId: string) {
-  if (isTestEmployeeId(employeeId) || typeof window === 'undefined') return
-  const normalized = normalizeEmployeeId(employeeId)
-  const booked = getBookedEmployeeIds()
-  booked.add(normalized)
-  window.localStorage.setItem(BOOKED_EMPLOYEE_IDS_STORAGE_KEY, JSON.stringify(Array.from(booked)))
-}
-
-function isTestEmployeeId(employeeId: string): boolean {
-  return normalizeEmployeeId(employeeId) === TEST_EMPLOYEE_ID
-}
-
-/** Test ID stays HRM000 in the UI; API gets unique values so repeat QA bookings always register. */
-function employeeIdForOnboardApi(
-  employeeId: string,
-  gender: '' | 'male' | 'female',
-): string {
-  const normalized = normalizeEmployeeId(employeeId)
-  if (!isTestEmployeeId(normalized)) return normalized
-  const genderTag = gender === 'female' ? 'F' : gender === 'male' ? 'M' : 'X'
-  return `${TEST_EMPLOYEE_ID}-T-${genderTag}-${Date.now()}`
-}
-
-function contactForOnboardApi(employeeId: string, email: string, phone: string) {
-  if (!isTestEmployeeId(employeeId)) return { email, phone }
-  const tag = String(Date.now())
-  const at = email.indexOf('@')
-  const apiEmail =
-    at > 0 ? `${email.slice(0, at)}+t${tag}${email.slice(at)}` : `${email}+t${tag}@celebal-test.local`
-  const apiPhone = `9${tag.slice(-9)}`
-  return { email: apiEmail, phone: apiPhone }
-}
-
 function formatAddressForApi(form: FormData): string {
   return [form.houseNumber, form.street, form.landmark]
     .map((part) => part.trim())
@@ -239,17 +183,45 @@ function labelRow(
   )
 }
 
+function readInitialWizardState(): { form: FormData; step: number; maxReachedStep: number } {
+  if (typeof window === 'undefined') {
+    return { form: defaultFormData, step: 1, maxReachedStep: 1 }
+  }
+  const restored = loadBookingSession()
+  const draft = loadBookingDraft()
+  const form = draft?.form ?? restored?.form ?? defaultFormData
+
+  if (shouldHandlePaymentReturn()) {
+    const paymentStatus = parsePaymentReturnFromUrl()
+    if (paymentStatus === 'failed') {
+      return { form, step: 6, maxReachedStep: 6 }
+    }
+    return { form, step: 4, maxReachedStep: 6 }
+  }
+
+  let step = parseStepFromHash() ?? restored?.step ?? 1
+  if (step > 6 || step < 1) step = 1
+  return {
+    form,
+    step,
+    maxReachedStep: Math.max(restored?.maxReachedStep ?? 1, step, 1),
+  }
+}
 
 export default function BookAppointment() {
   const isLg = useIsLg()
-  const [step, setStep] = useState(1)
-  const [maxReachedStep, setMaxReachedStep] = useState(1)
+  const initialWizard = readInitialWizardState()
+  const [step, setStep] = useState(initialWizard.step)
+  const [maxReachedStep, setMaxReachedStep] = useState(initialWizard.maxReachedStep)
   const [lastBookingResult, setLastBookingResult] = useState<{
     engagementCode: string
     engagementId?: number
     engagementParticipantId?: number
   } | null>(null)
-  const [form, setForm] = useState<FormData>(defaultFormData)
+  const [form, setForm] = useState<FormData>(initialWizard.form)
+  const historyReadyRef = useRef(false)
+  const prevStepRef = useRef(initialWizard.step)
+  const initialStepRef = useRef(initialWizard.step)
   const [savedMembers] = useState<FormData[]>([])
   const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
@@ -263,9 +235,87 @@ export default function BookAppointment() {
     setForm((f) => ({ ...f, [key]: value }))
   }, [uiError])
 
+  const goToStep = useCallback((next: number, options?: { replace?: boolean }) => {
+    setStep(next)
+    if (typeof window === 'undefined') return
+    syncHistoryForStep(next, options?.replace ? 'replace' : 'push')
+    prevStepRef.current = next
+  }, [])
+
+  const completeBookingAfterPayment = useCallback(
+    async (bookingForm: FormData) => {
+      const trimmedPhone = bookingForm.phone.trim()
+      const trimmedEmail = bookingForm.email.trim()
+      const parsedAge = Number.parseInt(bookingForm.age, 10)
+      const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
+
+      const wantsDoctorConsultation = bookingForm.personalizedDoctorConsultation === 'yes'
+      const apiAddress = formatAddressForApi(bookingForm)
+      const apiPincode = bookingForm.pincode.trim()
+      const apiCity = bookingForm.city.trim()
+      const apiContact = contactForOnboardBooking(
+        trimmedEmail,
+        trimmedPhone,
+        bookingForm.appointmentDate,
+        bookingForm.employeeId,
+      )
+
+      const payload: OnboardUserForEngagementPayload = {
+        age: safeAge,
+        first_name: bookingForm.firstName,
+        last_name: bookingForm.lastName,
+        email: apiContact.email,
+        phone: apiContact.phone,
+        gender: bookingForm.gender,
+        address: apiAddress,
+        pincode: apiPincode,
+        city: apiCity,
+        state: 'Maharashtra',
+        country: 'India',
+        blood_collection_date: bookingForm.appointmentDate,
+        blood_collection_time_slot: toApiTimeSlot(bookingForm.appointmentTime),
+        participants_employee_id: apiContact.participantsEmployeeId,
+        participant_department: apiContact.participantDepartment,
+        participant_blood_group: 'NA',
+        want_doctor_consultation: wantsDoctorConsultation,
+      }
+
+      const result = await onboardUserForEngagement(payload)
+      setLastBookingResult({
+        engagementCode: result.engagementCode,
+        engagementId: result.engagementId,
+        engagementParticipantId: result.engagementParticipantId,
+      })
+      goToStep(5)
+    },
+    [goToStep],
+  )
+
   useEffect(() => {
     setMaxReachedStep((prev) => Math.max(prev, step))
   }, [step])
+
+  useEffect(() => {
+    saveBookingSession({ form, step, maxReachedStep })
+  }, [form, step, maxReachedStep])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    syncHistoryForStep(initialStepRef.current, 'replace')
+    historyReadyRef.current = true
+    prevStepRef.current = initialStepRef.current
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onPopState = () => {
+      setStep(1)
+      syncHistoryForStep(1, 'replace')
+      prevStepRef.current = 1
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -277,6 +327,54 @@ export default function BookAppointment() {
     window.addEventListener(BOOK_APPOINTMENT_ERROR_EVENT, handler as EventListener)
     return () => window.removeEventListener(BOOK_APPOINTMENT_ERROR_EVENT, handler as EventListener)
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !shouldHandlePaymentReturn()) return
+
+    const paymentStatus = parsePaymentReturnFromUrl()
+    if (!paymentStatus) return
+
+    markPaymentReturnHandled()
+    clearPaymentReturnQueryFromUrl()
+
+    const draft = loadBookingDraft()
+    const session = loadBookingSession()
+    const restoredForm = draft?.form ?? session?.form
+    if (restoredForm) setForm(restoredForm)
+
+    if (paymentStatus === 'failed') {
+      goToStep(6, { replace: true })
+      return
+    }
+
+    const formForBooking = restoredForm
+    if (!formForBooking) {
+      logClientError('Booking details were not found after payment. Please try again from Confirm Details.')
+      goToStep(4, { replace: true })
+      return
+    }
+
+    let cancelled = false
+    setIsSubmittingBooking(true)
+
+    completeBookingAfterPayment(formForBooking)
+      .then(() => {
+        if (!cancelled) clearBookingDraft()
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
+          goToStep(4, { replace: true })
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsSubmittingBooking(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [goToStep, completeBookingAfterPayment])
 
   const primaryMember = savedMembers[0]
 
@@ -319,19 +417,6 @@ export default function BookAppointment() {
       logClientError('Please enter a valid email address.')
       return
     }
-    const normalizedEmployeeId = normalizeEmployeeId(form.employeeId)
-    if (!normalizedEmployeeId) {
-      logClientError('Employee ID is required.')
-      return
-    }
-    if (!ALLOWED_EMPLOYEE_IDS.has(normalizedEmployeeId)) {
-      logClientError('This Employee ID is not allowed.')
-      return
-    }
-    if (normalizedEmployeeId !== TEST_EMPLOYEE_ID && getBookedEmployeeIds().has(normalizedEmployeeId)) {
-      logClientError('This Employee ID has already used the booking.')
-      return
-    }
     if (!trimmedAge) {
       logClientError('Age is required.')
       return
@@ -349,7 +434,7 @@ export default function BookAppointment() {
       return
     }
 
-    setStep(2)
+    goToStep(2)
   }
 
   const goNextFromSchedule = () => {
@@ -363,7 +448,7 @@ export default function BookAppointment() {
       return
     }
 
-    setStep(4)
+    goToStep(4)
   }
 
   const goNextFromAddress = () => {
@@ -399,13 +484,12 @@ export default function BookAppointment() {
       return
     }
 
-    setStep(3)
+    goToStep(3)
   }
 
   const allMembers = useMemo(() => [...savedMembers, form], [savedMembers, form])
 
-  const handleConfirmBooking = async () => {
-    const normalizedEmployeeId = normalizeEmployeeId(form.employeeId)
+  const handleProceedToPayment = async () => {
     if (isSubmittingBooking) return
 
     const trimmedPhone = form.phone.trim()
@@ -420,18 +504,6 @@ export default function BookAppointment() {
     }
     if (!form.lastName.trim()) {
       logClientError('Last Name is required.')
-      return
-    }
-    if (!normalizedEmployeeId) {
-      logClientError('Employee ID is required.')
-      return
-    }
-    if (!ALLOWED_EMPLOYEE_IDS.has(normalizedEmployeeId)) {
-      logClientError('This Employee ID is not allowed.')
-      return
-    }
-    if (normalizedEmployeeId !== TEST_EMPLOYEE_ID && getBookedEmployeeIds().has(normalizedEmployeeId)) {
-      logClientError('This Employee ID has already used the booking.')
       return
     }
     if (!trimmedEmail) {
@@ -481,39 +553,17 @@ export default function BookAppointment() {
     setIsSubmittingBooking(true)
 
     try {
-      const wantsDoctorConsultation = form.personalizedDoctorConsultation === 'yes'
-      const apiContact = contactForOnboardApi(normalizedEmployeeId, trimmedEmail, trimmedPhone)
-
-      const payload: OnboardUserForEngagementPayload = {
-        age: safeAge,
-        first_name: form.firstName,
-        last_name: form.lastName,
-        email: apiContact.email,
-        phone: apiContact.phone,
-        gender: form.gender,
-        address: apiAddress,
-        pincode: apiPincode,
-        city: apiCity,
-        state: 'Maharashtra',
-        country: 'India',
-        blood_collection_date: form.appointmentDate,
-        blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
-        participants_employee_id: employeeIdForOnboardApi(normalizedEmployeeId, form.gender),
-        participant_department: 'NA',
-        participant_blood_group: 'NA',
-        want_doctor_consultation: wantsDoctorConsultation,
+      if (import.meta.env.VITE_PAYMENT_TEST_FAIL === 'true') {
+        goToStep(6)
+        return
       }
-
-      const result = await onboardUserForEngagement(payload)
-      setLastBookingResult({
-        engagementCode: result.engagementCode,
-        engagementId: result.engagementId,
-        engagementParticipantId: result.engagementParticipantId,
-      })
-      markEmployeeIdAsBooked(normalizedEmployeeId)
-      setStep(5)
+      if (import.meta.env.VITE_SKIP_RAZORPAY === 'true') {
+        await completeBookingAfterPayment(form)
+        return
+      }
+      redirectToRazorpayPayment(form)
     } catch (error) {
-      logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
+      logClientError(error instanceof Error ? error.message : 'Unable to start payment.')
     } finally {
       setIsSubmittingBooking(false)
     }
@@ -530,12 +580,13 @@ export default function BookAppointment() {
 
   const isMobile = !isLg
   const mobilePersonal = isMobile && step === 1
-  const showBack = step === 5 ? false : isLg ? step > 1 : step > 1
-  const stretchStepBody = !isLg || step === 4 || step === 5
-  const hideGlobalContinue = mobilePersonal || step === 5 || step === 1
+  const isOutcomeStep = step === 5 || step === 6
+  const showBack = isOutcomeStep ? false : isLg ? step > 1 : step > 1
+  const stretchStepBody = !isLg || step === 4 || isOutcomeStep
+  const hideGlobalContinue = mobilePersonal || isOutcomeStep || step === 1
   const mobileHeader = isMobile
-  const hideStepper = step === 5
-  const showHeaderTitle = step !== 5
+  const hideStepper = isOutcomeStep
+  const showHeaderTitle = !isOutcomeStep
 
   return (
     <PageBackdrop>
@@ -575,7 +626,7 @@ export default function BookAppointment() {
                 {showBack ? (
                   <button
                     type="button"
-                    onClick={() => setStep((s) => Math.max(1, s - 1))}
+                    onClick={() => goToStep(Math.max(1, step - 1))}
                     className="flex size-9 items-center justify-center rounded-lg text-white hover:bg-white/10"
                     aria-label="Back"
                   >
@@ -603,7 +654,7 @@ export default function BookAppointment() {
                 {showBack ? (
                   <button
                     type="button"
-                    onClick={() => setStep((s) => Math.max(1, s - 1))}
+                    onClick={() => goToStep(Math.max(1, step - 1))}
                     className="flex size-6 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
                     aria-label="Back"
                   >
@@ -643,7 +694,7 @@ export default function BookAppointment() {
                 current={step}
                 compact={!isLg}
                 maxReachable={maxReachedStep}
-                onStepClick={(target) => setStep(target)}
+                onStepClick={(target) => goToStep(target)}
               />
             </div>
           )}
@@ -656,13 +707,17 @@ export default function BookAppointment() {
 
           <div
             className={`flex min-h-0 flex-col ${stretchStepBody ? 'flex-1' : 'flex-none'} ${
+              step === 6 ? 'justify-center' : ''
+            } ${
               mobilePersonal
                 ? ''
                 : isMobile
-                  ? step === 5
+                  ? isOutcomeStep
                     ? 'px-5'
                     : 'px-5 pt-1'
-                  : ''
+                  : step === 6
+                    ? 'min-h-[calc(100svh-14rem)]'
+                    : ''
             }`}
           >
             {step === 1 && (
@@ -727,10 +782,13 @@ export default function BookAppointment() {
               <ConfirmStep
                 form={form}
                 members={allMembers}
-                onEdit={(s) => setStep(s)}
-                onProceed={handleConfirmBooking}
+                onEdit={(s) => goToStep(s)}
+                onProceed={handleProceedToPayment}
                 isSubmitting={isSubmittingBooking}
               />
+            )}
+            {step === 6 && (
+              <PaymentFailedStep isMobile={isMobile} onTryAgain={() => goToStep(4)} />
             )}
             {step === 5 && (
               <BookingConfirmedStep
@@ -740,7 +798,11 @@ export default function BookAppointment() {
                 bookingResult={lastBookingResult}
                 onClose={() => {
                   setLastBookingResult(null)
-                  setStep(1)
+                  clearBookingDraft()
+                  clearPaymentReturnHandled()
+                  clearBookingSession()
+                  setForm(defaultFormData)
+                  goToStep(1, { replace: true })
                 }}
               />
             )}
@@ -1024,14 +1086,13 @@ function PersonalStep({
             />
           </div>
 
-
           <div className="flex flex-col gap-1">
-            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true, isMissing(form.employeeId))}
+            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true)}
             <input
               className={mobileFieldInput14}
               placeholder="Employee ID"
               value={form.employeeId}
-              onChange={(e) => update('employeeId', e.target.value)}
+              onChange={(e) => update('employeeId', sanitizeEmployeeId(e.target.value))}
             />
           </div>
 
@@ -1097,14 +1158,13 @@ function PersonalStep({
             />
           </div>
 
-
           <div className="flex flex-col gap-1">
-            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true, isMissing(form.employeeId))}
+            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true)}
             <input
               className={mobileFieldInput14}
               placeholder="Employee ID"
               value={form.employeeId}
-              onChange={(e) => update('employeeId', e.target.value)}
+              onChange={(e) => update('employeeId', sanitizeEmployeeId(e.target.value))}
             />
           </div>
 
@@ -1282,14 +1342,13 @@ function PersonalStep({
             />
           </div>
 
-
           <div>
-            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false, isMissing(form.employeeId))}
+            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false)}
             <input
               className={inputClass()}
               placeholder="Employee ID"
               value={form.employeeId}
-              onChange={(e) => update('employeeId', e.target.value)}
+              onChange={(e) => update('employeeId', sanitizeEmployeeId(e.target.value))}
             />
           </div>
 
@@ -1309,7 +1368,6 @@ function PersonalStep({
             {labelRow(GenderIcon, 'Gender', undefined, false, isMissingGender)}
             {genderButtons}
           </div>
-
 
           <div>
             {labelRow(Users, 'Relation', undefined, false, isMissingRelation)}
@@ -1405,14 +1463,13 @@ function PersonalStep({
           />
         </div>
 
-
         <div>
-          {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false, isMissing(form.employeeId))}
+          {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false)}
           <input
             className={inputClass()}
             placeholder="Employee ID"
             value={form.employeeId}
-            onChange={(e) => update('employeeId', e.target.value)}
+            onChange={(e) => update('employeeId', sanitizeEmployeeId(e.target.value))}
           />
         </div>
 
@@ -1640,7 +1697,7 @@ function ConfirmStep({
         disabled={isSubmitting}
         onClick={onProceed}
       >
-        {isSubmitting ? 'Confirming...' : 'Confirm'}
+        {isSubmitting ? 'Processing...' : 'Proceed to Payment'}
       </ContinueButton>
     </div>
   )
@@ -1679,7 +1736,11 @@ function MemberSummary({
         <SummaryItem Icon={Phone} label={member.phone || '—'} dense={dense} />
         <SummaryItem Icon={GenderIcon} label={genderLabel} dense={dense} />
         <SummaryItem Icon={Calendar} label={member.age ? `${member.age} Years` : '—'} dense={dense} />
-        <SummaryItem Icon={EmployeeIdIcon} label={member.employeeId || '—'} dense={dense} />
+        {member.employeeId?.trim() ? (
+          <SummaryItem Icon={EmployeeIdIcon} label={member.employeeId.trim()} dense={dense} />
+        ) : (
+          <span aria-hidden />
+        )}
         <div className="col-span-2">
           <SummaryItem Icon={Mail} label={member.email || '—'} dense={dense} />
         </div>
@@ -1899,6 +1960,60 @@ function formatBookingDate(iso: string): string {
 /** Set to `true` to show the “Download the App” button on the success step. */
 const SHOW_BOOKING_CONFIRM_APP_CTA = true
 
+function PaymentFailedStep({
+  isMobile,
+  onTryAgain,
+}: {
+  isMobile: boolean
+  onTryAgain: () => void
+}) {
+  const iconCircleClass =
+    'flex items-center justify-center rounded-full border border-[#FF8A8A] bg-black/20 shadow-[0_1px_10px_0_#FF6B6B]'
+  const titleClass = 'text-center font-sans font-medium text-[#FF6B6B]'
+
+  return (
+    <div
+      className={[
+        'flex min-h-[min(100%,calc(100svh-12rem))] w-full flex-1 flex-col items-center justify-center self-stretch py-10',
+        isMobile ? 'px-5' : 'px-4',
+      ].join(' ')}
+    >
+      <div
+        className={[
+          'flex w-full flex-col items-center',
+          isMobile ? 'gap-10' : 'max-w-[320px] gap-8',
+        ].join(' ')}
+      >
+        <div className={`${iconCircleClass} ${isMobile ? 'size-[80px]' : 'size-[100px]'}`} aria-hidden>
+          <span
+            className={[
+              'font-sans font-bold leading-none text-[#FF6B6B]',
+              isMobile ? 'text-[40px]' : 'text-[48px]',
+            ].join(' ')}
+          >
+            !
+          </span>
+        </div>
+        <h2
+          className={[
+            titleClass,
+            isMobile ? 'text-[16px] leading-normal' : 'text-[24px] leading-none',
+          ].join(' ')}
+        >
+          Payment Failed
+        </h2>
+        <ContinueButton
+          className="w-full max-w-none"
+          showChevron={false}
+          onClick={onTryAgain}
+        >
+          Try Again
+        </ContinueButton>
+      </div>
+    </div>
+  )
+}
+
 function BookingConfirmedStep({
   form,
   members,
@@ -1927,7 +2042,10 @@ function BookingConfirmedStep({
     .join(', ')
   const bookingDate = formatBookingDate(form.appointmentDate)
   const bookingDateTime = `${bookingDate} | ${form.appointmentTime || '—'}`
-  const bookingId = [form.employeeId?.trim(), form.appointmentDate?.replaceAll('-', '')]
+  const bookingId = [
+    form.employeeId?.trim() || form.phone?.trim(),
+    form.appointmentDate?.replaceAll('-', ''),
+  ]
     .filter(Boolean)
     .join('-') || 'XYZ123'
   const locationLabel = [form.city?.trim(), 'Mumbai'].filter(Boolean).join(', ')

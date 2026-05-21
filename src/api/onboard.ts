@@ -152,6 +152,78 @@ function isTestParticipantEmployeeId(employeeId: string): boolean {
   return normalized === 'HRM000' || normalized.startsWith('HRM000-T-')
 }
 
+/** Stable id for admin lookup; includes the user's real phone. */
+export function participantsEmployeeIdForBooking(phone: string, appointmentDate?: string): string {
+  const base = phone.trim()
+  const dateTag = appointmentDate?.replaceAll('-', '') ?? ''
+  const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return dateTag ? `${base}-${dateTag}-${unique}` : `${base}-${unique}`
+}
+
+function normalizeEmployeeId(value: string): string {
+  return value.trim().toUpperCase()
+}
+
+/**
+ * Unique per submit so the same entered employee id can be reused across bookings.
+ * The id prefix (e.g. HRM123) is preserved for admin/backend visibility.
+ */
+function participantsEmployeeIdFromInput(
+  employeeId: string,
+  appointmentDate?: string,
+): string {
+  const normalized = normalizeEmployeeId(employeeId)
+  const dateTag = appointmentDate?.replaceAll('-', '') ?? ''
+  const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return dateTag ? `${normalized}-${dateTag}-${unique}` : `${normalized}-${unique}`
+}
+
+export type OnboardBookingContact = {
+  /** API-only email (unique per booking); form still shows the user's email. */
+  email: string
+  /** API-only phone (unique per booking); form still shows the user's phone. */
+  phone: string
+  participantsEmployeeId: string
+  /** Exact employee id for backend when provided; otherwise "NA". */
+  participantDepartment: string
+}
+
+/**
+ * Phone/email are uniquified per booking so repeat submissions work.
+ * When the user enters an employee id, it is stored on the backend via
+ * participant_department and a participants_employee_id that keeps that id as the prefix.
+ */
+export function contactForOnboardBooking(
+  email: string,
+  phone: string,
+  appointmentDate?: string,
+  employeeId?: string,
+): OnboardBookingContact {
+  const tag = String(Date.now())
+  const trimmedPhone = phone.trim()
+  const trimmedEmployeeId = employeeId?.trim() ?? ''
+  const at = email.indexOf('@')
+  const apiEmail =
+    at > 0 ? `${email.slice(0, at)}+ss${tag}${email.slice(at)}` : `${email}+ss${tag}@booking.local`
+  const apiPhone = `8${tag.slice(-9)}`
+
+  if (trimmedEmployeeId) {
+    return {
+      email: apiEmail,
+      phone: apiPhone,
+      participantsEmployeeId: participantsEmployeeIdFromInput(trimmedEmployeeId, appointmentDate),
+      participantDepartment: normalizeEmployeeId(trimmedEmployeeId),
+    }
+  }
+
+  return {
+    email: apiEmail,
+    phone: apiPhone,
+    participantsEmployeeId: participantsEmployeeIdForBooking(trimmedPhone, appointmentDate),
+    participantDepartment: 'NA',
+  }
+}
+
 function parseOnboardSuccess(
   data: unknown,
   expectedEngagementCode: string,
@@ -175,7 +247,7 @@ function parseOnboardSuccess(
 
   if (row?.created === false && !isTestParticipantEmployeeId(participantsEmployeeId)) {
     throw new Error(
-      `Booking was not created for engagement ${expectedEngagementCode}. The employee may already exist in this engagement.`,
+      `Booking was not created for engagement ${expectedEngagementCode}. This phone number or email may already be registered for this program.`,
     )
   }
 
@@ -218,7 +290,8 @@ export async function onboardUserForEngagement(
   console.info('[onboard] Celebal booking', {
     engagementCode,
     gender: apiPayload.gender,
-    employeeId: apiPayload.participants_employee_id,
+    participantsEmployeeId: apiPayload.participants_employee_id,
+    participantDepartment: apiPayload.participant_department,
     url,
   })
 
