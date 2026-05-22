@@ -1966,7 +1966,7 @@ function BookingConfirmedStep({
               {adminLookupHint ? (
                 <>
                   <br />
-                  <span className="text-white/80">{adminLookupHint} — search this in admin</span>
+                  <span className="text-white/80">{adminLookupHint}</span>
                 </>
               ) : null}
             </p>
@@ -2031,7 +2031,7 @@ function BookingConfirmedStep({
             {adminLookupHint ? (
               <>
                 <br />
-                <span className="text-white/80">{adminLookupHint} — search this in admin</span>
+                <span className="text-white/80">{adminLookupHint}</span>
               </>
             ) : null}
           </p>
