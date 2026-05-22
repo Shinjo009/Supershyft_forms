@@ -3,6 +3,8 @@ import {
   ArrowLeft,
   Building2,
   Calendar,
+  Clock,
+  ChevronRight,
   House,
   Mail,
   MapPin,
@@ -15,6 +17,13 @@ import {
   Venus,
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
+import { PreferredDateCalendar } from './components/PreferredDateCalendar'
+import {
+  clampBookingDate,
+  formatPreferredDateLabel,
+  getBookingDateBounds,
+  toIsoDate,
+} from './lib/bookingDates'
 import { onboardUserForEngagement, type OnboardUserForEngagementPayload } from './api/onboard'
 import { PageBackdrop } from './components/PageBackdrop'
 import { SavedMemberCard } from './components/SavedMemberCard'
@@ -1630,7 +1639,7 @@ function ConfirmStep({
         </div>
         <div className="grid grid-cols-2 gap-3 text-[11px] font-light text-[#ccc]">
           <SummaryItem Icon={Calendar} label={formatBookingDate(form.appointmentDate)} dense />
-          <SummaryItem Icon={Phone} label={form.appointmentTime || '—'} dense />
+          <SummaryItem Icon={Clock} label={form.appointmentTime || '—'} dense />
         </div>
       </section>
 
@@ -1711,24 +1720,6 @@ function SummaryItem({
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
-type UpcomingDate = { iso: string; day: string; date: number }
-
-function getMayDates(): UpcomingDate[] {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const base = new Date()
-  base.setHours(0, 0, 0, 0)
-  base.setDate(base.getDate() + 2)
-  return Array.from({ length: 4 }, (_, index) => {
-    const d = new Date(base)
-    d.setDate(base.getDate() + index)
-    return {
-      iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-      day: DAY_LABELS[d.getDay()],
-      date: d.getDate(),
-    }
-  })
-}
-
 function PreferredDateIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -1759,7 +1750,16 @@ function ScheduleStep({
   isMobile: boolean
   showMissingRequired?: boolean
 }) {
-  const dates = useMemo(() => getMayDates(), [])
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const { min: bookingMin, max: bookingMax } = useMemo(() => getBookingDateBounds(), [])
+
+  useEffect(() => {
+    const clamped = clampBookingDate(form.appointmentDate)
+    if (form.appointmentDate && clamped !== form.appointmentDate) {
+      update('appointmentDate', clamped)
+    }
+  }, [form.appointmentDate, update])
+
   const timeSlots = [
     '06:00 AM',
     '07:00 AM',
@@ -1771,9 +1771,13 @@ function ScheduleStep({
     '01:00 PM',
   ]
 
-  const selectedDateClass =
+  const selectedSlotClass =
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
-  const idleDateClass = 'border-white/[0.08] bg-white/5'
+  const idleSlotClass = 'border-white/[0.08] bg-white/5'
+
+  const dateButtonLabel = form.appointmentDate
+    ? formatPreferredDateLabel(form.appointmentDate)
+    : 'Select date'
 
   const sectionLabelClass = isMobile
     ? 'font-sans text-[14px] font-medium leading-normal text-[#9A9A9A]'
@@ -1800,48 +1804,37 @@ function ScheduleStep({
             ) : null}
           </h2>
         )}
-        <div
-          className={
-            isMobile
-              ? 'grid w-full grid-cols-4 gap-2 self-stretch'
-              : 'flex h-[79px] items-center gap-6 self-stretch overflow-x-auto lg:overflow-visible'
-          }
+        <button
+          type="button"
+          onClick={() => setCalendarOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={calendarOpen}
+          className={[
+            'flex w-full items-center justify-between gap-3 rounded-[6px] border border-white/[0.08] bg-white/5 px-4 transition hover:bg-white/[0.08]',
+            isMobile ? 'min-h-[52px]' : 'min-h-[56px]',
+            showMissingRequired && !form.appointmentDate ? 'border-[#ff6b6b]/60' : '',
+          ].join(' ')}
         >
-          {dates.map((d) => {
-            const selected = form.appointmentDate === d.iso
-            return (
-              <button
-                key={d.iso}
-                type="button"
-                onClick={() => update('appointmentDate', d.iso)}
-                aria-pressed={selected}
-                className={[
-                  isMobile
-                    ? 'flex h-[75px] w-full flex-col items-center justify-center gap-1 rounded-[6px] border transition'
-                    : 'flex aspect-[85/78] h-[78px] w-[85px] shrink-0 flex-col items-center justify-center gap-1 rounded-[6px] border px-[18.39px] transition',
-                  selected ? selectedDateClass : idleDateClass,
-                ].join(' ')}
-              >
-                <span
-                  className={[
-                    'font-sans text-[12px] font-medium leading-none',
-                    selected ? 'text-white' : 'text-[#cccccc]/80',
-                  ].join(' ')}
-                >
-                  {d.day}
-                </span>
-                <span
-                  className={[
-                    'font-sans text-[18px] font-semibold leading-none',
-                    selected ? 'text-white' : 'text-[#cccccc]/80',
-                  ].join(' ')}
-                >
-                  {d.date}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+          <span
+            className={[
+              'font-sans text-left text-[14px] font-medium leading-normal',
+              form.appointmentDate ? 'text-white' : 'text-[#9a9a9a]',
+            ].join(' ')}
+          >
+            {dateButtonLabel}
+          </span>
+          <ChevronRight className="size-5 shrink-0 text-[#9a9a9a]" aria-hidden />
+        </button>
+        <p className="text-[11px] font-light text-[#999]">
+          Selectable: {formatPreferredDateLabel(toIsoDate(bookingMin))} – 30 Jun{' '}
+          {bookingMax.getFullYear()}
+        </p>
+        <PreferredDateCalendar
+          open={calendarOpen}
+          value={form.appointmentDate}
+          onClose={() => setCalendarOpen(false)}
+          onConfirm={(iso) => update('appointmentDate', iso)}
+        />
       </section>
 
       <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
@@ -1870,7 +1863,7 @@ function ScheduleStep({
                   isMobile
                     ? 'flex h-10 w-full items-center justify-center rounded-full border text-[13px] transition'
                     : 'flex h-[44px] w-full items-center justify-center rounded-[6px] border text-sm transition',
-                  selected ? selectedDateClass : idleDateClass,
+                  selected ? selectedSlotClass : idleSlotClass,
                 ].join(' ')}
               >
                 <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>{slot}</span>
