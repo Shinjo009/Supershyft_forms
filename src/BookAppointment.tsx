@@ -51,10 +51,10 @@ const logClientError = (message: string) => {
     window.dispatchEvent(new CustomEvent(BOOK_APPOINTMENT_ERROR_EVENT, { detail: message }))
   }
 }
-const TEST_EMPLOYEE_ID = '0000IN000'
+const TEST_EMPLOYEE_IDS = new Set(['0000IN000', '0000IN0000'])
 const BOOKED_EMPLOYEE_IDS_STORAGE_KEY = 'bookedEmployeeIds'
 const ALLOWED_EMPLOYEE_IDS = new Set([
-  TEST_EMPLOYEE_ID,
+  ...TEST_EMPLOYEE_IDS,
   '0000IN0210', '0000IN0221', '0000IN0224', '0000IN0227', '0000IN0228', '0000IN0229',
   '0000IN0232', '0000IN0233', '0000IN0235', '0000IN0237', '0000IN0245', '0000IN0277',
   '0000IN0315', '0000IN0335', '0000IN0338', '0000IN0351', '0000IN0354', '0000IN0368',
@@ -80,7 +80,7 @@ function getBookedEmployeeIds(): Set<string> {
 
 function markEmployeeIdAsBooked(employeeId: string) {
   const normalized = normalizeEmployeeId(employeeId)
-  if (normalized === TEST_EMPLOYEE_ID || typeof window === 'undefined') return
+  if (TEST_EMPLOYEE_IDS.has(normalized) || typeof window === 'undefined') return
   const booked = getBookedEmployeeIds()
   booked.add(normalized)
   window.localStorage.setItem(BOOKED_EMPLOYEE_IDS_STORAGE_KEY, JSON.stringify(Array.from(booked)))
@@ -286,7 +286,7 @@ export default function BookAppointment() {
       logClientError('This Employee ID is not allowed.')
       return
     }
-    if (normalizedEmployeeId !== TEST_EMPLOYEE_ID && getBookedEmployeeIds().has(normalizedEmployeeId)) {
+    if (!TEST_EMPLOYEE_IDS.has(normalizedEmployeeId) && getBookedEmployeeIds().has(normalizedEmployeeId)) {
       logClientError('This Employee ID has already used the booking.')
       return
     }
@@ -388,7 +388,7 @@ export default function BookAppointment() {
       logClientError('This Employee ID is not allowed.')
       return
     }
-    if (normalizedEmployeeId !== TEST_EMPLOYEE_ID && getBookedEmployeeIds().has(normalizedEmployeeId)) {
+    if (!TEST_EMPLOYEE_IDS.has(normalizedEmployeeId) && getBookedEmployeeIds().has(normalizedEmployeeId)) {
       logClientError('This Employee ID has already used the booking.')
       return
     }
