@@ -42,10 +42,7 @@ const DEFAULT_ADDRESS_STATE = 'Maharashtra'
 const DEFAULT_ADDRESS_COUNTRY = 'India'
 
 function buildOnboardAddress(form: FormData): string {
-  return [form.houseNumber, form.street, form.landmark]
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join(', ')
+  return [form.houseNumber, form.street, form.landmark].filter((part) => part.length > 0).join(', ')
 }
 const BOOK_APPOINTMENT_ERROR_EVENT = 'book-appointment:error'
 const logClientError = (message: string) => {
@@ -91,9 +88,15 @@ function markEmployeeIdAsBooked(employeeId: string) {
 const toApiTimeSlot = (slot: string) => {
   const normalized = slot.trim()
   if (!normalized) return '9:00'
-  const firstPart = normalized.split('-')[0]?.trim() || normalized
-  const hour = Number.parseInt(firstPart.split(':')[0] || '', 10)
-  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return '9:00'
+  const firstPart = (normalized.split('-')[0]?.trim() || normalized).toUpperCase()
+  const isPm = firstPart.includes('PM')
+  const isAm = firstPart.includes('AM')
+  const timeOnly = firstPart.replace(/\s*(AM|PM)\s*/gi, '').trim()
+  let hour = Number.parseInt(timeOnly.split(':')[0] || '', 10)
+  if (!Number.isFinite(hour)) return '9:00'
+  if (isPm && hour < 12) hour += 12
+  if (isAm && hour === 12) hour = 0
+  if (hour < 0 || hour > 23) return '9:00'
   return `${hour}:00`
 }
 
@@ -417,6 +420,10 @@ export default function BookAppointment() {
       logClientError('Please select a schedule date.')
       return
     }
+    if (!form.appointmentTime) {
+      logClientError('Please select a time slot.')
+      return
+    }
 
     const onboardAddress = buildOnboardAddress(form)
     const trimmedPincode = form.pincode.trim()
@@ -448,8 +455,8 @@ export default function BookAppointment() {
         age: safeAge,
         first_name: form.firstName,
         last_name: form.lastName,
-        email: trimmedEmail,
-        phone: trimmedPhone,
+        email: form.email,
+        phone: form.phone,
         gender: form.gender,
         blood_collection_date: form.appointmentDate,
         blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
@@ -458,8 +465,8 @@ export default function BookAppointment() {
         participant_blood_group: 'NA',
         want_doctor_consultation: wantsDoctorConsultation,
         address: onboardAddress,
-        pincode: trimmedPincode,
-        city: trimmedCity,
+        pincode: form.pincode,
+        city: form.city,
         state: DEFAULT_ADDRESS_STATE,
         country: DEFAULT_ADDRESS_COUNTRY,
       }
