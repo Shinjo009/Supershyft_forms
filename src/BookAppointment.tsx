@@ -48,7 +48,24 @@ const sanitizeName = (value: string) => value.replace(/[^A-Za-z\s]/g, '')
 const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
 const sanitizePincode = (value: string) => value.replace(/\D/g, '').slice(0, 6)
-const normalizeEmployeeId = (value: string) => value.trim().toUpperCase()
+const EMPLOYEE_ID_PREFIX = 'HRM'
+const sanitizeEmployeeIdSuffix = (value: string) => value.replace(/\D/g, '').slice(0, 4)
+const normalizeEmployeeId = (value: string) => {
+  const trimmed = value.trim().toUpperCase()
+  if (!trimmed) return ''
+  if (trimmed.startsWith(EMPLOYEE_ID_PREFIX)) return trimmed
+  if (/^\d+$/.test(trimmed)) return `${EMPLOYEE_ID_PREFIX}${trimmed}`
+  return trimmed
+}
+const getEmployeeIdSuffix = (fullId: string) => {
+  const normalized = normalizeEmployeeId(fullId)
+  if (!normalized.startsWith(EMPLOYEE_ID_PREFIX)) return ''
+  return normalized.slice(EMPLOYEE_ID_PREFIX.length)
+}
+const buildEmployeeIdFromSuffix = (suffix: string) => {
+  const clean = sanitizeEmployeeIdSuffix(suffix)
+  return clean ? `${EMPLOYEE_ID_PREFIX}${clean}` : ''
+}
 const BOOK_APPOINTMENT_ERROR_EVENT = 'book-appointment:error'
 const logClientError = (message: string) => {
   console.error(`[BookAppointment] ${message}`)
@@ -804,6 +821,51 @@ const mobileFieldInput =
   'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-white outline-none ring-1 ring-transparent placeholder:text-[13px] placeholder:text-white/40 focus:ring-[#4b8d83]'
 const mobileFieldInput14 = `${mobileFieldInput} text-[16px]`
 
+function EmployeeIdField({
+  value,
+  onChange,
+  variant,
+}: {
+  value: string
+  onChange: (fullId: string) => void
+  variant: 'mobile' | 'desktop'
+}) {
+  const isMobile = variant === 'mobile'
+  const suffix = getEmployeeIdSuffix(value)
+
+  return (
+    <div
+      className={[
+        'flex w-full items-stretch overflow-hidden bg-white/5 ring-1 ring-white/5 focus-within:ring-[#4b8d83]/70',
+        isMobile ? 'h-10 rounded-lg' : 'h-[44px] rounded-[8px]',
+      ].join(' ')}
+    >
+      <span
+        className={[
+          'flex shrink-0 items-center border-r border-white/10 bg-white/[0.04] font-semibold tracking-wide text-white/75',
+          isMobile ? 'px-3 text-[14px]' : 'px-4 text-sm',
+        ].join(' ')}
+        aria-hidden
+      >
+        {EMPLOYEE_ID_PREFIX}
+      </span>
+      <input
+        className={[
+          'min-w-0 flex-1 border-0 bg-transparent text-white outline-none placeholder:text-white/40',
+          isMobile ? 'px-3 text-[16px] placeholder:text-[13px]' : 'px-4 text-base placeholder:text-[15px] lg:text-sm lg:placeholder:text-[13px]',
+        ].join(' ')}
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="4196"
+        maxLength={4}
+        aria-label="Employee ID number"
+        value={suffix}
+        onChange={(e) => onChange(buildEmployeeIdFromSuffix(e.target.value))}
+      />
+    </div>
+  )
+}
+
 function PersonalStep({
   form,
   update,
@@ -1034,11 +1096,10 @@ function PersonalStep({
 
           <div className="flex flex-col gap-1">
             {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true, isMissing(form.employeeId))}
-            <input
-              className={mobileFieldInput14}
-              placeholder="Employee ID"
+            <EmployeeIdField
+              variant="mobile"
               value={form.employeeId}
-              onChange={(e) => update('employeeId', e.target.value)}
+              onChange={(fullId) => update('employeeId', fullId)}
             />
           </div>
 
@@ -1107,11 +1168,10 @@ function PersonalStep({
 
           <div className="flex flex-col gap-1">
             {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true, isMissing(form.employeeId))}
-            <input
-              className={mobileFieldInput14}
-              placeholder="Employee ID"
+            <EmployeeIdField
+              variant="mobile"
               value={form.employeeId}
-              onChange={(e) => update('employeeId', e.target.value)}
+              onChange={(fullId) => update('employeeId', fullId)}
             />
           </div>
 
@@ -1292,11 +1352,10 @@ function PersonalStep({
 
           <div>
             {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false, isMissing(form.employeeId))}
-            <input
-              className={inputClass()}
-              placeholder="Employee ID"
+            <EmployeeIdField
+              variant="desktop"
               value={form.employeeId}
-              onChange={(e) => update('employeeId', e.target.value)}
+              onChange={(fullId) => update('employeeId', fullId)}
             />
           </div>
 
@@ -1415,11 +1474,10 @@ function PersonalStep({
 
         <div>
           {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false, isMissing(form.employeeId))}
-          <input
-            className={inputClass()}
-            placeholder="Employee ID"
+          <EmployeeIdField
+            variant="desktop"
             value={form.employeeId}
-            onChange={(e) => update('employeeId', e.target.value)}
+            onChange={(fullId) => update('employeeId', fullId)}
           />
         </div>
 
