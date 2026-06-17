@@ -961,6 +961,9 @@ function PersonalStep({
         </div>
 
         <div className="flex flex-col gap-5">
+          <h2 className="text-[20px] font-medium leading-none text-white">
+            Details for Sample collection
+          </h2>
           <div className="flex flex-col gap-1">
             {labelRow(User, 'Full Name', undefined, true, Boolean(fullNameError), fullNameError)}
             <div className="flex gap-2">
@@ -1112,6 +1115,9 @@ function PersonalStep({
   if (!isLg) {
     return (
       <div className="flex min-h-0 flex-col gap-5 pb-2">
+        <h2 className="text-[20px] font-medium leading-none text-white">
+          Details for Sample collection
+        </h2>
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
             {labelRow(User, 'Full Name', undefined, true, Boolean(fullNameError), fullNameError)}
