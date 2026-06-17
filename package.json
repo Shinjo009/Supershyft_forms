@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build:pincodes": "node scripts/build-pincode-lookup.mjs",
+    "build": "npm run build:pincodes && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

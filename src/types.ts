@@ -11,6 +11,7 @@ export type FormData = {
   landmark: string
   pincode: string
   city: string
+  state: string
   relation: string
   houseNumber: string
   useSamePhone: boolean
@@ -32,6 +33,7 @@ export const defaultFormData: FormData = {
   landmark: '',
   pincode: '',
   city: '',
+  state: 'Maharashtra',
   relation: 'spouse',
   houseNumber: '',
   useSamePhone: true,

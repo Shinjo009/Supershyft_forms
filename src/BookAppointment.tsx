@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Building2,
@@ -7,6 +7,7 @@ import {
   ChevronRight,
   House,
   Mail,
+  Map,
   MapPin,
   MapPinned,
   Mars,
@@ -24,6 +25,7 @@ import {
   getBookingDateBounds,
   toIsoDate,
 } from './lib/bookingDates'
+import { loadPincodeLookup, lookupPincode } from './lib/pincodeLookup'
 import { onboardUserForEngagement, type OnboardUserForEngagementPayload } from './api/onboard'
 import { PageBackdrop } from './components/PageBackdrop'
 import { SavedMemberCard } from './components/SavedMemberCard'
@@ -377,6 +379,7 @@ export default function BookAppointment() {
     const trimmedLandmark = form.landmark.trim()
     const trimmedPincode = form.pincode.trim()
     const trimmedCity = form.city.trim()
+    const trimmedState = form.state.trim()
 
     if (!trimmedHouseNumber) {
       logClientError('House No./ Building is required.')
@@ -400,6 +403,10 @@ export default function BookAppointment() {
     }
     if (!trimmedCity) {
       logClientError('City is required.')
+      return
+    }
+    if (!trimmedState) {
+      logClientError('State is required.')
       return
     }
 
@@ -469,6 +476,7 @@ export default function BookAppointment() {
     const apiAddress = formatAddressForApi(form)
     const apiPincode = form.pincode.trim()
     const apiCity = form.city.trim()
+    const apiState = form.state.trim()
     if (!apiAddress) {
       logClientError('House No./ Building is required.')
       return
@@ -479,6 +487,10 @@ export default function BookAppointment() {
     }
     if (!apiCity) {
       logClientError('City is required.')
+      return
+    }
+    if (!apiState) {
+      logClientError('State is required.')
       return
     }
 
@@ -498,7 +510,7 @@ export default function BookAppointment() {
         address: apiAddress,
         pincode: apiPincode,
         city: apiCity,
-        state: 'Maharashtra',
+        state: apiState,
         country: 'India',
         blood_collection_date: form.appointmentDate,
         blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
@@ -1197,7 +1209,7 @@ function PersonalStep({
     return (
       <>
         <h2 className="mb-5 text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
-          Personal Information
+          Details for Sample collection
         </h2>
 
         <div className="mb-6 flex flex-col gap-3">
@@ -1344,7 +1356,7 @@ function PersonalStep({
   return (
     <>
       <h2 className="mb-7 text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
-        Personal Information
+        Details for Sample collection
       </h2>
 
       <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
@@ -1503,6 +1515,12 @@ function AddressStep({
 }) {
   const showRequired = Boolean(showMissingRequired)
   const isMissing = (value: string) => showRequired && !value.trim()
+  const [pincodeLookupLoading, setPincodeLookupLoading] = useState(false)
+  const [pincodeLookupError, setPincodeLookupError] = useState<'not_found' | 'load_failed' | null>(
+    null,
+  )
+  const lastResolvedPincode = useRef('')
+
   const pincodeError: 'missing' | 'invalid' | undefined = !showRequired
     ? undefined
     : !form.pincode.trim()
@@ -1512,6 +1530,59 @@ function AddressStep({
         : undefined
 
   const fieldClass = isMobile ? mobileFieldInput : inputClass(true)
+
+  useEffect(() => {
+    void loadPincodeLookup().catch(() => {
+      /* lookup loads again when user enters a pincode */
+    })
+  }, [])
+
+  useEffect(() => {
+    const pin = form.pincode.trim()
+    if (pin.length !== 6) {
+      setPincodeLookupError(null)
+      setPincodeLookupLoading(false)
+      lastResolvedPincode.current = ''
+      return
+    }
+    if (pin === lastResolvedPincode.current) return
+
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setPincodeLookupLoading(true)
+        setPincodeLookupError(null)
+        try {
+          const result = await lookupPincode(pin)
+          if (cancelled) return
+          if (!result) {
+            setPincodeLookupError('not_found')
+            return
+          }
+          lastResolvedPincode.current = pin
+          update('city', result.city)
+          update('state', result.state)
+        } catch {
+          if (!cancelled) setPincodeLookupError('load_failed')
+        } finally {
+          if (!cancelled) setPincodeLookupLoading(false)
+        }
+      })()
+    }, 300)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [form.pincode, update])
+
+  const pincodeHint = pincodeLookupLoading
+    ? 'Looking up city and state…'
+    : pincodeLookupError === 'not_found'
+      ? 'Pincode not found — enter city and state manually.'
+      : pincodeLookupError === 'load_failed'
+        ? 'Could not load pincode data — enter city and state manually.'
+        : null
 
   return (
     <div className={`flex flex-col ${isMobile ? 'gap-6' : 'gap-5'}`}>
@@ -1555,6 +1626,9 @@ function AddressStep({
           value={form.pincode}
           onChange={(e) => update('pincode', sanitizePincode(e.target.value))}
         />
+        {pincodeHint ? (
+          <p className="text-[11px] font-light text-[#999]">{pincodeHint}</p>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -1564,6 +1638,16 @@ function AddressStep({
           placeholder="Mumbai"
           value={form.city}
           onChange={(e) => update('city', e.target.value)}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {labelRow(Map, 'State', undefined, isMobile, isMissing(form.state))}
+        <input
+          className={fieldClass}
+          placeholder="Maharashtra"
+          value={form.state}
+          onChange={(e) => update('state', e.target.value)}
         />
       </div>
     </div>
@@ -1591,7 +1675,7 @@ function ConfirmStep({
 
       <section className="rounded-[8px] bg-white/5 p-3">
         <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
-          <h3 className="text-[15px] font-semibold text-white">Personal Information</h3>
+          <h3 className="text-[15px] font-semibold text-white">Details for Sample collection</h3>
           <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(1)}>
             Edit
           </button>
@@ -1611,6 +1695,7 @@ function ConfirmStep({
           <SummaryItem Icon={Building2} label={form.landmark || '—'} dense />
           <div className="grid grid-cols-2 gap-3">
             <SummaryItem Icon={MapPin} label={form.city || '—'} dense />
+            <SummaryItem Icon={Map} label={form.state || '—'} dense />
             <SummaryItem Icon={MapPinned} label={form.pincode || '—'} dense />
           </div>
         </div>
@@ -1898,7 +1983,7 @@ function BookingConfirmedStep({
   const bookingId = [form.employeeId?.trim(), form.appointmentDate?.replaceAll('-', '')]
     .filter(Boolean)
     .join('-') || 'XYZ123'
-  const locationLabel = [form.city?.trim(), 'Mumbai'].filter(Boolean).join(', ')
+  const locationLabel = [form.city?.trim(), form.state?.trim()].filter(Boolean).join(', ')
 
   if (isMobile) {
     return (
