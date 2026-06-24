@@ -532,7 +532,6 @@ export default function BookAppointment() {
         blood_collection_date: form.appointmentDate,
         blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
         participants_employee_id: employeeIdForOnboardApi(normalizedEmployeeId, form.gender),
-        participant_department: 'NA',
         participant_blood_group: 'NA',
         want_doctor_consultation: wantsDoctorConsultation,
       }

@@ -13,7 +13,6 @@ export type OnboardUserForEngagementPayload = {
   blood_collection_date: string
   blood_collection_time_slot: string
   participants_employee_id: string
-  participant_department: string
   participant_blood_group: string
   want_doctor_consultation: boolean
 }
