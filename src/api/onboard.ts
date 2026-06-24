@@ -13,7 +13,6 @@ export type OnboardUserForEngagementPayload = {
   blood_collection_date: string
   blood_collection_time_slot: string
   participants_employee_id: string
-  participant_department: string
   participant_blood_group: string
   want_doctor_consultation: boolean
 }
@@ -191,8 +190,6 @@ export type OnboardBookingContact = {
   email: string
   phone: string
   participantsEmployeeId: string
-  /** Exact employee id for backend when provided; otherwise "NA". */
-  participantDepartment: string
 }
 
 /**
@@ -231,7 +228,6 @@ export function contactForOnboardBooking(
         trimmedPhone,
         appointmentDate,
       ),
-      participantDepartment: normalizeEmployeeId(trimmedEmployeeId),
     }
   }
 
@@ -239,7 +235,6 @@ export function contactForOnboardBooking(
     email: apiEmail,
     phone: apiPhone,
     participantsEmployeeId: participantsEmployeeIdForBooking(trimmedPhone, appointmentDate),
-    participantDepartment: 'NA',
   }
 }
 
@@ -252,7 +247,6 @@ function applyContactToPayload(
     email: contact.email,
     phone: contact.phone,
     participants_employee_id: contact.participantsEmployeeId,
-    participant_department: contact.participantDepartment,
   }
 }
 
@@ -361,7 +355,6 @@ export async function onboardUserForEngagement(
     engagementCode,
     gender: apiPayload.gender,
     participantsEmployeeId: apiPayload.participants_employee_id,
-    participantDepartment: apiPayload.participant_department,
     url,
   })
 
