@@ -112,3 +112,23 @@ export function monthWithinBounds(year: number, month: number, min: Date, max: D
   const monthEnd = new Date(year, month + 1, 0)
   return monthEnd >= min && monthStart <= max
 }
+
+/** All selectable booking dates from min through max (inclusive). */
+export function getBookableDates(bounds = getBookingDateBounds()): Date[] {
+  const dates: Date[] = []
+  const cursor = new Date(bounds.min)
+  cursor.setHours(0, 0, 0, 0)
+  const end = new Date(bounds.max)
+  end.setHours(0, 0, 0, 0)
+  while (cursor <= end) {
+    dates.push(new Date(cursor))
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return dates
+}
+
+export function formatShortBookingDate(iso: string): string {
+  const d = parseIsoDate(iso)
+  if (!d) return '—'
+  return `${DAY_LABELS[d.getDay()]}, ${d.getDate()} ${MONTH_SHORT[d.getMonth()]}`
+}

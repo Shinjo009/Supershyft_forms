@@ -4,7 +4,6 @@ import {
   Building2,
   Calendar,
   Clock,
-  ChevronRight,
   House,
   Mail,
   Map,
@@ -16,22 +15,30 @@ import {
   User,
   Users,
   Venus,
+  X,
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
 import { PreferredDateCalendar } from './components/PreferredDateCalendar'
 import {
   clampBookingDate,
   formatPreferredDateLabel,
+  formatShortBookingDate,
+  getBookableDates,
   getBookingDateBounds,
   toIsoDate,
 } from './lib/bookingDates'
 import { loadPincodeLookup, lookupPincode } from './lib/pincodeLookup'
-import { onboardUserForEngagement, type OnboardUserForEngagementPayload } from './api/onboard'
+// FRONTEND-ONLY: API disabled while redesigning screens.
+// import { onboardUserForEngagement, type OnboardUserForEngagementPayload } from './api/onboard'
+/** Set true when re-enabling validation before API goes live. */
+const ENFORCE_REQUIRED_FIELDS = false
 import { PageBackdrop } from './components/PageBackdrop'
 import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
 import { defaultFormData, type FormData } from './types'
-import supershyftWhiteLogo from './assets/SuperShyft - Logo [Final]-03 7 (1).svg'
+import coinsCelebrationGif from './assets/figma/coins-celebration.gif'
+import { HealthAssessmentStep } from './components/HealthAssessmentStep'
+import { SuperCoinsProgressRail } from './components/SuperCoinsProgressRail'
 
 const RELATION_OPTIONS = [
   'Parent',
@@ -117,6 +124,7 @@ function getBookedEmployeeIds(): Set<string> {
   }
 }
 
+/*
 function markEmployeeIdAsBooked(employeeId: string) {
   if (isTestEmployeeId(employeeId) || typeof window === 'undefined') return
   const normalized = normalizeEmployeeId(employeeId)
@@ -129,7 +137,6 @@ function isTestEmployeeId(employeeId: string): boolean {
   return normalizeEmployeeId(employeeId) === TEST_EMPLOYEE_ID
 }
 
-/** Test ID stays HRM000 in the UI; API gets unique values so repeat QA bookings always register. */
 function employeeIdForOnboardApi(
   employeeId: string,
   gender: '' | 'male' | 'female',
@@ -150,12 +157,6 @@ function contactForOnboardApi(employeeId: string, email: string, phone: string) 
   return { email: apiEmail, phone: apiPhone }
 }
 
-function formatAddressForApi(form: FormData): string {
-  return [form.houseNumber, form.street, form.landmark]
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join(', ')
-}
 const toApiTimeSlot = (slot: string) => {
   const normalized = slot.trim()
   if (!normalized) return '9:00'
@@ -164,17 +165,56 @@ const toApiTimeSlot = (slot: string) => {
   if (!Number.isFinite(hour) || hour < 0 || hour > 23) return '9:00'
   return `${hour}:00`
 }
+*/
+
+function formatAddressForApi(form: FormData): string {
+  return [form.houseNumber, form.street, form.landmark]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(', ')
+}
+
+const SCHEDULE_TIME_SLOTS = [
+  '06:00 AM',
+  '06:30 AM',
+  '07:00 AM',
+  '07:30 AM',
+  '08:00 AM',
+  '08:30 AM',
+  '09:00 AM',
+  '09:30 AM',
+  '10:00 AM',
+  '10:30 AM',
+  '11:00 AM',
+  '11:30 AM',
+  '12:00 PM',
+  '12:30 PM',
+  '01:00 PM',
+] as const
+
+function formatTimeSlotRange(slot: string): string {
+  const normalized = slot.trim()
+  if (!normalized) return '—'
+  const match = normalized.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  if (!match) return normalized
+  let hour = Number.parseInt(match[1], 10)
+  const minute = Number.parseInt(match[2], 10)
+  const meridiem = match[3].toUpperCase()
+  if (meridiem === 'PM' && hour !== 12) hour += 12
+  if (meridiem === 'AM' && hour === 12) hour = 0
+  const end = new Date(2000, 0, 1, hour, minute)
+  end.setMinutes(end.getMinutes() + 60)
+  const endHour24 = end.getHours()
+  const endMinute = end.getMinutes()
+  const endMeridiem = endHour24 >= 12 ? 'PM' : 'AM'
+  const endHour12 = endHour24 % 12 || 12
+  const startLabel = normalized.replace(/\s*(AM|PM)$/i, '')
+  const endLabel = `${String(endHour12).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`
+  return `${startLabel} - ${endLabel} ${endMeridiem}`
+}
 
 function useIsLg() {
-  const [lg, setLg] = useState(false)
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)')
-    const apply = () => setLg(mq.matches)
-    apply()
-    mq.addEventListener('change', apply)
-    return () => mq.removeEventListener('change', apply)
-  }, [])
-  return lg
+  return false
 }
 
 function inputClass(short?: boolean) {
@@ -245,14 +285,14 @@ function labelRow(
           ? 'Field is required'
         : ''
   return (
-    <div className={`flex items-center gap-2 ${mobile ? 'mb-1' : 'mb-1.5'}`}>
+    <div className="flex items-center gap-2">
       <span
         className={`flex shrink-0 items-center justify-center ${mobile ? 'size-5 text-[#999]' : 'size-3.5 text-[#9a9a9a]'}`}
       >
         <Icon className={mobile ? 'size-5' : 'size-3.5'} strokeWidth={1.75} />
       </span>
       <span
-        className={`font-medium ${mobile ? 'text-sm text-[#999]' : 'text-[13px] text-[#9a9a9a]'}`}
+        className={`font-medium ${mobile ? 'text-[14px] leading-normal text-[#999]' : 'text-[13px] text-[#9a9a9a]'}`}
       >
         {label}
         {showRequired ? (
@@ -304,6 +344,11 @@ export default function BookAppointment() {
   const primaryMember = savedMembers[0]
 
   const goNextFromPersonal = () => {
+    if (!ENFORCE_REQUIRED_FIELDS) {
+      setUiError('')
+      setStep(2)
+      return
+    }
     const trimmedPhone = form.phone.trim()
     const trimmedEmail = form.email.trim()
     const trimmedAge = form.age.trim()
@@ -367,15 +412,16 @@ export default function BookAppointment() {
       logClientError('Gender is required.')
       return
     }
-    if (!form.relation.trim()) {
-      logClientError('Relation is required.')
-      return
-    }
 
     setStep(2)
   }
 
   const goNextFromSchedule = () => {
+    if (!ENFORCE_REQUIRED_FIELDS) {
+      setUiError('')
+      setStep(4)
+      return
+    }
     setAttemptedScheduleContinue(true)
     if (!form.appointmentDate) {
       logClientError('Please select a schedule date.')
@@ -390,6 +436,11 @@ export default function BookAppointment() {
   }
 
   const goNextFromAddress = () => {
+    if (!ENFORCE_REQUIRED_FIELDS) {
+      setUiError('')
+      setStep(3)
+      return
+    }
     setAttemptedAddressContinue(true)
     const trimmedHouseNumber = form.houseNumber.trim()
     const trimmedStreet = form.street.trim()
@@ -433,9 +484,20 @@ export default function BookAppointment() {
   const allMembers = useMemo(() => [...savedMembers, form], [savedMembers, form])
 
   const handleConfirmBooking = async () => {
-    const normalizedEmployeeId = normalizeEmployeeId(form.employeeId)
     if (isSubmittingBooking) return
 
+    if (!ENFORCE_REQUIRED_FIELDS) {
+      setUiError('')
+      setIsSubmittingBooking(true)
+      try {
+        setStep(5)
+      } finally {
+        setIsSubmittingBooking(false)
+      }
+      return
+    }
+
+    const normalizedEmployeeId = normalizeEmployeeId(form.employeeId)
     const trimmedPhone = form.phone.trim()
     const trimmedEmail = form.email.trim()
     const trimmedAge = form.age.trim()
@@ -514,6 +576,8 @@ export default function BookAppointment() {
     setIsSubmittingBooking(true)
 
     try {
+      // FRONTEND-ONLY: payload/API disabled while redesigning screens.
+      /*
       const wantsDoctorConsultation = form.personalizedDoctorConsultation === 'yes'
       const apiContact = contactForOnboardApi(normalizedEmployeeId, trimmedEmail, trimmedPhone)
 
@@ -538,6 +602,7 @@ export default function BookAppointment() {
 
       await onboardUserForEngagement(payload)
       markEmployeeIdAsBooked(normalizedEmployeeId)
+      */
       setStep(5)
     } catch (error) {
       logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
@@ -546,192 +611,116 @@ export default function BookAppointment() {
     }
   }
 
-  const desktopWelcomeTitle = 'Welcome to the world of Bio AI technology.'
-  const desktopWelcomeSubtitle =
-    'Book your Bio-marker sample collection & schedule your personalised doctor consultation.'
-
-  const glassPanel =
-    'rounded-[18px] border border-white/12 bg-black/18 shadow-[0_26px_70px_rgba(0,0,0,0.35)] backdrop-blur-[2px]'
-  /** Mobile step 1: full-bleed on backdrop — no framed card/border (matches Figma). */
-  const mobileStep1Layout = 'flex w-full flex-1 flex-col'
+  const mobileScreenTitle = 'Book Appointment'
 
   const isMobile = !isLg
-  const mobilePersonal = isMobile && step === 1
-  const showBack = step === 5 ? false : isLg ? step > 1 : step > 1
-  const stretchStepBody = !isLg || step === 4 || step === 5
-  const hideGlobalContinue = mobilePersonal || step === 5 || step === 1
-  const mobileHeader = isMobile
-  const hideStepper = step === 5
-  const showHeaderTitle = step !== 5
+  const showBack = step > 1
+  const hideGlobalContinue = step === 4 || step === 5 || step === 6
+  const hideStepper = step >= 5
+  const hideMainHeader = step === 6
+  const confirmStepperBorder = step === 4
+
+  const handleClose = () => {
+    setUiError('')
+    setStep(1)
+  }
+
+  const showClose = step !== 2
+
+  const handleStepContinue = () => {
+    if (step === 1) goNextFromPersonal()
+    else if (step === 2) goNextFromAddress()
+    else goNextFromSchedule()
+  }
+
+  const continueVariant = step === 3 ? 'mobileBar' : 'mobileBarCompact'
 
   return (
     <PageBackdrop>
-      <div
-        className={`mx-auto flex flex-col lg:max-w-none lg:min-h-svh lg:px-10 lg:py-14 ${
-          mobilePersonal
-            ? 'min-h-svh px-0 py-0'
-            : isMobile
-              ? 'min-h-svh px-0 py-0'
-              : 'min-h-svh max-w-[980px] px-4 py-6 pb-24'
-        }`}
-      >
-        {showHeaderTitle && (
-          <div className="mt-4 mb-4 flex justify-center">
-            <img src={supershyftWhiteLogo} alt="SuperShyft" className="h-[98px] w-[98px] object-contain" />
-          </div>
+      <div className="flex min-h-svh flex-col">
+        {/* Header — Figma: p-20px */}
+        {hideMainHeader ? null : (
+        <header className="grid shrink-0 grid-cols-[32px_1fr_32px] items-center p-5">
+          {showBack ? (
+            <button
+              type="button"
+              onClick={() => setStep((s) => Math.max(1, s - 1))}
+              className="flex size-8 items-center justify-start text-white"
+              aria-label="Back"
+            >
+              <ArrowLeft className="size-5" strokeWidth={2} />
+            </button>
+          ) : (
+            <span className="size-8" aria-hidden />
+          )}
+          <h1 className="text-center text-[20px] font-semibold leading-6 text-white">
+            {mobileScreenTitle}
+          </h1>
+          {showClose ? (
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex size-8 items-center justify-end text-white"
+              aria-label="Close"
+            >
+              <X className="size-6" strokeWidth={1.75} />
+            </button>
+          ) : (
+            <span className="size-8" aria-hidden />
+          )}
+        </header>
         )}
-        <div
-          className={`flex min-h-0 flex-col ${mobilePersonal ? 'flex-1' : 'flex-1 lg:flex-none'} ${
-            mobilePersonal
-              ? mobileStep1Layout
-              : isMobile
-                ? 'w-full'
-                : `${glassPanel} p-5 lg:relative lg:mx-auto lg:w-full lg:max-w-[970px] lg:p-7`
-          }`}
-        >
-          {/* Header — Figma mobile: back | centered title | close */}
-          <header
+
+        {hideStepper ? null : (
+          <div
             className={
-              mobileHeader
-                ? 'grid grid-cols-[44px_1fr_44px] items-center gap-1 px-5 pt-5'
-                : 'mb-6 grid grid-cols-[24px_1fr_24px] items-center gap-3 lg:mb-6 lg:gap-4'
+              confirmStepperBorder
+                ? 'shrink-0 border-b border-[rgba(154,154,154,0.1)] px-5 pb-5'
+                : 'shrink-0 px-5'
             }
           >
-            {mobileHeader ? (
-              <>
-                {showBack ? (
-                  <button
-                    type="button"
-                    onClick={() => setStep((s) => Math.max(1, s - 1))}
-                    className="flex size-9 items-center justify-center rounded-lg text-white hover:bg-white/10"
-                    aria-label="Back"
-                  >
-                    <ArrowLeft className="size-5" />
-                  </button>
-                ) : (
-                  <span aria-hidden />
-                )}
-                {showHeaderTitle ? (
-                  <div className="min-w-0 w-full text-center">
-                    <h1 className="w-full text-center text-[17px] font-semibold leading-tight tracking-tight text-white">
-                      {desktopWelcomeTitle}
-                    </h1>
-                    <p className="mt-1 w-full text-center text-[12px] leading-normal text-[#cfcfcf]">
-                      {desktopWelcomeSubtitle}
-                    </p>
-                  </div>
-                ) : (
-                  <span aria-hidden />
-                )}
-                <span aria-hidden />
-              </>
-            ) : (
-              <>
-                {showBack ? (
-                  <button
-                    type="button"
-                    onClick={() => setStep((s) => Math.max(1, s - 1))}
-                    className="flex size-6 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
-                    aria-label="Back"
-                  >
-                    <ArrowLeft className="size-5 lg:size-6" />
-                  </button>
-                ) : (
-                  <span className="size-6 shrink-0" aria-hidden />
-                )}
-                {showHeaderTitle ? (
-                  <div className="min-w-0 flex-1 text-center">
-                    <h1 className="whitespace-nowrap text-[17px] font-semibold leading-none tracking-tight text-white">
-                      {desktopWelcomeTitle}
-                    </h1>
-                    <p className="mt-2 text-[14px] font-normal leading-normal text-[#cfcfcf]">
-                      {desktopWelcomeSubtitle}
-                    </p>
-                  </div>
-                ) : (
-                  <span aria-hidden />
-                )}
-                <span className="size-6 shrink-0" aria-hidden />
-              </>
-            )}
-          </header>
+            <Stepper
+              current={step}
+              compact
+              maxReachable={maxReachedStep}
+              onStepClick={(target) => setStep(target)}
+            />
+          </div>
+        )}
 
-          {!hideStepper && (
-            <div
-              className={
-                mobilePersonal
-                  ? 'mt-6 mb-[45px] shrink-0 px-5'
-                  : isMobile
-                    ? 'mt-6 mb-8 shrink-0 px-5'
-                    : 'mb-8 px-1 lg:mx-auto lg:w-[600px] lg:px-0'
-              }
-            >
-              <Stepper
-                current={step}
-                compact={!isLg}
-                maxReachable={maxReachedStep}
-                onStepClick={(target) => setStep(target)}
-              />
-            </div>
-          )}
+        {uiError ? (
+          <div className="mx-6 mb-2 rounded-lg border border-[#ff6b6b]/40 bg-[#ff6b6b]/10 px-3 py-2 text-sm text-[#ffd1d1]">
+            {uiError}
+          </div>
+        ) : null}
 
-          {uiError ? (
-            <div className={`mb-3 rounded-lg border border-[#ff6b6b]/40 bg-[#ff6b6b]/10 px-3 py-2 text-sm text-[#ffd1d1] ${isMobile ? 'mx-5' : ''}`}>
-              {uiError}
-            </div>
-          ) : null}
-
-          <div
-            className={`flex min-h-0 flex-col ${stretchStepBody ? 'flex-1' : 'flex-none'} ${
-              mobilePersonal
-                ? ''
-                : isMobile
-                  ? step === 5
-                    ? 'px-5'
-                    : 'px-5 pt-1'
-                  : ''
-            }`}
-          >
+        {/* Form body — Figma: pt-48px px-24px pb-24px, justify-between */}
+        <div
+          className={`flex min-h-0 flex-1 flex-col ${
+            step === 5
+              ? 'px-6 pb-6 pt-4'
+              : step === 6
+                ? 'px-0 pb-0 pt-0'
+                : 'justify-between px-6 pb-6 pt-12'
+          }`}
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {step === 1 && (
-              <>
-                {mobilePersonal ? (
-                  <div className="px-6">
-                    <PersonalStep
-                      form={form}
-                      update={update}
-                      isLg={isLg}
-                      inputClass={inputClass}
-                      labelRow={labelRow}
-                      onContinue={goNextFromPersonal}
-                      showMobileContinue
-                      showMissingRequired={attemptedPersonalContinue}
-                      savedMembers={savedMembers}
-                      expandedMemberIndex={expandedMemberIndex}
-                      onToggleMember={(i) =>
-                        setExpandedMemberIndex((cur) => (cur === i ? null : i))
-                      }
-                      primaryMember={primaryMember}
-                    />
-                  </div>
-                ) : (
-                  <PersonalStep
-                    form={form}
-                    update={update}
-                    isLg={isLg}
-                    inputClass={inputClass}
-                    labelRow={labelRow}
-                    onContinue={goNextFromPersonal}
-                    showMobileContinue
-                    showMissingRequired={attemptedPersonalContinue}
-                    savedMembers={savedMembers}
-                    expandedMemberIndex={expandedMemberIndex}
-                    onToggleMember={(i) =>
-                      setExpandedMemberIndex((cur) => (cur === i ? null : i))
-                    }
-                    primaryMember={primaryMember}
-                  />
-                )}
-              </>
+              <PersonalStep
+                form={form}
+                update={update}
+                isLg={isLg}
+                inputClass={inputClass}
+                labelRow={labelRow}
+                onContinue={goNextFromPersonal}
+                showMissingRequired={ENFORCE_REQUIRED_FIELDS && attemptedPersonalContinue}
+                savedMembers={savedMembers}
+                expandedMemberIndex={expandedMemberIndex}
+                onToggleMember={(i) =>
+                  setExpandedMemberIndex((cur) => (cur === i ? null : i))
+                }
+                primaryMember={primaryMember}
+              />
             )}
             {step === 2 && (
               <AddressStep
@@ -739,7 +728,7 @@ export default function BookAppointment() {
                 update={update}
                 labelRow={labelRow}
                 isMobile={isMobile}
-                showMissingRequired={attemptedAddressContinue}
+                showMissingRequired={ENFORCE_REQUIRED_FIELDS && attemptedAddressContinue}
               />
             )}
             {step === 3 && (
@@ -747,7 +736,7 @@ export default function BookAppointment() {
                 form={form}
                 update={update}
                 isMobile={isMobile}
-                showMissingRequired={attemptedScheduleContinue}
+                showMissingRequired={ENFORCE_REQUIRED_FIELDS && attemptedScheduleContinue}
               />
             )}
             {step === 4 && (
@@ -757,6 +746,7 @@ export default function BookAppointment() {
                 onEdit={(s) => setStep(s)}
                 onProceed={handleConfirmBooking}
                 isSubmitting={isSubmittingBooking}
+                isMobile={isMobile}
               />
             )}
             {step === 5 && (
@@ -764,61 +754,32 @@ export default function BookAppointment() {
                 form={form}
                 members={allMembers}
                 isMobile={isMobile}
-                onClose={() => setStep(1)}
+                onContinue={() => setStep(6)}
               />
+            )}
+            {step === 6 && (
+              <HealthAssessmentStep balance={50} onStartAssessment={handleClose} />
             )}
           </div>
 
-          {mobilePersonal && step === 1 && null}
-
-          {/* Footer CTA — mobile: full-width bar pinned to bottom with 30px safe-area; desktop: right-aligned pill */}
-          {!hideGlobalContinue && (
-            isMobile ? (
-              step < 4 ? (
-                <div className="mt-auto shrink-0 px-6 pt-4 pb-[30px]">
-                  <ContinueButton
-                    variant="mobileBar"
-                    onClick={() => {
-                      if (step === 1) goNextFromPersonal()
-                      else if (step === 2) goNextFromAddress()
-                      else goNextFromSchedule()
-                    }}
-                  >
-                    Continue
-                  </ContinueButton>
-                </div>
-              ) : null
-            ) : (
-              <div
-                className={[
-                  step < 4 ? 'mt-6 flex' : 'mt-auto flex pt-8',
-                  'justify-end',
-                ].join(' ')}
-              >
-                {step < 4 && (
-                  <ContinueButton
-                    onClick={() => {
-                      if (step === 1) goNextFromPersonal()
-                      else if (step === 2) goNextFromAddress()
-                      else goNextFromSchedule()
-                    }}
-                  >
-                    Continue
-                  </ContinueButton>
-                )}
-              </div>
-            )
-          )}
+          {!hideGlobalContinue ? (
+            <div className="mt-6 shrink-0">
+              <ContinueButton variant={continueVariant} onClick={handleStepContinue}>
+                Continue
+              </ContinueButton>
+            </div>
+          ) : null}
         </div>
       </div>
-
     </PageBackdrop>
   )
 }
 
 const mobileFieldInput =
-  'h-10 w-full rounded-lg border-0 bg-white/5 px-4 text-white outline-none ring-1 ring-transparent placeholder:text-[13px] placeholder:text-white/40 focus:ring-[#4b8d83]'
-const mobileFieldInput14 = `${mobileFieldInput} text-[16px]`
+  'h-10 w-full rounded-[8px] border-0 bg-white/5 px-4 text-[12px] text-white outline-none placeholder:text-[12px] placeholder:text-white/60 focus:ring-1 focus:ring-[#4b8d83]'
+const mobileFieldInputName =
+  'h-10 w-full rounded-[8px] border-0 bg-white/5 px-4 text-[14px] text-white outline-none placeholder:text-[14px] placeholder:text-white/60 focus:ring-1 focus:ring-[#4b8d83]'
+const mobileFieldInput14 = mobileFieldInput
 
 function EmployeeIdField({
   value,
@@ -872,7 +833,6 @@ function PersonalStep({
   inputClass,
   labelRow,
   onContinue,
-  showMobileContinue,
   showMissingRequired,
   savedMembers,
   expandedMemberIndex,
@@ -892,7 +852,6 @@ function PersonalStep({
     errorType?: 'missing' | 'invalid',
   ) => React.ReactNode
   onContinue: () => void
-  showMobileContinue: boolean
   showMissingRequired?: boolean
   savedMembers: FormData[]
   expandedMemberIndex: number | null
@@ -1113,127 +1072,117 @@ function PersonalStep({
 
   if (!isLg) {
     return (
-      <div className="flex min-h-0 flex-col gap-5 pb-2">
-        <h2 className="text-[20px] font-medium leading-none text-white">
-          Details for Sample collection
-        </h2>
-        <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-1">
-            {labelRow(User, 'Full Name', undefined, true, Boolean(fullNameError), fullNameError)}
-            <div className="flex gap-2">
-              <input
-                className={`${mobileFieldInput14} min-w-0 flex-1`}
-                placeholder="First Name"
-                autoComplete="given-name"
-                value={form.firstName}
-                onChange={(e) => update('firstName', sanitizeName(e.target.value))}
-              />
-              <input
-                className={`${mobileFieldInput14} min-w-0 flex-1`}
-                placeholder="Last Name"
-                autoComplete="family-name"
-                value={form.lastName}
-                onChange={(e) => update('lastName', sanitizeName(e.target.value))}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            {labelRow(
-              Phone,
-              'Phone Number (Whatsapp)',
-              undefined,
-              true,
-              Boolean(phoneError),
-              phoneError,
-            )}
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1">
+          {labelRow(User, 'Full Name', undefined, true, Boolean(fullNameError), fullNameError)}
+          <div className="flex gap-2">
             <input
-              className={mobileFieldInput14}
-              inputMode="tel"
-              placeholder="Phone"
-              maxLength={10}
-              value={form.phone}
-              onChange={(e) => update('phone', sanitizePhone(e.target.value))}
+              className={`${mobileFieldInputName} min-w-0 flex-1`}
+              placeholder="First name"
+              autoComplete="given-name"
+              value={form.firstName}
+              onChange={(e) => update('firstName', sanitizeName(e.target.value))}
             />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            {labelRow(Mail, 'Email ID', undefined, true, Boolean(emailError), emailError)}
             <input
-              className={mobileFieldInput14}
-              type="email"
-              inputMode="email"
-              placeholder="Email"
-              autoComplete="email"
-              value={form.email}
-              onChange={(e) => update('email', e.target.value)}
+              className={`${mobileFieldInputName} min-w-0 flex-1`}
+              placeholder="Last Name"
+              autoComplete="family-name"
+              value={form.lastName}
+              onChange={(e) => update('lastName', sanitizeName(e.target.value))}
             />
           </div>
-
-
-          <div className="flex flex-col gap-1">
-            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true, isMissing(form.employeeId))}
-            <EmployeeIdField
-              variant="mobile"
-              value={form.employeeId}
-              onChange={(fullId) => update('employeeId', fullId)}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            {labelRow(Calendar, 'Age', undefined, true, isMissing(form.age))}
-            <input
-              className={mobileFieldInput14}
-              inputMode="numeric"
-              placeholder="Age"
-              maxLength={2}
-              value={form.age}
-              onChange={(e) => update('age', sanitizeAge(e.target.value))}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            {labelRow(GenderIcon, 'Gender', undefined, true, isMissingGender)}
-            <div className="flex h-10 gap-6">
-              <button
-                type="button"
-                onClick={() => update('gender', 'male')}
-                className={[
-                  'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs leading-4 transition',
-                  form.gender === 'male'
-                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
-                    : 'bg-white/5 text-[#999]',
-                ].join(' ')}
-              >
-                <Mars className="size-3.5 shrink-0 opacity-90" strokeWidth={2} />
-                Male
-              </button>
-              <button
-                type="button"
-                onClick={() => update('gender', 'female')}
-                className={[
-                  'flex flex-1 items-center justify-center gap-2 rounded-full px-2.5 py-1 text-xs leading-4 transition',
-                  form.gender === 'female'
-                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
-                    : 'bg-white/5 text-[#999]',
-                ].join(' ')}
-              >
-                <Venus className="size-4 shrink-0 opacity-90" strokeWidth={2} />
-                Female
-              </button>
-            </div>
-          </div>
-
-
         </div>
 
-        {showMobileContinue && (
-          <div className="pb-4">
-            <ContinueButton variant="mobileBar" onClick={onContinue}>
-              Continue
-            </ContinueButton>
+        <div className="flex flex-col gap-1">
+          {labelRow(Phone, 'Phone', undefined, true, Boolean(phoneError), phoneError)}
+          <input
+            className={mobileFieldInput}
+            inputMode="tel"
+            placeholder="+91 999999999"
+            maxLength={10}
+            value={form.phone}
+            onChange={(e) => update('phone', sanitizePhone(e.target.value))}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          {labelRow(Mail, 'Email', undefined, true, Boolean(emailError), emailError)}
+          <input
+            className={mobileFieldInput}
+            type="email"
+            inputMode="email"
+            placeholder="abc.xyz@gmail.com"
+            autoComplete="email"
+            value={form.email}
+            onChange={(e) => update('email', e.target.value)}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          {labelRow(Calendar, 'Age', undefined, true, isMissing(form.age))}
+          <input
+            className={mobileFieldInput}
+            inputMode="numeric"
+            placeholder="24"
+            maxLength={2}
+            value={form.age}
+            onChange={(e) => update('age', sanitizeAge(e.target.value))}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          {labelRow(User, 'Gender', undefined, true, isMissingGender)}
+          <div className="flex h-10 gap-6">
+            <button
+              type="button"
+              onClick={() => update('gender', 'male')}
+              className={[
+                'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] leading-4 transition',
+                form.gender === 'male'
+                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                  : 'bg-white/5 text-[#999]',
+              ].join(' ')}
+            >
+              <Mars className="size-3 shrink-0" strokeWidth={2} />
+              Male
+            </button>
+            <button
+              type="button"
+              onClick={() => update('gender', 'female')}
+              className={[
+                'flex flex-1 items-center justify-center gap-2.5 rounded-full px-2.5 py-1 text-[12px] leading-4 transition',
+                form.gender === 'female'
+                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                  : 'bg-white/5 text-[#999]',
+              ].join(' ')}
+            >
+              <Venus className="size-2.5 shrink-0" strokeWidth={2} />
+              Female
+            </button>
           </div>
-        )}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="flex size-6 shrink-0 items-center justify-center text-[#999]">
+              <EmployeeIdIcon className="size-6" />
+            </span>
+            <span className="text-[14px] font-medium text-[#999]">
+              Employee ID
+              {isMissing(form.employeeId) ? (
+                <span className="text-[#ff6b6b]"> * Field is required</span>
+              ) : null}
+            </span>
+          </div>
+          <input
+            className={mobileFieldInput}
+            inputMode="numeric"
+            placeholder="1324"
+            maxLength={4}
+            value={getEmployeeIdSuffix(form.employeeId)}
+            onChange={(e) => update('employeeId', buildEmployeeIdFromSuffix(e.target.value))}
+          />
+        </div>
       </div>
     )
   }
@@ -1704,15 +1653,17 @@ function AddressStep({
         />
       </div>
 
-      <div className="flex flex-col gap-1">
-        {labelRow(Map, 'State', undefined, isMobile, isMissing(form.state))}
-        <input
-          className={fieldClass}
-          placeholder="Maharashtra"
-          value={form.state}
-          onChange={(e) => update('state', e.target.value)}
-        />
-      </div>
+      {!isMobile ? (
+        <div className="flex flex-col gap-1">
+          {labelRow(Map, 'State', undefined, isMobile, isMissing(form.state))}
+          <input
+            className={fieldClass}
+            placeholder="Maharashtra"
+            value={form.state}
+            onChange={(e) => update('state', e.target.value)}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1723,22 +1674,25 @@ function ConfirmStep({
   onEdit,
   onProceed,
   isSubmitting,
+  isMobile = false,
 }: {
   form: FormData
   members: FormData[]
   onEdit: (step: number) => void
   onProceed: () => void
   isSubmitting: boolean
+  isMobile?: boolean
 }) {
   const primary = members[0] ?? form
   const fullAddress = [form.houseNumber, form.street].filter(Boolean).join(', ')
+  const timeRange = formatTimeSlotRange(form.appointmentTime)
   return (
-    <div className="flex flex-col gap-3">
-      <h2 className="mb-1 text-[18px] font-semibold text-white">Confirm Details</h2>
+    <div className={`flex flex-col ${isMobile ? 'gap-3' : 'gap-3'}`}>
+      <h2 className="text-[18px] font-semibold text-white">Confirm Details</h2>
 
       <section className="rounded-[8px] bg-white/5 p-3">
         <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
-          <h3 className="text-[15px] font-semibold text-white">Details for Sample collection</h3>
+          <h3 className="text-[15px] font-semibold text-white">Personal Information</h3>
           <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(1)}>
             Edit
           </button>
@@ -1773,13 +1727,14 @@ function ConfirmStep({
         </div>
         <div className="grid grid-cols-2 gap-3 text-[11px] font-light text-[#ccc]">
           <SummaryItem Icon={Calendar} label={formatBookingDate(form.appointmentDate)} dense />
-          <SummaryItem Icon={Clock} label={form.appointmentTime || '—'} dense />
+          <SummaryItem Icon={Clock} label={timeRange} dense />
         </div>
       </section>
 
       <ContinueButton
         className="mt-3 w-full max-w-none"
         showChevron={false}
+        variant="mobileBarCompact"
         disabled={isSubmitting}
         onClick={onProceed}
       >
@@ -1822,7 +1777,7 @@ function MemberSummary({
         <SummaryItem Icon={Phone} label={member.phone || '—'} dense={dense} />
         <SummaryItem Icon={GenderIcon} label={genderLabel} dense={dense} />
         <SummaryItem Icon={Calendar} label={member.age ? `${member.age} Years` : '—'} dense={dense} />
-        <SummaryItem Icon={EmployeeIdIcon} label={member.employeeId || '—'} dense={dense} />
+        <SummaryItem Icon={EmployeeIdIcon} label={getEmployeeIdSuffix(member.employeeId) || member.employeeId || '—'} dense={dense} />
         <div className="col-span-2">
           <SummaryItem Icon={Mail} label={member.email || '—'} dense={dense} />
         </div>
@@ -1885,7 +1840,7 @@ function ScheduleStep({
   showMissingRequired?: boolean
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false)
-  const { min: bookingMin, max: bookingMax } = useMemo(() => getBookingDateBounds(), [])
+  const bookableDates = useMemo(() => getBookableDates(), [])
 
   useEffect(() => {
     const clamped = clampBookingDate(form.appointmentDate)
@@ -1894,33 +1849,21 @@ function ScheduleStep({
     }
   }, [form.appointmentDate, update])
 
-  const timeSlots = [
-    '06:00 AM',
-    '07:00 AM',
-    '08:00 AM',
-    '09:00 AM',
-    '10:00 AM',
-    '11:00 AM',
-    '12:00 PM',
-    '01:00 PM',
-  ]
-
   const selectedSlotClass =
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
   const idleSlotClass = 'border-white/[0.08] bg-white/5'
-
-  const dateButtonLabel = form.appointmentDate
-    ? formatPreferredDateLabel(form.appointmentDate)
-    : 'Select date'
+  const selectedDateClass =
+    'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)]'
+  const idleDateClass = 'bg-white/5'
 
   const sectionLabelClass = isMobile
     ? 'font-sans text-[14px] font-medium leading-normal text-[#9A9A9A]'
     : 'text-[24px] font-medium leading-none text-white'
 
-  return (
-    <div className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-6' : 'gap-9'}`}>
-      <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
-        {isMobile ? (
+  if (isMobile) {
+    return (
+      <div className="flex flex-col gap-6">
+        <section className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <PreferredDateIcon />
             <h2 className={sectionLabelClass}>
@@ -1930,34 +1873,102 @@ function ScheduleStep({
               ) : null}
             </h2>
           </div>
-        ) : (
-          <h2 className={sectionLabelClass}>
-            Preferred Date
-            {showMissingRequired && !form.appointmentDate ? (
-              <span className="text-[#ff6b6b]"> * Field is required</span>
-            ) : null}
-          </h2>
-        )}
+          <div className="-mx-1 flex justify-between gap-2 overflow-x-auto pb-1">
+            {bookableDates.map((date) => {
+              const iso = toIsoDate(date)
+              const selected = form.appointmentDate === iso
+              return (
+                <button
+                  key={iso}
+                  type="button"
+                  onClick={() => update('appointmentDate', iso)}
+                  aria-pressed={selected}
+                  className={[
+                    'mx-0 flex h-[75px] w-[70px] shrink-0 flex-col items-center justify-center gap-1 rounded-[6px] px-4 transition',
+                    selected ? selectedDateClass : idleDateClass,
+                  ].join(' ')}
+                >
+                  <span className={selected ? 'text-[12px] font-medium text-white' : 'text-[12px] font-medium text-[#9a9a9a]/80'}>
+                    {DAY_LABELS[date.getDay()]}
+                  </span>
+                  <span className={selected ? 'text-[18px] font-semibold text-white' : 'text-[18px] font-semibold text-[#9a9a9a]/80'}>
+                    {date.getDate()}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <div className="flex items-start gap-2">
+            <PreferredTimeSlotIcon />
+            <div className="flex flex-col gap-1">
+              <h2 className={sectionLabelClass}>
+                Preferred Time Slot
+                {showMissingRequired && !form.appointmentTime ? (
+                  <span className="text-[#ff6b6b]"> * Field is required</span>
+                ) : null}
+              </h2>
+              <p className="pl-7 text-[10px] font-light text-[#ccc]">Collection window is of 1 hour</p>
+            </div>
+          </div>
+          <div className="grid w-full grid-cols-3 gap-2 px-1">
+            {SCHEDULE_TIME_SLOTS.map((slot) => {
+              const selected = form.appointmentTime === slot
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  onClick={() => update('appointmentTime', slot)}
+                  aria-pressed={selected}
+                  className={[
+                    'flex h-10 w-full items-center justify-center rounded-full border text-[14px] font-medium transition',
+                    selected ? selectedSlotClass : idleSlotClass,
+                  ].join(' ')}
+                >
+                  <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>{slot}</span>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      </div>
+    )
+  }
+
+  const dateButtonLabel = form.appointmentDate
+    ? formatPreferredDateLabel(form.appointmentDate)
+    : 'Select date'
+  const { min: bookingMin, max: bookingMax } = getBookingDateBounds()
+
+  return (
+    <div className="flex flex-col items-start gap-9 self-stretch">
+      <section className="flex flex-col items-start gap-6 self-stretch">
+        <h2 className={sectionLabelClass}>
+          Preferred Date
+          {showMissingRequired && !form.appointmentDate ? (
+            <span className="text-[#ff6b6b]"> * Field is required</span>
+          ) : null}
+        </h2>
         <button
           type="button"
           onClick={() => setCalendarOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={calendarOpen}
           className={[
-            'flex w-full items-center justify-between gap-3 rounded-[6px] border border-white/[0.08] bg-white/5 px-4 transition hover:bg-white/[0.08]',
-            isMobile ? 'min-h-[52px]' : 'min-h-[56px]',
+            'flex min-h-[56px] w-full items-center justify-between gap-3 rounded-[6px] border border-white/[0.08] bg-white/5 px-4 transition hover:bg-white/[0.08]',
             showMissingRequired && !form.appointmentDate ? 'border-[#ff6b6b]/60' : '',
           ].join(' ')}
         >
           <span
             className={[
-              'font-sans text-left text-[14px] font-medium leading-normal',
+              'text-left text-[14px] font-medium leading-normal',
               form.appointmentDate ? 'text-white' : 'text-[#9a9a9a]',
             ].join(' ')}
           >
             {dateButtonLabel}
           </span>
-          <ChevronRight className="size-5 shrink-0 text-[#9a9a9a]" aria-hidden />
         </button>
         <p className="text-[11px] font-light text-[#999]">
           Selectable: {formatPreferredDateLabel(toIsoDate(bookingMin))} – 30 Jun{' '}
@@ -1971,7 +1982,7 @@ function ScheduleStep({
         />
       </section>
 
-      <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
+      <section className="flex flex-col items-start gap-6 self-stretch">
         <div className="flex items-center gap-2">
           <PreferredTimeSlotIcon />
           <div className="flex flex-col gap-1">
@@ -1984,8 +1995,8 @@ function ScheduleStep({
             <p className="text-[10px] font-light text-[#ccc]">Collection window is of 1 hour</p>
           </div>
         </div>
-        <div className={isMobile ? 'grid w-full grid-cols-3 gap-2' : 'grid w-full grid-cols-3 gap-4'}>
-          {timeSlots.map((slot) => {
+        <div className="grid w-full grid-cols-3 gap-4">
+          {SCHEDULE_TIME_SLOTS.map((slot) => {
             const selected = form.appointmentTime === slot
             return (
               <button
@@ -1994,9 +2005,7 @@ function ScheduleStep({
                 onClick={() => update('appointmentTime', slot)}
                 aria-pressed={selected}
                 className={[
-                  isMobile
-                    ? 'flex h-10 w-full items-center justify-center rounded-full border text-[13px] transition'
-                    : 'flex h-[44px] w-full items-center justify-center rounded-[6px] border text-sm transition',
+                  'flex h-[44px] w-full items-center justify-center rounded-[6px] border text-sm transition',
                   selected ? selectedSlotClass : idleSlotClass,
                 ].join(' ')}
               >
@@ -2006,7 +2015,6 @@ function ScheduleStep({
           })}
         </div>
       </section>
-
     </div>
   )
 }
@@ -2023,183 +2031,112 @@ function formatBookingDate(iso: string): string {
   return `${DAY_LABELS[d.getDay()]}, ${d.getDate()} ${MONTH_LABELS[d.getMonth()]}`
 }
 
-/** Set to `true` to show the “Download the App” button on the success step. */
-const SHOW_BOOKING_CONFIRM_APP_CTA = true
-
 function BookingConfirmedStep({
   form,
   members,
   isMobile,
-  onClose,
+  onContinue,
 }: {
   form: FormData
   members: FormData[]
   isMobile: boolean
-  onClose: () => void
+  onContinue: () => void
 }) {
-  const memberNames = members
+  const memberName = members
     .map((m) => [m.firstName, m.lastName].filter(Boolean).join(' '))
+    .filter(Boolean)[0] || '—'
+  const bookingDate = formatShortBookingDate(form.appointmentDate)
+  const timeRange = formatTimeSlotRange(form.appointmentTime).replace(' - ', '-')
+  const bookingDateTime = `${bookingDate}  |  ${timeRange}`
+  const locationLabel = [form.street?.trim() || form.city?.trim(), form.city?.trim()]
     .filter(Boolean)
-    .join(', ')
-  const bookingDate = formatBookingDate(form.appointmentDate)
-  const bookingDateTime = `${bookingDate} | ${form.appointmentTime || '—'}`
-  const bookingId = [form.employeeId?.trim(), form.appointmentDate?.replaceAll('-', '')]
-    .filter(Boolean)
-    .join('-') || 'XYZ123'
-  const locationLabel = [form.city?.trim(), form.state?.trim()].filter(Boolean).join(', ')
+    .filter((part, index, arr) => arr.indexOf(part) === index)
+    .join(', ') || '—'
+
+  const content = (
+    <div className="flex w-full flex-col items-center gap-12">
+      <div className="flex flex-col items-center">
+        <img
+          src={coinsCelebrationGif}
+          alt=""
+          className="pointer-events-none h-[156px] w-[266px] object-contain"
+          aria-hidden
+        />
+        <div className="mt-[-14px] flex items-center gap-1 rounded-full border border-white/5 bg-[rgba(144,223,158,0.1)] px-3 py-0.5">
+          <CoinsLineIcon />
+          <span className="text-[12px] font-medium text-[#90df9e]">+50 SuperCoins</span>
+          <span className="text-[12px] font-medium text-[#e4e4e4]">earned</span>
+        </div>
+      </div>
+
+      <SuperCoinsProgressRail />
+
+      <div className="w-full rounded-xl border border-[rgba(144,223,158,0.2)] bg-[rgba(75,141,131,0.1)] p-[13px]">
+        <SuccessDetailRow icon={<CalendarIcon />} label="Date & Time" value={bookingDateTime} />
+        <div className="mt-3">
+          <SuccessDetailRow icon={<UserIcon />} label="Member Name" value={memberName} />
+        </div>
+        <div className="mt-3">
+          <SuccessDetailRow icon={<LocationIcon />} label="Location" value={locationLabel} />
+        </div>
+      </div>
+
+      <div className="flex w-full items-end justify-between">
+        <div>
+          <p className="text-[12px] tracking-[-0.06em] text-[#9a9a9a]">Step 2</p>
+          <p className="text-[16px] text-white">Health Assessment</p>
+        </div>
+        <p className="text-[11px] text-[#9a9a9a]">
+          <span className="text-[14px] font-semibold tracking-[-0.06em] text-[#dac15a]">+200 </span>
+          Supercoins
+        </p>
+      </div>
+
+      <ContinueButton variant="mobileBar" className="w-full" onClick={onContinue}>
+        Continue
+      </ContinueButton>
+    </div>
+  )
 
   if (isMobile) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col items-center self-stretch">
-        <div className="flex w-full items-center justify-end px-1 pb-8">
-          <h2 className="mx-auto text-[20px] font-semibold leading-none text-white">Book Appointment</h2>
-          <button
-            type="button"
-            aria-label="Close"
-            className="text-[28px] leading-none text-white"
-            onClick={onClose}
-          >
-            ×
-          </button>
-        </div>
-        <div className="flex w-full flex-col items-center gap-12">
-          <div
-            className="flex size-[80px] items-center justify-center rounded-full border border-[#90DF9E] bg-black/20 shadow-[0_1px_10px_0_#90DF9E]"
-            aria-hidden
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="26" viewBox="0 0 45 32" fill="none">
-              <path
-                d="M42.9998 1.66699L14.5832 30.0837L1.6665 17.167"
-                stroke="#4B8D83"
-                strokeWidth="3.33333"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-
-          <h2 className="text-center font-sans text-[16px] font-medium leading-normal text-[#90DF9E]">
-            Booking Confirmed!
-          </h2>
-
-          <div className="flex w-full flex-col items-center gap-5 self-stretch rounded-[8px] border border-[#90DF9E]/20 bg-[#4B8D83]/10 px-[25px] py-[25px]">
-            <div className="flex flex-col items-center">
-              <p className="text-[14px] text-[#9A9A9A]">Booking ID</p>
-              <p className="max-w-[280px] truncate text-[20px] font-bold leading-[28px] text-white">{bookingId}</p>
-            </div>
-            <div className="flex w-full flex-col items-start gap-4">
-              <InfoRow icon={<CalendarIcon />} label="Date & Time" value={bookingDateTime} isMobile />
-              <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} isMobile />
-              <InfoRow icon={<LocationIcon />} label="Location" value={locationLabel} isMobile />
-            </div>
-          </div>
-          <p className="text-center text-[14px] text-[#CCC]">⚠️ Don’t miss the call from our collection team</p>
-        </div>
-
-        {SHOW_BOOKING_CONFIRM_APP_CTA ? (
-          <div className="mt-auto flex w-full flex-col items-center gap-3 pb-[30px] pt-10">
-            <a
-              href="https://app.supershyft.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[16px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
-            >
-              Download the App
-            </a>
-          </div>
-        ) : null}
-      </div>
-    )
+    return <div className="flex min-h-0 w-full flex-1 flex-col pb-6">{content}</div>
   }
 
   return (
-    <div className="flex w-full flex-col items-center self-stretch">
-      <div className="flex w-full max-w-[760px] flex-col items-center gap-6 pb-10">
-        <div
-          className="flex size-[100px] items-center justify-center rounded-full border border-[#90DF9E] bg-black/20 shadow-[0_1px_10px_0_#90DF9E]"
-          aria-hidden
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="45" height="32" viewBox="0 0 45 32" fill="none">
-            <path
-              d="M42.9998 1.66699L14.5832 30.0837L1.6665 17.167"
-              stroke="#4B8D83"
-              strokeWidth="3.33333"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-
-        <h2 className="text-center font-sans text-[24px] font-semibold leading-none text-[#4B8D83]">
-          Booking Confirmed!
-        </h2>
-
-        <div className="flex w-full max-w-[520px] flex-col items-center gap-5 rounded-[8px] border border-[#90DF9E]/20 bg-[#4B8D83]/10 p-6">
-          <div className="flex flex-col items-center">
-            <p className="text-[14px] text-[#9A9A9A]">Booking ID</p>
-            <p className="max-w-[360px] truncate text-[24px] font-bold leading-none text-white">{bookingId}</p>
-          </div>
-          <div className="flex w-full flex-col items-start gap-4">
-            <InfoRow icon={<CalendarIcon />} label="Date & Time" value={bookingDateTime} />
-            <InfoRow icon={<UserIcon />} label="Member Name" value={memberNames || '—'} />
-            <InfoRow icon={<LocationIcon />} label="Location" value={locationLabel} />
-          </div>
-        </div>
-        <p className="text-center text-[16px] text-[#CCC]">⚠️ Don’t miss the call from our collection team</p>
-      </div>
-
-      {SHOW_BOOKING_CONFIRM_APP_CTA ? (
-        <>
-          <a
-            href="https://app.supershyft.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-[10px] flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41AB99] px-6 py-2.5 text-center text-[16px] font-bold text-white shadow-[0_12px_20px_0_rgba(255,255,255,0.15)] transition hover:brightness-110"
-          >
-            Download the App
-          </a>
-        </>
-      ) : null}
+    <div className="mx-auto flex w-full max-w-[520px] flex-col items-center py-6">
+      {content}
     </div>
   )
 }
 
-function InfoRow({
+function SuccessDetailRow({
   icon,
   label,
   value,
-  isMobile = false,
 }: {
   icon: React.ReactNode
   label: string
   value: string
-  isMobile?: boolean
 }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col self-stretch">
-      <span
-        className={[
-          isMobile
-            ? 'pl-[36px] font-sans text-[10px] font-normal leading-normal text-[#9A9A9A]'
-            : 'pl-8 text-[12px] font-normal leading-none text-[#9A9A9A]',
-        ].join(' ')}
-      >
-        {label}
+    <div className="flex items-center gap-4">
+      <span className="flex size-5 shrink-0 items-center justify-center" aria-hidden>
+        {icon}
       </span>
-      <div className={isMobile ? 'mt-1 flex items-center gap-3' : 'mt-1 flex items-center gap-3'}>
-        <span
-          className={isMobile ? 'flex size-[20px] shrink-0 items-center justify-center' : 'flex size-5 shrink-0 items-center justify-center'}
-          aria-hidden
-        >
-          {icon}
-        </span>
-        <span
-          className={isMobile ? 'min-w-0 font-sans text-[15px] font-medium leading-normal text-[#CCC]' : 'min-w-0 truncate text-[15px] font-medium leading-normal text-[#CCC]'}
-        >
-          {value}
-        </span>
+      <div className="min-w-0">
+        <p className="text-[10px] text-[#9a9a9a]">{label}</p>
+        <p className="truncate text-[15px] font-medium text-[#ccc]">{value}</p>
       </div>
     </div>
+  )
+}
+
+function CoinsLineIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <circle cx="8" cy="8" r="5.5" stroke="#90DF9E" strokeWidth="1.2" />
+      <path d="M8 5.5V10.5M6.25 8H9.75" stroke="#90DF9E" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
   )
 }
 
