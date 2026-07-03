@@ -1,18 +1,32 @@
 import type { SitDurationOption } from '../../data/lifestyleHabitsQuestions'
 import { SIT_DURATION_OPTIONS } from '../../data/lifestyleHabitsQuestions'
 
-const DIAL_CENTER = { x: 138.5, y: 115.5 }
+const CX = 138.5
+const CY = 115.5
 
 const PILL_GRADIENT = 'url(#sit-duration-pill-gradient)'
 
-const ORANGE_ARC_PATH =
+/** Thick orange arc — Figma Ellipse 13083, native top-right (< 1 h) slot */
+const ORANGE_ARC =
   'M97.4561 43.7615C96.263 41.6762 96.9818 39.0081 99.1241 37.9207C110.497 32.1485 123.017 28.9389 135.799 28.5419C150.034 28.0999 164.159 31.1588 176.935 37.4503C189.711 43.7418 200.747 53.0734 209.075 64.6259C216.553 75.0004 221.642 86.8812 224 99.4149C224.444 101.776 222.768 103.972 220.387 104.298C218.007 104.624 215.826 102.955 215.368 100.596C213.212 89.4731 208.663 78.9324 202.017 69.7133C194.523 59.316 184.59 50.9176 173.091 45.2553C161.593 39.593 148.88 36.8399 136.069 37.2377C124.71 37.5905 113.582 40.411 103.45 45.4829C101.302 46.5583 98.6491 45.8467 97.4561 43.7615Z'
 
+/** Thin grey arcs — Figma Ellipse 13082 & 13084 */
 const GREY_ARC_BOTTOM_RIGHT =
   'M223.325 115.5C224.526 115.5 225.503 116.474 225.473 117.675C225.135 131.166 221.663 144.405 215.319 156.339C208.634 168.914 198.964 179.655 187.159 187.62C175.353 195.585 161.773 200.53 147.61 202.022C134.169 203.437 120.593 201.7 107.956 196.962C106.832 196.54 106.294 195.27 106.744 194.156C107.193 193.042 108.46 192.507 109.585 192.927C121.561 197.4 134.422 199.036 147.155 197.696C160.609 196.279 173.511 191.581 184.726 184.014C195.941 176.447 205.127 166.243 211.478 154.297C217.488 142.992 220.785 130.454 221.121 117.675C221.153 116.474 222.124 115.5 223.325 115.5Z'
 
 const GREY_ARC_LEFT =
   'M97.3012 189.648C96.7178 190.698 95.392 191.079 94.3568 190.469C82.7274 183.622 72.8412 174.157 65.4908 162.814C57.7458 150.864 53.053 137.194 51.8244 123.006C50.5957 108.818 52.8688 94.545 58.4441 81.4405C63.7352 69.0037 71.8471 57.9801 82.1264 49.2353C83.0413 48.4569 84.4128 48.6039 85.168 49.538C85.9233 50.4721 85.7762 51.8395 84.8623 52.619C75.1362 60.9153 67.4593 71.3619 62.4469 83.1435C57.1504 95.5928 54.9909 109.152 56.1582 122.631C57.3254 136.109 61.7836 149.095 69.1413 160.449C76.1044 171.193 85.4629 180.165 96.4703 186.666C97.5047 187.276 97.8846 188.598 97.3012 189.648Z'
+
+/** Fixed slot config — each option owns one arc position on the ring */
+const SLOTS: {
+  id: SitDurationOption
+  orangeRotation: number
+  greyPath: 'top-right' | 'bottom-right' | 'left'
+}[] = [
+  { id: 'under-1h', orangeRotation: 0, greyPath: 'top-right' },
+  { id: '1-4h', orangeRotation: 106, greyPath: 'bottom-right' },
+  { id: '4h-plus', orangeRotation: 244, greyPath: 'left' },
+]
 
 const PILL_HIT_AREAS: {
   id: SitDurationOption
@@ -22,6 +36,56 @@ const PILL_HIT_AREAS: {
   { id: '4h-plus', className: 'left-0 top-[103px] h-[33px] w-[42px]' },
   { id: '1-4h', className: 'left-[205px] top-[176px] h-[33px] w-[49px]' },
 ]
+
+function GreyArc({ variant }: { variant: 'top-right' | 'bottom-right' | 'left' }) {
+  if (variant === 'bottom-right') {
+    return <path d={GREY_ARC_BOTTOM_RIGHT} fill="white" fillOpacity="0.2" />
+  }
+  if (variant === 'left') {
+    return <path d={GREY_ARC_LEFT} fill="white" fillOpacity="0.2" />
+  }
+  return (
+    <g transform={`rotate(116 ${CX} ${CY})`}>
+      <path d={GREY_ARC_LEFT} fill="white" fillOpacity="0.2" />
+    </g>
+  )
+}
+
+function OrangeArcSlot({ rotation }: { rotation: number }) {
+  return (
+    <g transform={`rotate(${rotation} ${CX} ${CY})`}>
+      <g filter="url(#sit-duration-arc-glow)">
+        <path d={ORANGE_ARC} fill="#FF8800" />
+      </g>
+      <line
+        x1="144.044"
+        y1="98.1614"
+        x2="172.161"
+        y2="40.9563"
+        stroke="#FF8800"
+        strokeOpacity="0.5"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </g>
+  )
+}
+
+function ArcSlot({
+  slot,
+  selected,
+}: {
+  slot: (typeof SLOTS)[number]
+  selected: SitDurationOption | null
+}) {
+  const isActive = selected === slot.id
+
+  if (isActive) {
+    return <OrangeArcSlot rotation={slot.orangeRotation} />
+  }
+
+  return <GreyArc variant={slot.greyPath} />
+}
 
 function PillUnder1h({ selected }: { selected: boolean }) {
   return (
@@ -114,17 +178,11 @@ function Pill14h({ selected }: { selected: boolean }) {
 function CenterHub({ label }: { label: string }) {
   return (
     <g filter="url(#sit-duration-hub-glow)">
-      <circle cx={DIAL_CENTER.x} cy={DIAL_CENTER.y} r="18" fill="black" fillOpacity="0.2" />
-      <circle
-        cx={DIAL_CENTER.x}
-        cy={DIAL_CENTER.y}
-        r="17.5"
-        stroke="#FF8800"
-        strokeOpacity="0.5"
-      />
+      <circle cx={CX} cy={CY} r="18" fill="black" fillOpacity="0.2" />
+      <circle cx={CX} cy={CY} r="17.5" stroke="#FF8800" strokeOpacity="0.5" />
       <text
-        x={DIAL_CENTER.x}
-        y={DIAL_CENTER.y + 4}
+        x={CX}
+        y={CY + 4}
         textAnchor="middle"
         fill="white"
         fontSize="11"
@@ -134,55 +192,6 @@ function CenterHub({ label }: { label: string }) {
         {label}
       </text>
     </g>
-  )
-}
-
-function DialTracks({ selected }: { selected: SitDurationOption | null }) {
-  if (!selected) {
-    return (
-      <>
-        <path d={GREY_ARC_BOTTOM_RIGHT} fill="white" fillOpacity="0.2" />
-        <path d={GREY_ARC_LEFT} fill="white" fillOpacity="0.2" />
-        <path d={ORANGE_ARC_PATH} fill="white" fillOpacity="0.2" />
-      </>
-    )
-  }
-
-  const selectedOption = SIT_DURATION_OPTIONS.find((option) => option.id === selected)
-  if (!selectedOption) return null
-
-  const greyTopRight = selected !== 'under-1h'
-  const greyBottomRight = selected !== '1-4h'
-  const greyLeft = selected !== '4h-plus'
-
-  return (
-    <>
-      {greyBottomRight ? (
-        <path d={GREY_ARC_BOTTOM_RIGHT} fill="white" fillOpacity="0.2" />
-      ) : null}
-      {greyLeft ? <path d={GREY_ARC_LEFT} fill="white" fillOpacity="0.2" /> : null}
-      {greyTopRight ? (
-        <path d={ORANGE_ARC_PATH} fill="white" fillOpacity="0.2" />
-      ) : null}
-
-      <g
-        transform={`rotate(${selectedOption.arcDeg} ${DIAL_CENTER.x} ${DIAL_CENTER.y})`}
-      >
-        <g filter="url(#sit-duration-arc-glow)">
-          <path d={ORANGE_ARC_PATH} fill="#FF8800" />
-        </g>
-        <line
-          x1="144.044"
-          y1="98.1614"
-          x2="172.161"
-          y2="40.9563"
-          stroke="#FF8800"
-          strokeOpacity="0.5"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </g>
-    </>
   )
 }
 
@@ -268,7 +277,9 @@ export function SitDurationDial({
           </radialGradient>
         </defs>
 
-        <DialTracks selected={selected} />
+        {SLOTS.map((slot) => (
+          <ArcSlot key={slot.id} slot={slot} selected={selected} />
+        ))}
 
         <Pill14h selected={selected === '1-4h'} />
         <Pill4hPlus selected={selected === '4h-plus'} />
