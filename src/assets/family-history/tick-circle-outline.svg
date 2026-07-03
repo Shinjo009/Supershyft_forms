@@ -1,0 +1,10 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="teenyicons:tick-circle-outline" clip-path="url(#clip0_0_38)">
+<path id="Vector" d="M3.2 6L5.6 8L8.8 4M6 11.6C5.2646 11.6 4.5364 11.4552 3.85697 11.1737C3.17755 10.8923 2.56021 10.4798 2.0402 9.9598C1.52019 9.43979 1.1077 8.82245 0.826275 8.14303C0.544848 7.4636 0.4 6.7354 0.4 6C0.4 5.2646 0.544848 4.5364 0.826275 3.85697C1.1077 3.17755 1.52019 2.56021 2.0402 2.0402C2.56021 1.52019 3.17755 1.1077 3.85697 0.826275C4.5364 0.544848 5.2646 0.4 6 0.4C7.48521 0.4 8.90959 0.989998 9.9598 2.0402C11.01 3.09041 11.6 4.51479 11.6 6C11.6 7.48521 11.01 8.90959 9.9598 9.9598C8.90959 11.01 7.48521 11.6 6 11.6Z" stroke="var(--stroke-0, white)" stroke-width="0.5"/>
+</g>
+<defs>
+<clipPath id="clip0_0_38">
+<rect width="12" height="12" fill="white"/>
+</clipPath>
+</defs>
+</svg>

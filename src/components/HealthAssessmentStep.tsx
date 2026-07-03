@@ -1,10 +1,10 @@
 import { ContinueButton } from './ContinueButton'
+import assessmentRadioImg from '../assets/Ellipse 13077.svg'
+import hourglassIcon from '../assets/Group.svg'
+import unlockCoinsIcon from '../assets/majesticons_coins-line.svg'
+import heartRateIcon from '../assets/streamline-flex_heart-rate.svg'
+import unlockInsightsIcon from '../assets/SVG.svg'
 import assessmentCoinImg from '../assets/figma/assessment-coin.png'
-import assessmentRadioImg from '../assets/figma/assessment-radio.png'
-import heartRateIcon from '../assets/figma/heart-rate-icon.png'
-import hourglassIcon from '../assets/figma/hourglass-icon.png'
-import unlockCoinsIcon from '../assets/figma/unlock-coins-icon.png'
-import unlockInsightsIcon from '../assets/figma/unlock-insights-icon.png'
 
 const ASSESSMENT_SECTIONS = [
   {
@@ -147,7 +147,7 @@ export function HealthAssessmentStep({
           </div>
 
           <div className="flex items-center justify-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1">
-            <img src={hourglassIcon} alt="" className="h-[9px] w-2" aria-hidden />
+            <img src={hourglassIcon} alt="" className="h-[11px] w-2.5" aria-hidden />
             <span className="text-[12px] text-[#90df9e]">Takes only 4 mins</span>
           </div>
         </div>

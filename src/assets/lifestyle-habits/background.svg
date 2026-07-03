@@ -1,0 +1,20 @@
+<svg width="360" height="780" viewBox="0 0 360 780" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="390" height="884" transform="translate(-22.6909 -15.2188)" fill="url(#paint0_radial)" />
+  <ellipse cx="243.309" cy="789.781" rx="124" ry="79" fill="#EEB7E7" fill-opacity="0.4" filter="url(#blur)" />
+  <defs>
+    <filter id="blur" x="-80.6909" y="510.781" width="648" height="558" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="100" />
+    </filter>
+    <radialGradient
+      id="paint0_radial"
+      cx="0"
+      cy="0"
+      r="1"
+      gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(-366.5 -493) rotate(61.8345) scale(1865.38 1865.38)"
+    >
+      <stop stop-color="#EE8B48" />
+      <stop offset="0.593934" stop-color="#0D0616" />
+    </radialGradient>
+  </defs>
+</svg>

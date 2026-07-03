@@ -2,12 +2,21 @@ import backgroundImage from '../assets/bg.png'
 import backgroundMobileSvg from '../assets/Background (1).svg'
 
 /** Full-viewport background — mobile uses shared Figma SVG wallpaper */
-export function PageBackdrop({ children }: { children: React.ReactNode }) {
+export function PageBackdrop({
+  children,
+  mobileBackgroundSrc,
+}: {
+  children: React.ReactNode
+  /** Override the default mobile wallpaper (e.g. Health Assessment screen) */
+  mobileBackgroundSrc?: string
+}) {
+  const mobileBg = mobileBackgroundSrc ?? backgroundMobileSvg
+
   return (
     <div className="relative min-h-svh overflow-x-hidden bg-[#0d0616] font-sans text-white">
       <div className="pointer-events-none fixed inset-0 lg:hidden" aria-hidden>
         <img
-          src={backgroundMobileSvg}
+          src={mobileBg}
           alt=""
           className="size-full object-cover object-top"
         />

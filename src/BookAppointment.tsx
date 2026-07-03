@@ -36,8 +36,14 @@ import { PageBackdrop } from './components/PageBackdrop'
 import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
 import { defaultFormData, type FormData } from './types'
+import backgroundAssessmentSvg from './assets/Background.svg'
+import familyHistoryBackgroundSvg from './assets/family history.svg'
 import coinsCelebrationGif from './assets/figma/coins-celebration.gif'
+import lifestyleHabitsBackgroundSvg from './assets/lifestyle-habits/background.svg'
+import { FamilyHistoryMcqStep } from './components/FamilyHistoryMcqStep'
+import { FamilySectionCompleteStep } from './components/FamilySectionCompleteStep'
 import { HealthAssessmentStep } from './components/HealthAssessmentStep'
+import { LifestyleHabitsMcqStep } from './components/LifestyleHabitsMcqStep'
 import { SuperCoinsProgressRail } from './components/SuperCoinsProgressRail'
 
 const RELATION_OPTIONS = [
@@ -615,9 +621,9 @@ export default function BookAppointment() {
 
   const isMobile = !isLg
   const showBack = step > 1
-  const hideGlobalContinue = step === 4 || step === 5 || step === 6
+  const hideGlobalContinue = step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9
   const hideStepper = step >= 5
-  const hideMainHeader = step === 6
+  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9
   const confirmStepperBorder = step === 4
 
   const handleClose = () => {
@@ -636,7 +642,17 @@ export default function BookAppointment() {
   const continueVariant = step === 3 ? 'mobileBar' : 'mobileBarCompact'
 
   return (
-    <PageBackdrop>
+    <PageBackdrop
+      mobileBackgroundSrc={
+        step === 6 || step === 8
+          ? backgroundAssessmentSvg
+          : step === 7
+            ? familyHistoryBackgroundSvg
+            : step === 9
+              ? lifestyleHabitsBackgroundSvg
+              : undefined
+      }
+    >
       <div className="flex min-h-svh flex-col">
         {/* Header — Figma: p-20px */}
         {hideMainHeader ? null : (
@@ -699,12 +715,12 @@ export default function BookAppointment() {
           className={`flex min-h-0 flex-1 flex-col ${
             step === 5
               ? 'px-6 pb-6 pt-4'
-              : step === 6
+              : step === 6 || step === 7 || step === 8 || step === 9
                 ? 'px-0 pb-0 pt-0'
                 : 'justify-between px-6 pb-6 pt-12'
           }`}
         >
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className={step === 7 || step === 9 ? 'min-h-0 flex-1 overflow-hidden' : 'min-h-0 flex-1 overflow-y-auto'}>
             {step === 1 && (
               <PersonalStep
                 form={form}
@@ -758,7 +774,22 @@ export default function BookAppointment() {
               />
             )}
             {step === 6 && (
-              <HealthAssessmentStep balance={50} onStartAssessment={handleClose} />
+              <HealthAssessmentStep balance={50} onStartAssessment={() => setStep(7)} />
+            )}
+            {step === 7 && (
+              <FamilyHistoryMcqStep
+                onBack={() => setStep(6)}
+                onComplete={() => setStep(8)}
+              />
+            )}
+            {step === 8 && (
+              <FamilySectionCompleteStep
+                balance={100}
+                onStartLifestyle={() => setStep(9)}
+              />
+            )}
+            {step === 9 && (
+              <LifestyleHabitsMcqStep onBack={() => setStep(8)} />
             )}
           </div>
 
