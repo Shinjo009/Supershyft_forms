@@ -653,7 +653,7 @@ export default function BookAppointment() {
               : undefined
       }
     >
-      <div className="flex min-h-svh flex-col">
+      <div className="flex h-full flex-col">
         {/* Header — Figma: p-20px */}
         {hideMainHeader ? null : (
         <header className="grid shrink-0 grid-cols-[32px_1fr_32px] items-center p-5">
@@ -717,7 +717,7 @@ export default function BookAppointment() {
               ? 'px-6 pb-6 pt-4'
               : step === 6 || step === 7 || step === 8 || step === 9
                 ? 'px-0 pb-0 pt-0'
-                : 'justify-between px-6 pb-6 pt-12'
+                : 'justify-between px-6 pb-6 pt-0'
           }`}
         >
           <div className={step === 7 || step === 9 ? 'min-h-0 flex-1 overflow-hidden' : 'min-h-0 flex-1 overflow-y-auto'}>

@@ -7,7 +7,7 @@ import smallCoinImg from '../../assets/smallcoin.svg'
 import type { LifestyleQuestionPreview } from '../../data/lifestyleHabitsQuestions'
 
 const NEXT_BUTTON_GRADIENT =
-  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 50 50' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.3'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(2.5 0 0 2.5 25 25)'><stop stop-color='rgba(255,136,0,1)' offset='0'/><stop stop-color='rgba(252,131,12,1)' offset='0.25'/><stop stop-color='rgba(250,125,23,1)' offset='0.5'/><stop stop-color='rgba(244,115,46,1)' offset='0.75'/><stop stop-color='rgba(233,93,92,1)' offset='1'/></radialGradient></defs></svg>\")"
+  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 50 50' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.3'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(2.5 0 0 2.5 25 25)'><stop stop-color='rgba(255,136,0,1)' offset='0'/><stop stop-color='rgba(233,93,92,1)' offset='1'/></radialGradient></defs></svg>\")"
 
 /** Shared Lifestyle & Habits MCQ chrome — Figma 5629:14250 */
 export function LifestyleHabitsMcqShell({
@@ -26,7 +26,7 @@ export function LifestyleHabitsMcqShell({
   const clampedPercent = Math.min(100, Math.max(0, progressPercent))
 
   return (
-    <div className="relative mx-auto flex min-h-svh w-full max-w-[360px] flex-col pb-[108px]">
+    <div className="relative mx-auto flex h-full min-h-0 w-full max-w-[360px] flex-col pb-[108px]">
       <header className="flex shrink-0 items-center justify-between px-4 pb-0 pt-10">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <button
@@ -41,11 +41,11 @@ export function LifestyleHabitsMcqShell({
             Lifestyle & Habits
           </h1>
         </div>
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div className="flex shrink-0 items-center gap-1">
           <span className="text-right text-[14px] font-light uppercase leading-5 text-[#9a9a9a]">
-            +50{' '}
+            +50
           </span>
-          <img src={smallCoinImg} alt="" className="h-5 w-[19px] shrink-0" aria-hidden />
+          <img src={smallCoinImg} alt="" className="size-[19px]" aria-hidden />
         </div>
       </header>
 
@@ -86,7 +86,7 @@ export function LifestyleHabitsMcqShell({
           <button
             type="button"
             onClick={onNext}
-            className="flex size-[50px] shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(79,172,254,0.2)]"
+            className="flex size-[50px] shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(255,136,0,0.25)]"
             style={{ backgroundImage: NEXT_BUTTON_GRADIENT }}
             aria-label="Next question"
           >
@@ -97,6 +97,3 @@ export function LifestyleHabitsMcqShell({
     </div>
   )
 }
-
-export const LIFESTYLE_CHIP_SELECTED_GRADIENT =
-  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 155 32' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.3'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(7.75 0 0 1.6 77.5 16)'><stop stop-color='rgba(255,136,0,1)' offset='0.46635'/><stop stop-color='rgba(252,131,12,0.9375)' offset='0.53305'/><stop stop-color='rgba(250,125,23,0.875)' offset='0.59976'/><stop stop-color='rgba(244,115,46,0.75)' offset='0.73317'/><stop stop-color='rgba(233,93,92,0.5)' offset='1'/></radialGradient></defs></svg>\")"

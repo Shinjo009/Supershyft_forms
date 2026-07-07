@@ -26,7 +26,7 @@ export function FamilyHistoryMcqShell({
   const clampedPercent = Math.min(100, Math.max(0, progressPercent))
 
   return (
-    <div className="relative mx-auto flex min-h-svh w-full max-w-[360px] flex-col pb-[108px]">
+    <div className="relative mx-auto flex h-full min-h-0 w-full max-w-[360px] flex-col pb-[108px]">
       <header className="flex shrink-0 items-center justify-between px-4 pb-0 pt-10">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <button
