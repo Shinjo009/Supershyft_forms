@@ -20,11 +20,13 @@ export function RadialDialPill({
         selected
           ? {
               backgroundImage: DIAL_PILL_GRADIENT,
-              border: '0.5px solid #D0D0D0',
+              border: 'none',
+              boxShadow: 'inset 0 0 0 0.25px #D0D0D0',
             }
           : {
               backgroundColor: 'rgba(0, 0, 0, 0.2)',
-              border: '0.5px solid rgba(255, 255, 255, 0.3)',
+              border: 'none',
+              boxShadow: 'inset 0 0 0 0.25px rgba(255, 255, 255, 0.3)',
             }
       }
     >

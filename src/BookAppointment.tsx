@@ -37,6 +37,8 @@ import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
 import { defaultFormData, type FormData } from './types'
 import backgroundAssessmentSvg from './assets/Background.svg'
+import nutritionEndBackgroundSvg from './assets/nutritionend.svg'
+import nutritionLogBackgroundSvg from './assets/nutritionlogstart.svg'
 import familyHistoryBackgroundSvg from './assets/family history.svg'
 import coinsCelebrationGif from './assets/figma/coins-celebration.gif'
 import lifestyleHabitsBackgroundSvg from './assets/lifestyle-habits/background.svg'
@@ -44,6 +46,8 @@ import { FamilyHistoryMcqStep } from './components/FamilyHistoryMcqStep'
 import { FamilySectionCompleteStep } from './components/FamilySectionCompleteStep'
 import { HealthAssessmentStep } from './components/HealthAssessmentStep'
 import { LifestyleHabitsMcqStep } from './components/LifestyleHabitsMcqStep'
+import { LifestyleSectionCompleteStep } from './components/LifestyleSectionCompleteStep'
+import { NutritionLogMcqStep } from './components/NutritionLogMcqStep'
 import { SuperCoinsProgressRail } from './components/SuperCoinsProgressRail'
 
 const RELATION_OPTIONS = [
@@ -621,9 +625,9 @@ export default function BookAppointment() {
 
   const isMobile = !isLg
   const showBack = step > 1
-  const hideGlobalContinue = step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9
+  const hideGlobalContinue = step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11
   const hideStepper = step >= 5
-  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9
+  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11
   const confirmStepperBorder = step === 4
 
   const handleClose = () => {
@@ -646,7 +650,11 @@ export default function BookAppointment() {
       mobileBackgroundSrc={
         step === 6 || step === 8
           ? backgroundAssessmentSvg
-          : step === 7
+          : step === 10
+            ? nutritionEndBackgroundSvg
+            : step === 11
+              ? nutritionLogBackgroundSvg
+              : step === 7
             ? familyHistoryBackgroundSvg
             : step === 9
               ? lifestyleHabitsBackgroundSvg
@@ -715,12 +723,12 @@ export default function BookAppointment() {
           className={`flex min-h-0 flex-1 flex-col ${
             step === 5
               ? 'px-6 pb-6 pt-4'
-              : step === 6 || step === 7 || step === 8 || step === 9
+              : step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11
                 ? 'px-0 pb-0 pt-0'
                 : 'justify-between px-6 pb-6 pt-0'
           }`}
         >
-          <div className={step === 7 || step === 9 ? 'min-h-0 flex-1 overflow-hidden' : 'min-h-0 flex-1 overflow-y-auto'}>
+          <div className={step === 7 || step === 9 || step === 11 ? 'min-h-0 flex-1 overflow-hidden' : 'min-h-0 flex-1 overflow-y-auto'}>
             {step === 1 && (
               <PersonalStep
                 form={form}
@@ -789,7 +797,19 @@ export default function BookAppointment() {
               />
             )}
             {step === 9 && (
-              <LifestyleHabitsMcqStep onBack={() => setStep(8)} />
+              <LifestyleHabitsMcqStep
+                onBack={() => setStep(8)}
+                onComplete={() => setStep(10)}
+              />
+            )}
+            {step === 10 && (
+              <LifestyleSectionCompleteStep
+                balance={170}
+                onStartNutrition={() => setStep(11)}
+              />
+            )}
+            {step === 11 && (
+              <NutritionLogMcqStep onBack={() => setStep(10)} />
             )}
           </div>
 

@@ -14,11 +14,13 @@ export function WeeklyLeisureDial({
   onSelect: (value: WeeklyLeisureOption) => void
 }) {
   return (
-    <RadialDialSelector
-      config={WEEKLY_LEISURE_DIAL_CONFIG}
-      selected={selected}
-      onSelect={onSelect}
-      centerLabelByOption={WEEKLY_LEISURE_CENTER_LABELS}
-    />
+    <div className="-ml-12 overflow-visible pl-12">
+      <RadialDialSelector
+        config={WEEKLY_LEISURE_DIAL_CONFIG}
+        selected={selected}
+        onSelect={onSelect}
+        centerLabelByOption={WEEKLY_LEISURE_CENTER_LABELS}
+      />
+    </div>
   )
 }
