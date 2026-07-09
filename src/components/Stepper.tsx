@@ -53,11 +53,11 @@ export function Stepper({ current, compact = false, maxReachable, onStepClick }:
               const clickable = Boolean(onStepClick) && step !== current && step <= reachable
 
               const circleClass = [
-                'flex size-[30px] items-center justify-center rounded-[15px] text-[14px] font-semibold leading-none',
+                'relative z-20 flex size-[30px] items-center justify-center rounded-[15px] text-[14px] font-semibold leading-none',
                 active || done
                   ? 'border-[1.6px] border-[#4b8d83] bg-[#063533] shadow-[0_0_5px_#4b8d83]'
-                  : 'border-[0.2px] border-[#9a9a9a] bg-transparent opacity-50',
-                active ? 'text-white' : done ? 'text-[#4b8d83]' : 'text-[#9a9a9a]',
+                  : 'border-[0.2px] border-[#9a9a9a]/50 bg-[#0d0616] text-[#9a9a9a]',
+                active ? 'text-white' : done ? 'text-[#4b8d83]' : '',
                 clickable ? 'cursor-pointer transition hover:brightness-125' : '',
               ].join(' ')
 
@@ -116,12 +116,12 @@ export function Stepper({ current, compact = false, maxReachable, onStepClick }:
             const fill = active ? '#FFFFFF' : done ? '#4B8D83' : '#9A9A9A'
 
             const circleClass = [
-              'flex h-[30px] w-[30px] items-center justify-center rounded-full border text-xs font-semibold',
+              'relative z-20 flex h-[30px] w-[30px] items-center justify-center rounded-full border text-xs font-semibold',
               active
                 ? 'border-[#4B8D83] bg-[#063533] text-white shadow-[0_0_18px_rgba(75,141,131,0.8)]'
                 : done
                   ? 'border-[#4B8D83] bg-[#063533] text-[#4B8D83]'
-                  : 'border-[#9A9A9A]/40 bg-transparent text-[#9A9A9A]',
+                  : 'border-[#9A9A9A]/40 bg-[#0d0616] text-[#9A9A9A]',
               clickable ? 'cursor-pointer transition hover:brightness-125' : '',
             ].join(' ')
 

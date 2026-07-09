@@ -4,7 +4,6 @@ import type { RadialDialArcLayout, RadialDialConfig } from './radialDialShared'
 const DIAL_OFFSET_X = 51
 const DIAL_OFFSET_Y = 28
 const DIAL_SIZE = 174
-const DIAL_CENTER = DIAL_SIZE / 2
 const HUB_RADIUS = 23
 
 /** Single arc segment — all four slots are rotations of this path (same as Q2) */
@@ -19,11 +18,6 @@ const BASE_ARC: RadialDialArcLayout = {
   vbW: 37.441,
   vbH: 111.21,
   path: BASE_ARC_PATH,
-}
-
-function pointerReachFromCenter(arc: RadialDialArcLayout, dialCenter: number): number {
-  const innerEdgeX = arc.x + arc.w * 0.5
-  return innerEdgeX - dialCenter
 }
 
 export const WEEKLY_LEISURE_DIAL_CONFIG: RadialDialConfig<WeeklyLeisureOption> = {
@@ -50,7 +44,6 @@ export const WEEKLY_LEISURE_DIAL_CONFIG: RadialDialConfig<WeeklyLeisureOption> =
       'rarely-never': 'left',
       '4-8h': 'bottom',
     },
-    pointerReachFromCenter: pointerReachFromCenter(BASE_ARC, DIAL_CENTER),
     activeArcStrokeWidth: 4,
   },
   arcGlowBounds: { x: 0, y: -20, width: 170, height: 120 },

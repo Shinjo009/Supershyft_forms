@@ -1,0 +1,47 @@
+import type { ReactNode } from 'react'
+import infoIcon from '../../assets/family-history/info-icon.svg'
+
+const COUNTER_CLASS_BY_THEME = {
+  family: 'text-[14px] font-medium leading-5 text-[rgba(154,154,154,0.4)]',
+  nutrition: 'text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.4)]',
+  lifestyle: 'text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.4)]',
+} as const
+
+/** Figma 5629:15433 — question counter row with right-aligned info icon */
+export function McqQuestionHeader({
+  questionLabel,
+  theme,
+  onInfoClick,
+  children,
+  titleClassName = 'mt-2 text-[16px] leading-normal tracking-[0.08px] text-white',
+}: {
+  questionLabel: string
+  theme: keyof typeof COUNTER_CLASS_BY_THEME
+  onInfoClick?: () => void
+  children: ReactNode
+  titleClassName?: string
+}) {
+  return (
+    <div className="relative w-full">
+      <p className={COUNTER_CLASS_BY_THEME[theme]}>{questionLabel}</p>
+      <div className={titleClassName}>{children}</div>
+      {onInfoClick ? (
+        <button
+          type="button"
+          onClick={onInfoClick}
+          className="absolute right-0 top-[3px] size-[14px]"
+          aria-label="Show question information"
+        >
+          <img src={infoIcon} alt="" className="size-full" aria-hidden />
+        </button>
+      ) : (
+        <img
+          src={infoIcon}
+          alt=""
+          className="absolute right-0 top-[3px] size-[14px]"
+          aria-hidden
+        />
+      )}
+    </div>
+  )
+}

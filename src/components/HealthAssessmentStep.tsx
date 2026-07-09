@@ -29,7 +29,7 @@ const ASSESSMENT_SECTIONS = [
   },
 ] as const
 
-function BalanceBadge({ balance = 50 }: { balandce?: number }) {
+function BalanceBadge({ balance = 50 }: { balance?: number }) {
   return (
     <div className="flex items-center justify-center gap-1.5 rounded-full bg-white/10 px-2 py-1">
       <CoinsLineIcon />

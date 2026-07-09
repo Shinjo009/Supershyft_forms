@@ -37,6 +37,7 @@ import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
 import { defaultFormData, type FormData } from './types'
 import backgroundAssessmentSvg from './assets/Background.svg'
+import lastPageBackgroundSvg from './assets/lastpage BG.svg'
 import nutritionEndBackgroundSvg from './assets/nutritionend.svg'
 import nutritionLogBackgroundSvg from './assets/nutritionlogstart.svg'
 import familyHistoryBackgroundSvg from './assets/family history.svg'
@@ -48,6 +49,8 @@ import { HealthAssessmentStep } from './components/HealthAssessmentStep'
 import { LifestyleHabitsMcqStep } from './components/LifestyleHabitsMcqStep'
 import { LifestyleSectionCompleteStep } from './components/LifestyleSectionCompleteStep'
 import { NutritionLogMcqStep } from './components/NutritionLogMcqStep'
+import { AppointmentJourneyCompleteStep } from './components/AppointmentJourneyCompleteStep'
+import { NutritionSectionCompleteStep } from './components/NutritionSectionCompleteStep'
 import { SuperCoinsProgressRail } from './components/SuperCoinsProgressRail'
 
 const RELATION_OPTIONS = [
@@ -625,9 +628,9 @@ export default function BookAppointment() {
 
   const isMobile = !isLg
   const showBack = step > 1
-  const hideGlobalContinue = step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11
+  const hideGlobalContinue = step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11 || step === 12 || step === 13
   const hideStepper = step >= 5
-  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11
+  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11 || step === 12
   const confirmStepperBorder = step === 4
 
   const handleClose = () => {
@@ -648,20 +651,22 @@ export default function BookAppointment() {
   return (
     <PageBackdrop
       mobileBackgroundSrc={
-        step === 6 || step === 8
-          ? backgroundAssessmentSvg
-          : step === 10
-            ? nutritionEndBackgroundSvg
-            : step === 11
-              ? nutritionLogBackgroundSvg
-              : step === 7
-            ? familyHistoryBackgroundSvg
-            : step === 9
-              ? lifestyleHabitsBackgroundSvg
-              : undefined
+        step === 13
+          ? lastPageBackgroundSvg
+          : step === 6 || step === 8
+            ? backgroundAssessmentSvg
+            : step === 10
+              ? nutritionEndBackgroundSvg
+              : step === 11 || step === 12
+                ? nutritionLogBackgroundSvg
+                : step === 7
+                  ? familyHistoryBackgroundSvg
+                  : step === 9
+                    ? lifestyleHabitsBackgroundSvg
+                    : undefined
       }
     >
-      <div className="flex h-full flex-col">
+      <div className="flex h-full min-w-0 flex-col">
         {/* Header — Figma: p-20px */}
         {hideMainHeader ? null : (
         <header className="grid shrink-0 grid-cols-[32px_1fr_32px] items-center p-5">
@@ -720,15 +725,23 @@ export default function BookAppointment() {
 
         {/* Form body — Figma: pt-48px px-24px pb-24px, justify-between */}
         <div
-          className={`flex min-h-0 flex-1 flex-col ${
+          className={`flex min-h-0 min-w-0 flex-1 flex-col ${
             step === 5
-              ? 'px-6 pb-6 pt-4'
-              : step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11
+              ? 'flex min-h-0 min-w-0 flex-1 flex-col justify-between px-6 pb-6 pt-4'
+              : step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11 || step === 12 || step === 13
                 ? 'px-0 pb-0 pt-0'
-                : 'justify-between px-6 pb-6 pt-0'
+                : 'justify-between px-6 pb-6 pt-12'
           }`}
         >
-          <div className={step === 7 || step === 9 || step === 11 ? 'min-h-0 flex-1 overflow-hidden' : 'min-h-0 flex-1 overflow-y-auto'}>
+          <div
+            className={
+              step === 7 || step === 9 || step === 11
+                ? 'min-h-0 min-w-0 flex-1 overflow-hidden'
+                : step === 5
+                  ? 'min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+                  : 'min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto'
+            }
+          >
             {step === 1 && (
               <PersonalStep
                 form={form}
@@ -809,7 +822,19 @@ export default function BookAppointment() {
               />
             )}
             {step === 11 && (
-              <NutritionLogMcqStep onBack={() => setStep(10)} />
+              <NutritionLogMcqStep
+                onBack={() => setStep(10)}
+                onComplete={() => setStep(12)}
+              />
+            )}
+            {step === 12 && (
+              <NutritionSectionCompleteStep
+                balance={200}
+                onContinue={() => setStep(13)}
+              />
+            )}
+            {step === 13 && (
+              <AppointmentJourneyCompleteStep bookingId={form.employeeId} />
             )}
           </div>
 
@@ -1913,8 +1938,8 @@ function ScheduleStep({
 
   if (isMobile) {
     return (
-      <div className="flex flex-col gap-6">
-        <section className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-6">
+        <section className="flex min-w-0 flex-col gap-3">
           <div className="flex items-center gap-2">
             <PreferredDateIcon />
             <h2 className={sectionLabelClass}>
@@ -1924,7 +1949,7 @@ function ScheduleStep({
               ) : null}
             </h2>
           </div>
-          <div className="-mx-1 flex justify-between gap-2 overflow-x-auto pb-1">
+          <div className="flex w-full min-w-0 gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {bookableDates.map((date) => {
               const iso = toIsoDate(date)
               const selected = form.appointmentDate === iso
@@ -2105,7 +2130,7 @@ function BookingConfirmedStep({
     .join(', ') || '—'
 
   const content = (
-    <div className="flex w-full flex-col items-center gap-12">
+    <div className="flex w-full flex-col items-center gap-8">
       <div className="flex flex-col items-center">
         <img
           src={coinsCelebrationGif}
@@ -2142,20 +2167,26 @@ function BookingConfirmedStep({
           Supercoins
         </p>
       </div>
-
-      <ContinueButton variant="mobileBar" className="w-full" onClick={onContinue}>
-        Continue
-      </ContinueButton>
     </div>
   )
 
   if (isMobile) {
-    return <div className="flex min-h-0 w-full flex-1 flex-col pb-6">{content}</div>
+    return (
+      <div className="flex min-h-full w-full flex-col justify-between">
+        {content}
+        <ContinueButton variant="mobileBar" className="mt-6 w-full shrink-0" onClick={onContinue}>
+          Continue
+        </ContinueButton>
+      </div>
+    )
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[520px] flex-col items-center py-6">
+    <div className="mx-auto flex w-full max-w-[520px] flex-col items-center gap-8 py-6">
       {content}
+      <ContinueButton variant="mobileBar" className="w-full" onClick={onContinue}>
+        Continue
+      </ContinueButton>
     </div>
   )
 }

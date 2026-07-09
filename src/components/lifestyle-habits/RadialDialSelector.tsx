@@ -207,43 +207,150 @@ function getSlotArcLayout(
   }
 }
 
-/** Inner-edge point along the ray from dial center toward an arc (fixed-slot dials). */
-function innerTouchOnArc(
+/** Pointer tip on the orange arc midline — ray through arc center, clipped to arc bbox. */
+function arcPointerTouch(
   arc: RadialDialArcLayout,
-  dialCenterX: number,
-  dialCenterY: number,
-  strokeWidth = 0,
+  dialCenter: number,
+  hubRadius: number,
+  rotation = 0,
 ): { x: number; y: number } {
+  const corners = [
+    { x: arc.x, y: arc.y },
+    { x: arc.x + arc.w, y: arc.y },
+    { x: arc.x, y: arc.y + arc.h },
+    { x: arc.x + arc.w, y: arc.y + arc.h },
+  ].map((c) =>
+    rotation === 0 ? c : rotatePointAround(c.x, c.y, dialCenter, dialCenter, rotation),
+  )
+
   const midX = arc.x + arc.w / 2
   const midY = arc.y + arc.h / 2
-  const vx = midX - dialCenterX
-  const vy = midY - dialCenterY
-  const dist = Math.hypot(vx, vy) || 1
-  const dirX = vx / dist
-  const dirY = vy / dist
+  const mid =
+    rotation === 0
+      ? { x: midX, y: midY }
+      : rotatePointAround(midX, midY, dialCenter, dialCenter, rotation)
 
-  const toCenterX = dialCenterX - midX
-  const toCenterY = dialCenterY - midY
-  const innerFactor = 0.58
+  const dx = mid.x - dialCenter
+  const dy = mid.y - dialCenter
+  const dist = Math.hypot(dx, dy) || 1
+  const dirX = dx / dist
+  const dirY = dy / dist
 
-  let anchorX: number
-  let anchorY: number
-  if (Math.abs(toCenterX) >= Math.abs(toCenterY)) {
-    anchorX = toCenterX > 0 ? arc.x + arc.w * innerFactor : arc.x + arc.w * (1 - innerFactor)
-    anchorY = dialCenterY
-  } else {
-    anchorX = dialCenterX
-    anchorY = toCenterY > 0 ? arc.y + arc.h * innerFactor : arc.y + arc.h * (1 - innerFactor)
+  const minX = Math.min(...corners.map((c) => c.x))
+  const maxX = Math.max(...corners.map((c) => c.x))
+  const minY = Math.min(...corners.map((c) => c.y))
+  const maxY = Math.max(...corners.map((c) => c.y))
+
+  const ts: number[] = []
+  if (Math.abs(dirX) > 1e-6) {
+    ts.push((minX - dialCenter) / dirX, (maxX - dialCenter) / dirX)
+  }
+  if (Math.abs(dirY) > 1e-6) {
+    ts.push((minY - dialCenter) / dirY, (maxY - dialCenter) / dirY)
   }
 
-  const anchorAlongRay =
-    (anchorX - dialCenterX) * dirX + (anchorY - dialCenterY) * dirY
-  const innerR = Math.max(anchorAlongRay, dist * 0.98) + strokeWidth * 0.5
+  const sorted = ts
+    .filter((t) => t > 1e-3)
+    .sort((a, b) => a - b)
+
+  if (sorted.length >= 2) {
+    // Pick the bbox crossing that contains the arc midpoint — not always the first pair
+    // (bottom-left arcs can graze the bbox corner first, then re-enter farther out).
+    let tNear = sorted[0]
+    let tFar = sorted[1]
+    let segmentIndex = 0
+
+    for (let i = 0; i < sorted.length - 1; i++) {
+      if (sorted[i] <= dist && dist <= sorted[i + 1]) {
+        tNear = sorted[i]
+        tFar = sorted[i + 1]
+        segmentIndex = i
+        break
+      }
+    }
+
+    if (dist > sorted[sorted.length - 1]) {
+      tNear = sorted[sorted.length - 2]
+      tFar = sorted[sorted.length - 1]
+      segmentIndex = sorted.length - 2
+    }
+
+    const span = tFar - tNear
+    let touchT: number
+
+    if (tNear > dist * 1.2) {
+      // Dial center sits on the arc bbox edge (e.g. bottom-right slot).
+      touchT = dist * 1.56
+    } else if (segmentIndex > 0) {
+      // Grazing bbox corner — the outer span is inflated; reach from entry to arc center.
+      const outwardFrac = span > 55 ? 0.76 : 0.62
+      touchT = tNear + (dist - tNear) * outwardFrac
+    } else {
+      // Sit on orange midline — wider arcs need a bit more outward reach.
+      const outwardFrac = span > 55 ? 0.76 : 0.62
+      touchT = tNear + span * outwardFrac
+    }
+
+    touchT = Math.max(touchT, hubRadius + 1)
+    touchT = Math.min(touchT, tFar - 2.5)
+    if (segmentIndex > 0) {
+      touchT = Math.min(touchT, dist * 1.02)
+    }
+
+    return {
+      x: dialCenter + dirX * touchT,
+      y: dialCenter + dirY * touchT,
+    }
+  }
+
+  return { x: mid.x, y: mid.y }
+}
+
+function pointerLineFromTouch(
+  touchLocal: { x: number; y: number },
+  config: RadialDialConfig<string>,
+): { x1: number; y1: number; x2: number; y2: number } {
+  const dialCenter = config.dialSize / 2
+  const dialCx = config.dialOffsetX + dialCenter
+  const dialCy = config.dialOffsetY + dialCenter
+  const touchX = config.dialOffsetX + touchLocal.x
+  const touchY = config.dialOffsetY + touchLocal.y
+  const dx = touchX - dialCx
+  const dy = touchY - dialCy
+  const dist = Math.hypot(dx, dy) || 1
 
   return {
-    x: dialCenterX + dirX * innerR,
-    y: dialCenterY + dirY * innerR,
+    x1: dialCx + (dx / dist) * config.hubRadius,
+    y1: dialCy + (dy / dist) * config.hubRadius,
+    x2: touchX,
+    y2: touchY,
   }
+}
+
+/** Hub line end point on the inner arc edge along the ray from dial center. */
+function computeSlotPointerLine<T extends string>(
+  config: RadialDialConfig<T>,
+  selected: T,
+): { x1: number; y1: number; x2: number; y2: number } {
+  const { slotSelection, dialSize } = config
+  const dialCenter = dialSize / 2
+
+  if (!slotSelection) {
+    const dialCx = config.dialOffsetX + dialCenter
+    const dialCy = config.dialOffsetY + dialCenter
+    return {
+      x1: dialCx,
+      y1: dialCy - config.hubRadius,
+      x2: dialCx,
+      y2: dialCy - config.hubRadius - 32,
+    }
+  }
+
+  const slotId = slotSelection.optionSlots[selected]
+  const { layout: arc, rotation: slotRotation } = getSlotArcLayout(slotSelection, slotId)
+  const touchLocal = arcPointerTouch(arc, dialCenter, config.hubRadius, slotRotation)
+
+  return pointerLineFromTouch(touchLocal, config as RadialDialConfig<string>)
 }
 
 function GeneratedSlotDial<T extends string>({
@@ -333,52 +440,6 @@ function rotatePointAround(
   }
 }
 
-/** Hub line end point on the inner arc edge — same height as dial center so the line meets the arc. */
-function computeSlotPointerLine<T extends string>(
-  config: RadialDialConfig<T>,
-  selected: T,
-): { x1: number; y1: number; x2: number; y2: number } {
-  const { slotSelection, hubRadius, dialSize, dialOffsetX, dialOffsetY } = config
-  const dialCx = dialOffsetX + dialSize / 2
-  const dialCy = dialOffsetY + dialSize / 2
-  const dialCenter = dialSize / 2
-
-  if (!slotSelection) {
-    return { x1: dialCx, y1: dialCy - hubRadius, x2: dialCx, y2: dialCy - hubRadius - 32 }
-  }
-
-  const slotId = slotSelection.optionSlots[selected]
-  const { layout: arc, rotation: slotRotation } = getSlotArcLayout(slotSelection, slotId)
-
-  const touchLocal = slotSelection.slotArcs?.[slotId]
-    ? innerTouchOnArc(
-        arc,
-        dialCenter,
-        dialCenter,
-        slotSelection.activeArcStrokeWidth ?? 0,
-      )
-    : rotatePointAround(
-        arc.x + arc.w * 0.58,
-        dialCenter,
-        dialCenter,
-        dialCenter,
-        slotRotation,
-      )
-
-  const touchX = dialOffsetX + touchLocal.x
-  const touchY = dialOffsetY + touchLocal.y
-
-  const dx = touchX - dialCx
-  const dy = touchY - dialCy
-  const dist = Math.hypot(dx, dy) || 1
-
-  return {
-    x1: dialCx + (dx / dist) * hubRadius,
-    y1: dialCy + (dy / dist) * hubRadius,
-    x2: touchX,
-    y2: touchY,
-  }
-}
 
 function SlotPointerLine({
   x1,

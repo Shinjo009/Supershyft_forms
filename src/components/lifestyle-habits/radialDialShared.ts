@@ -45,7 +45,6 @@ export type RadialDialSlotSelection<T extends string> = {
   slotOrder: string[]
   /** Distance from dial center to inner arc edge along the pointer direction */
   pointerReachFromCenter?: number
-  /** Extra stroke width on the active orange arc (does not shift position) */
   activeArcStrokeWidth?: number
   /** @deprecated Use pointerReachFromCenter */
   pointerLength?: number

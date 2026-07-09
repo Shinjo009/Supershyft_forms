@@ -1,16 +1,18 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import coastalImg from '../assets/family-history/coastal.jpg'
-import infoIcon from '../assets/family-history/info-icon.svg'
 import inlandImg from '../assets/family-history/inland.jpg'
 import tickCircleIcon from '../assets/family-history/tick-circle-outline.svg'
 import {
   FAMILY_HISTORY_HEALTH_CONDITIONS,
+  FAMILY_HISTORY_INFO_BY_QUESTION,
   FAMILY_HISTORY_MEDICATION_OPTIONS,
   FAMILY_HISTORY_NEXT_PREVIEWS,
   FAMILY_HISTORY_TOTAL_QUESTIONS,
   familyHistoryProgressPercent,
   type FamilyHistoryHealthCondition,
 } from '../data/familyHistoryQuestions'
+import { FamilyHistoryInfoOverlay } from './family-history/FamilyHistoryInfoOverlay'
+import { FamilyHistoryQuestionHeader } from './family-history/FamilyHistoryQuestionHeader'
 import { CHIP_SELECTED_GRADIENT, FamilyHistoryMcqShell } from './family-history/FamilyHistoryMcqShell'
 
 type LocationOption = 'inland' | 'coastal'
@@ -52,8 +54,17 @@ export function FamilyHistoryMcqStep({
   const [medicationSelections, setMedicationSelections] = useState<FamilyHistoryHealthCondition[]>(
     [],
   )
+  const [infoOpen, setInfoOpen] = useState(false)
+
+  useEffect(() => {
+    setInfoOpen(false)
+  }, [questionIndex])
 
   const handleBack = () => {
+    if (infoOpen) {
+      setInfoOpen(false)
+      return
+    }
     if (questionIndex > 0) {
       setQuestionIndex((index) => index - 1)
       return
@@ -79,7 +90,11 @@ export function FamilyHistoryMcqStep({
       }
     >
       {questionIndex === 0 ? (
-        <Question1Location selected={locationAnswer} onSelect={setLocationAnswer} />
+        <Question1Location
+          selected={locationAnswer}
+          onSelect={setLocationAnswer}
+          onInfoClick={() => setInfoOpen(true)}
+        />
       ) : questionIndex === 1 ? (
         <MultiSelectChipQuestion
           questionNumber={2}
@@ -91,6 +106,7 @@ export function FamilyHistoryMcqStep({
           }
           selected={relativeHealthConditions}
           onToggle={(id) => setRelativeHealthConditions((current) => toggleChipSelection(current, id))}
+          onInfoClick={() => setInfoOpen(true)}
         />
       ) : questionIndex === 2 ? (
         <MultiSelectChipQuestion
@@ -98,6 +114,7 @@ export function FamilyHistoryMcqStep({
           title={<p>Are you diagnosed with the following diseases?</p>}
           selected={personalDiagnoses}
           onToggle={(id) => setPersonalDiagnoses((current) => toggleChipSelection(current, id))}
+          onInfoClick={() => setInfoOpen(true)}
         />
       ) : (
         <MultiSelectChipQuestion
@@ -106,8 +123,15 @@ export function FamilyHistoryMcqStep({
           options={FAMILY_HISTORY_MEDICATION_OPTIONS}
           selected={medicationSelections}
           onToggle={(id) => setMedicationSelections((current) => toggleChipSelection(current, id))}
+          onInfoClick={() => setInfoOpen(true)}
         />
       )}
+
+      <FamilyHistoryInfoOverlay
+        open={infoOpen}
+        items={FAMILY_HISTORY_INFO_BY_QUESTION[questionIndex] ?? []}
+        onClose={() => setInfoOpen(false)}
+      />
     </FamilyHistoryMcqShell>
   )
 }
@@ -116,26 +140,20 @@ export function FamilyHistoryMcqStep({
 function Question1Location({
   selected,
   onSelect,
+  onInfoClick,
 }: {
   selected: LocationOption | null
   onSelect: (value: LocationOption) => void
+  onInfoClick: () => void
 }) {
   return (
-    <div className="mx-auto flex w-[323px] flex-col items-center gap-[32px]">
-      <div className="relative flex h-[47px] w-full flex-col gap-2">
-        <p className="text-[14px] font-medium leading-5 text-[rgba(154,154,154,0.4)]">
-          Question 1 of {FAMILY_HISTORY_TOTAL_QUESTIONS}
-        </p>
-        <p className="text-[16px] leading-normal tracking-[0.08px] text-white">
-          Where have you lived most of your life?
-        </p>
-        <img
-          src={infoIcon}
-          alt=""
-          className="absolute left-[309px] top-[3px] size-[14px]"
-          aria-hidden
-        />
-      </div>
+    <div className="mx-auto flex w-[326px] flex-col items-center gap-[32px]">
+      <FamilyHistoryQuestionHeader
+        questionLabel={`Question 1 of ${FAMILY_HISTORY_TOTAL_QUESTIONS}`}
+        onInfoClick={onInfoClick}
+      >
+        <p>Where have you lived most of your life?</p>
+      </FamilyHistoryQuestionHeader>
 
       <div className="flex h-[254px] w-[267px] flex-col gap-[16px]">
         {LOCATION_OPTIONS.map((option) => {
@@ -195,30 +213,24 @@ function MultiSelectChipQuestion({
   options = FAMILY_HISTORY_HEALTH_CONDITIONS,
   selected,
   onToggle,
+  onInfoClick,
 }: {
   questionNumber: number
   title: ReactNode
   options?: { id: FamilyHistoryHealthCondition; label: string }[]
   selected: FamilyHistoryHealthCondition[]
   onToggle: (id: FamilyHistoryHealthCondition) => void
+  onInfoClick: () => void
 }) {
   return (
     <div className="flex w-[326px] flex-col gap-[32px]">
-      <div className="relative w-full">
-        <p className="text-[14px] font-medium leading-5 text-[rgba(154,154,154,0.4)]">
-          Question {questionNumber} of {FAMILY_HISTORY_TOTAL_QUESTIONS}
-        </p>
-        <div className="mt-2 text-[16px] leading-normal tracking-[0.08px] text-white">
-          {title}
-          <p className="mt-0 text-[12px] text-[#bbb]">(Select multiple or None that apply)</p>
-        </div>
-        <img
-          src={infoIcon}
-          alt=""
-          className="absolute left-[307px] top-[3px] size-[14px]"
-          aria-hidden
-        />
-      </div>
+      <FamilyHistoryQuestionHeader
+        questionLabel={`Question ${questionNumber} of ${FAMILY_HISTORY_TOTAL_QUESTIONS}`}
+        onInfoClick={onInfoClick}
+      >
+        {title}
+        <p className="mt-0 text-[12px] text-[#bbb]">(Select multiple or None that apply)</p>
+      </FamilyHistoryQuestionHeader>
 
       <div className="flex flex-wrap content-center gap-4">
         {options.map((option) => {

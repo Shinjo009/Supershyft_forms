@@ -4,7 +4,6 @@ import type { RadialDialArcLayout, RadialDialConfig } from './radialDialShared'
 const DIAL_OFFSET_X = 51
 const DIAL_OFFSET_Y = 28
 const DIAL_SIZE = 174
-const DIAL_CENTER = DIAL_SIZE / 2
 const HUB_RADIUS = 23
 
 /** Single arc segment — all four slots are rotations of this path */
@@ -19,12 +18,6 @@ const BASE_ARC: RadialDialArcLayout = {
   vbW: 37.441,
   vbH: 111.21,
   path: BASE_ARC_PATH,
-}
-
-/** Radial distance from dial center to inner arc edge along the pointer axis. */
-function pointerReachFromCenter(arc: RadialDialArcLayout, dialCenter: number): number {
-  const innerEdgeX = arc.x + arc.w * 0.5
-  return innerEdgeX - dialCenter
 }
 
 export const PHYSICAL_ACTIVITY_DIAL_CONFIG: RadialDialConfig<PhysicalActivityOption> = {
@@ -51,7 +44,6 @@ export const PHYSICAL_ACTIVITY_DIAL_CONFIG: RadialDialConfig<PhysicalActivityOpt
       rare: 'left',
       '60-plus': 'bottom',
     },
-    pointerReachFromCenter: pointerReachFromCenter(BASE_ARC, DIAL_CENTER),
     activeArcStrokeWidth: 4,
   },
   arcGlowBounds: { x: 0, y: -20, width: 170, height: 120 },

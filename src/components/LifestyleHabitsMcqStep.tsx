@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
+  LIFESTYLE_HABITS_INFO_BY_QUESTION,
   LIFESTYLE_HABITS_NEXT_PREVIEWS,
   LIFESTYLE_HABITS_TOTAL_QUESTIONS,
   lifestyleHabitsProgressPercent,
@@ -20,6 +21,8 @@ import { DailyWalkingDial } from './lifestyle-habits/DailyWalkingDial'
 import { HealthWellnessPrioritiesOptions } from './lifestyle-habits/HealthWellnessPrioritiesOptions'
 import { LifestyleCommitmentOptions } from './lifestyle-habits/LifestyleCommitmentOptions'
 import { LifestyleHabitsMcqShell } from './lifestyle-habits/LifestyleHabitsMcqShell'
+import { LifestyleHabitsQuestionHeader } from './lifestyle-habits/LifestyleHabitsQuestionHeader'
+import { McqInfoOverlay } from './mcq/McqInfoOverlay'
 import { PhysicalActivityDial } from './lifestyle-habits/PhysicalActivityDial'
 import { SitDurationDial } from './lifestyle-habits/SitDurationDial'
 import { SleepDurationMeter } from './lifestyle-habits/SleepDurationMeter'
@@ -49,6 +52,11 @@ export function LifestyleHabitsMcqStep({
   const [lifestyleCommitment, setLifestyleCommitment] = useState<LifestyleCommitmentOption | null>(
     null,
   )
+  const [infoOpen, setInfoOpen] = useState(false)
+
+  useEffect(() => {
+    setInfoOpen(false)
+  }, [questionIndex])
 
   const toggleWellnessPriority = (value: HealthWellnessPriorityOption) => {
     setWellnessPriorities((current) =>
@@ -61,6 +69,10 @@ export function LifestyleHabitsMcqStep({
   }
 
   const handleBack = () => {
+    if (infoOpen) {
+      setInfoOpen(false)
+      return
+    }
     if (questionIndex > 0) {
       setQuestionIndex((index) => index - 1)
       return
@@ -86,44 +98,73 @@ export function LifestyleHabitsMcqStep({
       }
     >
       {questionIndex === 0 ? (
-        <Question1SitDuration selected={sitDuration} onSelect={setSitDuration} />
+        <Question1SitDuration
+          selected={sitDuration}
+          onSelect={setSitDuration}
+          onInfoClick={() => setInfoOpen(true)}
+        />
       ) : questionIndex === 1 ? (
         <Question2PhysicalActivity
           selected={physicalActivity}
           onSelect={setPhysicalActivity}
+          onInfoClick={() => setInfoOpen(true)}
         />
       ) : questionIndex === 2 ? (
-        <Question3WeeklyLeisure selected={weeklyLeisure} onSelect={setWeeklyLeisure} />
+        <Question3WeeklyLeisure
+          selected={weeklyLeisure}
+          onSelect={setWeeklyLeisure}
+          onInfoClick={() => setInfoOpen(true)}
+        />
       ) : questionIndex === 3 ? (
         <Question4ActivityIntensity
           selected={activityIntensity}
           onSelect={setActivityIntensity}
+          onInfoClick={() => setInfoOpen(true)}
         />
       ) : questionIndex === 4 ? (
-        <Question5DailyWalking selected={dailyWalking} onSelect={setDailyWalking} />
+        <Question5DailyWalking
+          selected={dailyWalking}
+          onSelect={setDailyWalking}
+          onInfoClick={() => setInfoOpen(true)}
+        />
       ) : questionIndex === 5 ? (
-        <Question6SleepDuration selected={sleepDuration} onSelect={setSleepDuration} />
+        <Question6SleepDuration
+          selected={sleepDuration}
+          onSelect={setSleepDuration}
+          onInfoClick={() => setInfoOpen(true)}
+        />
       ) : questionIndex === 6 ? (
         <Question7AlcoholConsumption
           selected={alcoholConsumption}
           onSelect={setAlcoholConsumption}
+          onInfoClick={() => setInfoOpen(true)}
         />
       ) : questionIndex === 7 ? (
         <Question8SmokingFrequency
           selected={smokingFrequency}
           onSelect={setSmokingFrequency}
+          onInfoClick={() => setInfoOpen(true)}
         />
       ) : questionIndex === 8 ? (
         <Question9HealthWellnessPriorities
           selected={wellnessPriorities}
           onToggle={toggleWellnessPriority}
+          onInfoClick={() => setInfoOpen(true)}
         />
       ) : questionIndex === 9 ? (
         <Question10LifestyleCommitment
           selected={lifestyleCommitment}
           onSelect={setLifestyleCommitment}
+          onInfoClick={() => setInfoOpen(true)}
         />
       ) : null}
+
+      <McqInfoOverlay
+        open={infoOpen}
+        items={LIFESTYLE_HABITS_INFO_BY_QUESTION[questionIndex] ?? []}
+        theme="lifestyle"
+        onClose={() => setInfoOpen(false)}
+      />
     </LifestyleHabitsMcqShell>
   )
 }
@@ -132,20 +173,20 @@ export function LifestyleHabitsMcqStep({
 function Question1SitDuration({
   selected,
   onSelect,
+  onInfoClick,
 }: {
   selected: SitDurationOption | null
   onSelect: (value: SitDurationOption) => void
+  onInfoClick: () => void
 }) {
   return (
     <div className="flex w-[326px] flex-col gap-16">
-      <div className="flex w-full flex-col gap-2">
-        <p className="text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.4)]">
-          Question 1 of {LIFESTYLE_HABITS_TOTAL_QUESTIONS}
-        </p>
-        <p className="text-[16px] leading-normal tracking-[0.08px] text-white">
-          How long do you sit continuously every day due to work or lifestyle?
-        </p>
-      </div>
+      <LifestyleHabitsQuestionHeader
+        onInfoClick={onInfoClick}
+        questionLabel={`Question 1 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
+      >
+        <p>How long do you sit continuously every day due to work or lifestyle?</p>
+      </LifestyleHabitsQuestionHeader>
 
       <SitDurationDial selected={selected} onSelect={onSelect} />
     </div>
@@ -156,24 +197,24 @@ function Question1SitDuration({
 function Question2PhysicalActivity({
   selected,
   onSelect,
+  onInfoClick,
 }: {
   selected: PhysicalActivityOption | null
   onSelect: (value: PhysicalActivityOption) => void
+  onInfoClick: () => void
 }) {
   return (
     <div className="flex w-[326px] flex-col gap-16">
-      <div className="flex w-full flex-col gap-2">
-        <p className="text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.4)]">
-          Question 2 of {LIFESTYLE_HABITS_TOTAL_QUESTIONS}
+      <LifestyleHabitsQuestionHeader
+        onInfoClick={onInfoClick}
+        questionLabel={`Question 2 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
+      >
+        <p>How much time do you spend engaging in physical activity or exercise daily?</p>
+        <p className="mt-0 text-[12px] text-[#bbb]">
+          (Brisk Walking or Bicycling or Heavy Lifting or Games or Yoga or Meditation or
+          Cleaning)
         </p>
-        <div className="text-[16px] leading-normal tracking-[0.08px] text-white">
-          <p>How much time do you spend engaging in physical activity or exercise daily?</p>
-          <p className="mt-0 text-[12px] text-[#bbb]">
-            (Brisk Walking or Bicycling or Heavy Lifting or Games or Yoga or Meditation or
-            Cleaning)
-          </p>
-        </div>
-      </div>
+      </LifestyleHabitsQuestionHeader>
 
       <PhysicalActivityDial selected={selected} onSelect={onSelect} />
     </div>
@@ -184,21 +225,23 @@ function Question2PhysicalActivity({
 function Question3WeeklyLeisure({
   selected,
   onSelect,
+  onInfoClick,
 }: {
   selected: WeeklyLeisureOption | null
   onSelect: (value: WeeklyLeisureOption) => void
+  onInfoClick: () => void
 }) {
   return (
     <div className="flex w-[326px] flex-col gap-16">
-      <div className="flex w-full flex-col gap-2">
-        <p className="text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.4)]">
-          Question 3 of {LIFESTYLE_HABITS_TOTAL_QUESTIONS}
-        </p>
-        <p className="text-[16px] leading-normal tracking-[0.08px] text-white">
+      <LifestyleHabitsQuestionHeader
+        onInfoClick={onInfoClick}
+        questionLabel={`Question 3 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
+      >
+        <p>
           On a typical week, how much time do you dedicate to leisure activities, workouts or
           sports?
         </p>
-      </div>
+      </LifestyleHabitsQuestionHeader>
 
       <WeeklyLeisureDial selected={selected} onSelect={onSelect} />
     </div>
@@ -209,21 +252,21 @@ function Question3WeeklyLeisure({
 function Question4ActivityIntensity({
   selected,
   onSelect,
+  onInfoClick,
 }: {
   selected: ActivityIntensityOption | null
   onSelect: (value: ActivityIntensityOption) => void
+  onInfoClick: () => void
 }) {
   return (
     <div className="flex w-[326px] flex-col gap-8">
-      <div className="flex w-full flex-col gap-2">
-        <p className="text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.4)]">
-          Question 4 of {LIFESTYLE_HABITS_TOTAL_QUESTIONS}
-        </p>
-        <div className="text-[16px] leading-normal tracking-[0.08px] text-white">
-          <p>On an average week, how would you</p>
-          <p>rate the intensity of your activities or workouts?</p>
-        </div>
-      </div>
+      <LifestyleHabitsQuestionHeader
+        onInfoClick={onInfoClick}
+        questionLabel={`Question 4 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
+      >
+        <p>On an average week, how would you</p>
+        <p>rate the intensity of your activities or workouts?</p>
+      </LifestyleHabitsQuestionHeader>
 
       <ActivityIntensityMeter selected={selected} onSelect={onSelect} />
     </div>
@@ -234,23 +277,23 @@ function Question4ActivityIntensity({
 function Question5DailyWalking({
   selected,
   onSelect,
+  onInfoClick,
 }: {
   selected: DailyWalkingOption | null
   onSelect: (value: DailyWalkingOption) => void
+  onInfoClick: () => void
 }) {
   return (
     <div className="flex w-[326px] flex-col gap-8">
-      <div className="flex w-full flex-col gap-2">
-        <p className="text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.4)]">
-          Question 5 of {LIFESTYLE_HABITS_TOTAL_QUESTIONS}
+      <LifestyleHabitsQuestionHeader
+        onInfoClick={onInfoClick}
+        questionLabel={`Question 5 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
+      >
+        <p>How much time do you spend actively walking each day?</p>
+        <p className="mt-0 text-[12px] text-[#bbb]">
+          (Includes commuting to work, breaks at work and household chores)
         </p>
-        <div className="text-[16px] leading-normal tracking-[0.08px] text-white">
-          <p>How much time do you spend actively walking each day?</p>
-          <p className="mt-0 text-[12px] text-[#bbb]">
-            (Includes commuting to work, breaks at work and household chores)
-          </p>
-        </div>
-      </div>
+      </LifestyleHabitsQuestionHeader>
 
       <DailyWalkingDial selected={selected} onSelect={onSelect} />
     </div>
@@ -261,20 +304,20 @@ function Question5DailyWalking({
 function Question6SleepDuration({
   selected,
   onSelect,
+  onInfoClick,
 }: {
   selected: SleepDurationOption | null
   onSelect: (value: SleepDurationOption) => void
+  onInfoClick: () => void
 }) {
   return (
     <div className="flex w-[326px] flex-col gap-8">
-      <div className="flex w-full flex-col gap-2">
-        <p className="text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.4)]">
-          Question 6 of {LIFESTYLE_HABITS_TOTAL_QUESTIONS}
-        </p>
-        <p className="text-[16px] leading-normal tracking-[0.08px] text-white">
-          What is your average duration of good-quality sleep?
-        </p>
-      </div>
+      <LifestyleHabitsQuestionHeader
+        onInfoClick={onInfoClick}
+        questionLabel={`Question 6 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
+      >
+        <p>What is your average duration of good-quality sleep?</p>
+      </LifestyleHabitsQuestionHeader>
 
       <SleepDurationMeter selected={selected} onSelect={onSelect} />
     </div>
@@ -285,23 +328,23 @@ function Question6SleepDuration({
 function Question7AlcoholConsumption({
   selected,
   onSelect,
+  onInfoClick,
 }: {
   selected: AlcoholConsumptionOption | null
   onSelect: (value: AlcoholConsumptionOption) => void
+  onInfoClick: () => void
 }) {
   return (
     <div className="flex w-[326px] flex-col gap-8">
-      <div className="flex w-full flex-col gap-2">
-        <p className="text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.4)]">
-          Question 7 of {LIFESTYLE_HABITS_TOTAL_QUESTIONS}
+      <LifestyleHabitsQuestionHeader
+        onInfoClick={onInfoClick}
+        questionLabel={`Question 7 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
+      >
+        <p>What is your alcohol consumption?</p>
+        <p className="mt-0 text-[12px] text-[#bbb]">
+          (1 serving = 125 ml wine or 330 ml of beer or 40 ml of hard liquor)
         </p>
-        <div className="text-[16px] leading-normal tracking-[0.08px] text-white">
-          <p>What is your alcohol consumption?</p>
-          <p className="mt-0 text-[12px] text-[#bbb]">
-            (1 serving = 125 ml wine or 330 ml of beer or 40 ml of hard liquor)
-          </p>
-        </div>
-      </div>
+      </LifestyleHabitsQuestionHeader>
 
       <AlcoholConsumptionOptions selected={selected} onSelect={onSelect} />
     </div>
@@ -312,20 +355,20 @@ function Question7AlcoholConsumption({
 function Question8SmokingFrequency({
   selected,
   onSelect,
+  onInfoClick,
 }: {
   selected: SmokingFrequencyOption | null
   onSelect: (value: SmokingFrequencyOption) => void
+  onInfoClick: () => void
 }) {
   return (
     <div className="flex w-[326px] flex-col gap-8">
-      <div className="flex w-full flex-col gap-2">
-        <p className="text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.4)]">
-          Question 8 of {LIFESTYLE_HABITS_TOTAL_QUESTIONS}
-        </p>
-        <p className="text-[16px] leading-normal tracking-[0.08px] text-white">
-          How often do you smoke cigarettes or tobacco?
-        </p>
-      </div>
+      <LifestyleHabitsQuestionHeader
+        onInfoClick={onInfoClick}
+        questionLabel={`Question 8 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
+      >
+        <p>How often do you smoke cigarettes or tobacco?</p>
+      </LifestyleHabitsQuestionHeader>
 
       <SmokingFrequencyOptions selected={selected} onSelect={onSelect} />
     </div>
@@ -336,21 +379,21 @@ function Question8SmokingFrequency({
 function Question9HealthWellnessPriorities({
   selected,
   onToggle,
+  onInfoClick,
 }: {
   selected: HealthWellnessPriorityOption[]
   onToggle: (value: HealthWellnessPriorityOption) => void
+  onInfoClick: () => void
 }) {
   return (
     <div className="flex w-[326px] flex-col gap-8">
-      <div className="flex w-full flex-col gap-2">
-        <p className="text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.4)]">
-          Question 9 of {LIFESTYLE_HABITS_TOTAL_QUESTIONS}
-        </p>
-        <div className="text-[16px] leading-normal tracking-[0.08px] text-white">
-          <p>What are your primary health and wellness priorities?</p>
-          <p className="mt-0 text-[12px] text-[#bbb]">(Choose your top two priority)</p>
-        </div>
-      </div>
+      <LifestyleHabitsQuestionHeader
+        onInfoClick={onInfoClick}
+        questionLabel={`Question 9 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
+      >
+        <p>What are your primary health and wellness priorities?</p>
+        <p className="mt-0 text-[12px] text-[#bbb]">(Choose your top two priority)</p>
+      </LifestyleHabitsQuestionHeader>
 
       <HealthWellnessPrioritiesOptions selected={selected} onToggle={onToggle} />
     </div>
@@ -361,20 +404,20 @@ function Question9HealthWellnessPriorities({
 function Question10LifestyleCommitment({
   selected,
   onSelect,
+  onInfoClick,
 }: {
   selected: LifestyleCommitmentOption | null
   onSelect: (value: LifestyleCommitmentOption) => void
+  onInfoClick: () => void
 }) {
   return (
     <div className="flex w-[326px] flex-col gap-8">
-      <div className="flex w-full flex-col gap-2">
-        <p className="text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.4)]">
-          Question 10 of {LIFESTYLE_HABITS_TOTAL_QUESTIONS}
-        </p>
-        <p className="text-[16px] leading-normal tracking-[0.08px] text-white">
-          How often do you smoke cigarettes or tobacco?
-        </p>
-      </div>
+      <LifestyleHabitsQuestionHeader
+        onInfoClick={onInfoClick}
+        questionLabel={`Question 10 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
+      >
+        <p>How often do you smoke cigarettes or tobacco?</p>
+      </LifestyleHabitsQuestionHeader>
 
       <LifestyleCommitmentOptions selected={selected} onSelect={onSelect} />
     </div>

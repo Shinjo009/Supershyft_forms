@@ -246,3 +246,112 @@ export const LIFESTYLE_COMMITMENT_OPTIONS: {
   { id: 'forming-habits', label: 'Forming healthy habits' },
   { id: 'reducing-diet', label: 'Reducing daily diet intake' },
 ]
+
+export type LifestyleHabitsInfoItem = {
+  term: string
+  description: string
+}
+
+/** Figma 5725:14901 — activity intensity (Q4) */
+export const LIFESTYLE_ACTIVITY_INTENSITY_INFO: LifestyleHabitsInfoItem[] = [
+  { term: 'Low', description: 'Walking, gentle stretching, low-impact aerobics' },
+  {
+    term: 'Moderate',
+    description:
+      'Brisk walking, cycling, casual cricket/ badminton games, moderate weightlifting',
+  },
+  {
+    term: 'High',
+    description:
+      'Running, football, competitive cricket/ badminton games, HIIT workouts, intense weightlifting',
+  },
+]
+
+export const LIFESTYLE_HABITS_INFO_BY_QUESTION: LifestyleHabitsInfoItem[][] = [
+  [
+    { term: '< 1 h', description: 'Less than one hour of continuous sitting at a time' },
+    { term: '1-4 h', description: 'One to four hours of continuous sitting at a time' },
+    { term: '4h+', description: 'More than four hours of continuous sitting at a time' },
+  ],
+  [
+    { term: 'Rare', description: 'Rarely engage in physical activity or exercise' },
+    { term: '< 30 min', description: 'Less than 30 minutes of physical activity per day' },
+    { term: '30-60 m', description: '30 to 60 minutes of physical activity per day' },
+    { term: '60+ m', description: 'More than 60 minutes of physical activity per day' },
+  ],
+  [
+    {
+      term: 'Rarely or never',
+      description: 'No regular leisure activities, workouts, or sports',
+    },
+    { term: 'Less than 1 hour', description: 'Less than one hour per week' },
+    { term: '1-3 hours', description: 'One to three hours per week' },
+    { term: '4-8 hours', description: 'Four to eight hours per week' },
+  ],
+  LIFESTYLE_ACTIVITY_INTENSITY_INFO,
+  [
+    { term: '< 15 m', description: 'Less than 15 minutes of active walking daily' },
+    { term: '15-30 m', description: '15 to 30 minutes of active walking daily' },
+    { term: '30-60 m', description: '30 to 60 minutes of active walking daily' },
+    { term: '1-2 h', description: 'One to two hours of active walking daily' },
+    { term: '2h+', description: 'More than two hours of active walking daily' },
+  ],
+  [
+    {
+      term: 'Good-quality sleep',
+      description: 'Uninterrupted rest that leaves you feeling refreshed',
+    },
+    { term: '<5 hrs', description: 'Less than 5 hours of good-quality sleep per night' },
+    { term: '5-8 hrs', description: 'Five to eight hours of good-quality sleep per night' },
+    { term: '9+ hrs', description: 'Nine or more hours of good-quality sleep per night' },
+  ],
+  [
+    {
+      term: '1 serving',
+      description: '125 ml wine or 330 ml of beer or 40 ml of hard liquor',
+    },
+    { term: '3 servings per week or less', description: 'Light to moderate weekly intake' },
+    { term: 'More than 3 servings per week', description: 'Higher weekly alcohol intake' },
+  ],
+  [
+    { term: 'I do not smoke', description: 'No current or past regular tobacco use' },
+    { term: 'I quit smoking', description: 'Former smoker who has stopped' },
+    { term: '1-3 times a week', description: 'Smokes tobacco a few times weekly' },
+    { term: '5-7 times a week', description: 'Smokes tobacco on most days of the week' },
+    { term: 'More than 7 times a week', description: 'Smokes tobacco daily or more often' },
+  ],
+  [
+    { term: 'Weight Loss', description: 'Reducing body weight through diet and activity' },
+    {
+      term: 'Building Muscle Mass',
+      description: 'Increasing lean muscle through training and nutrition',
+    },
+    {
+      term: 'Increase Energy Levels',
+      description: 'Improving daily stamina and reducing fatigue',
+    },
+    {
+      term: 'Improving Metabolic Health',
+      description: 'Supporting blood sugar, cholesterol, and metabolic balance',
+    },
+    {
+      term: 'Improving Physical Endurance',
+      description: 'Building cardiovascular and muscular stamina',
+    },
+    { term: 'Increasing Strength', description: 'Gaining functional and muscular strength' },
+  ],
+  [
+    {
+      term: 'Increasing physical activity',
+      description: 'Committing to move more in daily life and workouts',
+    },
+    {
+      term: 'Forming healthy habits',
+      description: 'Building sustainable routines for long-term wellness',
+    },
+    {
+      term: 'Reducing daily diet intake',
+      description: 'Lowering overall calorie or portion intake',
+    },
+  ],
+]
