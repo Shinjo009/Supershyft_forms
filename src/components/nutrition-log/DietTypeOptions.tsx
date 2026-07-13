@@ -1,4 +1,5 @@
 import { DIET_TYPE_OPTIONS, type DietTypeOption } from '../../data/nutritionLogQuestions'
+import { MCQ_PILL_CHIP_CLASS } from '../mcq/mcqLayout'
 import { NUTRITION_PILL_GRADIENT } from './nutritionLogConfig'
 
 function DietPill({
@@ -14,7 +15,7 @@ function DietPill({
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-8 w-[155px] items-center justify-center rounded-[24px] border-[0.5px] border-solid px-[10px] py-1 text-[12px] leading-6 text-white ${
+      className={`flex h-8 ${MCQ_PILL_CHIP_CLASS} items-center justify-center rounded-[24px] border-[0.5px] border-solid px-[10px] py-1 text-[12px] leading-6 text-white ${
         selected ? 'font-semibold' : 'font-normal'
       }`}
       style={

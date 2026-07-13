@@ -5,6 +5,11 @@ import nextChevronIcon from '../../assets/family-history/next-chevron.svg'
 import progressFillImg from '../../assets/family-history/progress-fill.svg'
 import progressTrackImg from '../../assets/family-history/progress-track.svg'
 import type { FamilyHistoryQuestionPreview } from '../../data/familyHistoryQuestions'
+import {
+  MCQ_SHELL_CLASS,
+  MCQ_SHELL_FOOTER_INNER_CLASS,
+  MCQ_SHELL_SCROLL_CLASS,
+} from '../mcq/mcqLayout'
 
 const NEXT_BUTTON_GRADIENT =
   "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 50 50' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.3'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(2.5 0 0 2.5 25 25)'><stop stop-color='rgba(164,86,234,1)' offset='0'/><stop stop-color='rgba(134,69,194,1)' offset='0.25'/><stop stop-color='rgba(103,52,153,1)' offset='0.5'/><stop stop-color='rgba(73,35,113,1)' offset='0.75'/><stop stop-color='rgba(42,18,72,1)' offset='1'/></radialGradient></defs></svg>\")"
@@ -26,7 +31,7 @@ export function FamilyHistoryMcqShell({
   const clampedPercent = Math.min(100, Math.max(0, progressPercent))
 
   return (
-    <div className="relative mx-auto flex h-full min-h-0 w-full max-w-[360px] flex-col pb-[108px]">
+    <div className={MCQ_SHELL_CLASS}>
       <header className="flex shrink-0 items-center justify-between px-4 pb-0 pt-10">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <button
@@ -83,10 +88,10 @@ export function FamilyHistoryMcqShell({
         </div>
       </div>
 
-      <div className="mt-8 min-h-0 flex-1 overflow-y-auto px-[17px]">{children}</div>
+      <div className={MCQ_SHELL_SCROLL_CLASS}>{children}</div>
 
       <footer className="fixed inset-x-0 bottom-0 z-10 bg-[rgba(255,255,255,0.05)] backdrop-blur-[25px]">
-        <div className="mx-auto flex w-full max-w-[360px] items-center justify-between px-6 py-6">
+        <div className={MCQ_SHELL_FOOTER_INNER_CLASS}>
           <div className="h-[60px] w-[180px] max-w-[180px] shrink-0">
             <p className="text-[11px] font-medium uppercase tracking-[1.1px] leading-[16.5px] text-[rgba(255,255,255,0.4)]">
               NEXT QUESTION

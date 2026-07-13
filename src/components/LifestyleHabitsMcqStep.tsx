@@ -180,7 +180,7 @@ function Question1SitDuration({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-16">
+    <div className="flex w-full flex-col gap-16">
       <LifestyleHabitsQuestionHeader
         onInfoClick={onInfoClick}
         questionLabel={`Question 1 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
@@ -204,7 +204,7 @@ function Question2PhysicalActivity({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-16">
+    <div className="flex w-full flex-col gap-16">
       <LifestyleHabitsQuestionHeader
         onInfoClick={onInfoClick}
         questionLabel={`Question 2 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
@@ -232,7 +232,7 @@ function Question3WeeklyLeisure({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-16">
+    <div className="flex w-full flex-col gap-16">
       <LifestyleHabitsQuestionHeader
         onInfoClick={onInfoClick}
         questionLabel={`Question 3 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
@@ -259,7 +259,7 @@ function Question4ActivityIntensity({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <LifestyleHabitsQuestionHeader
         onInfoClick={onInfoClick}
         questionLabel={`Question 4 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
@@ -284,7 +284,7 @@ function Question5DailyWalking({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <LifestyleHabitsQuestionHeader
         onInfoClick={onInfoClick}
         questionLabel={`Question 5 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
@@ -311,7 +311,7 @@ function Question6SleepDuration({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <LifestyleHabitsQuestionHeader
         onInfoClick={onInfoClick}
         questionLabel={`Question 6 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
@@ -335,7 +335,7 @@ function Question7AlcoholConsumption({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <LifestyleHabitsQuestionHeader
         onInfoClick={onInfoClick}
         questionLabel={`Question 7 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
@@ -362,7 +362,7 @@ function Question8SmokingFrequency({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <LifestyleHabitsQuestionHeader
         onInfoClick={onInfoClick}
         questionLabel={`Question 8 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
@@ -386,7 +386,7 @@ function Question9HealthWellnessPriorities({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <LifestyleHabitsQuestionHeader
         onInfoClick={onInfoClick}
         questionLabel={`Question 9 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
@@ -411,7 +411,7 @@ function Question10LifestyleCommitment({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <LifestyleHabitsQuestionHeader
         onInfoClick={onInfoClick}
         questionLabel={`Question 10 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}

@@ -5,6 +5,11 @@ import progressFillImg from '../../assets/nutrition-log/progress-fill.svg'
 import progressTrackImg from '../../assets/nutrition-log/progress-track.svg'
 import smallCoinImg from '../../assets/smallcoin.svg'
 import type { NutritionQuestionPreview } from '../../data/nutritionLogQuestions'
+import {
+  MCQ_SHELL_CLASS,
+  MCQ_SHELL_FOOTER_INNER_CLASS,
+  MCQ_SHELL_SCROLL_CLASS,
+} from '../mcq/mcqLayout'
 import { NUTRITION_NEXT_BUTTON_GRADIENT } from './nutritionLogConfig'
 
 /** Shared Nutrition Log MCQ chrome — Figma 5627:12757 */
@@ -24,7 +29,7 @@ export function NutritionLogMcqShell({
   const clampedPercent = Math.min(100, Math.max(0, progressPercent))
 
   return (
-    <div className="relative mx-auto flex h-full min-h-0 w-full max-w-[360px] flex-col pb-[108px]">
+    <div className={MCQ_SHELL_CLASS}>
       <header className="flex shrink-0 items-center justify-between px-4 pb-0 pt-10">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <button
@@ -68,10 +73,10 @@ export function NutritionLogMcqShell({
         </div>
       </div>
 
-      <div className="mt-8 min-h-0 flex-1 overflow-y-auto px-[17px]">{children}</div>
+      <div className={MCQ_SHELL_SCROLL_CLASS}>{children}</div>
 
       <footer className="fixed inset-x-0 bottom-0 z-10 bg-[rgba(255,255,255,0.05)] backdrop-blur-[25px]">
-        <div className="mx-auto flex w-full max-w-[360px] items-center justify-between px-6 py-6">
+        <div className={MCQ_SHELL_FOOTER_INNER_CLASS}>
           <div className="h-[60px] w-[180px] max-w-[180px] shrink-0">
             <p className="text-[11px] font-medium uppercase tracking-[1.1px] leading-[16.5px] text-[rgba(255,255,255,0.4)]">
               NEXT QUESTION

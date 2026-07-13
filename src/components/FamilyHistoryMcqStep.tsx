@@ -13,6 +13,7 @@ import {
 } from '../data/familyHistoryQuestions'
 import { FamilyHistoryInfoOverlay } from './family-history/FamilyHistoryInfoOverlay'
 import { FamilyHistoryQuestionHeader } from './family-history/FamilyHistoryQuestionHeader'
+import { MCQ_PILL_CHIP_CLASS } from './mcq/mcqLayout'
 import { CHIP_SELECTED_GRADIENT, FamilyHistoryMcqShell } from './family-history/FamilyHistoryMcqShell'
 
 type LocationOption = 'inland' | 'coastal'
@@ -147,7 +148,7 @@ function Question1Location({
   onInfoClick: () => void
 }) {
   return (
-    <div className="mx-auto flex w-[326px] flex-col items-center gap-[32px]">
+    <div className="mx-auto flex w-full flex-col items-center gap-[32px]">
       <FamilyHistoryQuestionHeader
         questionLabel={`Question 1 of ${FAMILY_HISTORY_TOTAL_QUESTIONS}`}
         onInfoClick={onInfoClick}
@@ -155,7 +156,7 @@ function Question1Location({
         <p>Where have you lived most of your life?</p>
       </FamilyHistoryQuestionHeader>
 
-      <div className="flex h-[254px] w-[267px] flex-col gap-[16px]">
+      <div className="flex h-[254px] w-full max-w-[267px] flex-col gap-[16px] lg:max-w-[320px]">
         {LOCATION_OPTIONS.map((option) => {
           const isSelected = selected === option.id
           const isInland = option.id === 'inland'
@@ -223,7 +224,7 @@ function MultiSelectChipQuestion({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-[32px]">
+    <div className="flex w-full flex-col gap-[32px]">
       <FamilyHistoryQuestionHeader
         questionLabel={`Question ${questionNumber} of ${FAMILY_HISTORY_TOTAL_QUESTIONS}`}
         onInfoClick={onInfoClick}
@@ -242,7 +243,7 @@ function MultiSelectChipQuestion({
               type="button"
               onClick={() => onToggle(option.id)}
               className={[
-                'flex w-[155px] items-center justify-center gap-2.5 rounded-[24px] border-[0.5px] border-solid px-2.5 py-1',
+                `flex ${MCQ_PILL_CHIP_CLASS} items-center justify-center gap-2.5 rounded-[24px] border-[0.5px] border-solid px-2.5 py-1`,
                 isSelected
                   ? 'border-[#d0d0d0] font-semibold'
                   : 'border-[rgba(255,255,255,0.3)] font-normal',

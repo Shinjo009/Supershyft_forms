@@ -17,7 +17,7 @@ export function NutritionFrequencyPill({
   onClick: () => void
 }) {
   const heightClass = compact ? 'min-h-[38px] py-1' : 'h-8 py-1'
-  const widthClass = fullWidth ? 'w-[326px]' : compact ? 'w-full' : 'w-[154px]'
+  const widthClass = fullWidth ? 'w-full' : compact ? 'w-full' : 'w-[154px] lg:w-[calc(50%-8px)]'
 
   return (
     <button

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import {
   SLEEP_DURATION_OPTIONS,
   type SleepDurationOption,
@@ -6,8 +6,11 @@ import {
 import { SLEEP_MOON_FILL, SLEEP_PILL_GRADIENT } from './sleepDurationConfig'
 
 const MOON_SIZE = 148
+const MOON_RADIUS = MOON_SIZE / 2
 /** Shadow slides toward ~2 o'clock so the lit crescent starts near 7:30 (bottom-left) */
 const SHADOW_ANGLE_RAD = (-28 * Math.PI) / 180
+/** Room for drop-shadow so parent scroll areas do not clip the glow */
+const MOON_FRAME = MOON_SIZE + 72
 
 function useAnimatedFill(target: number) {
   const [fill, setFill] = useState(target)
@@ -55,68 +58,113 @@ function getLitOpacity(fill: number) {
 }
 
 function SleepMoon({ fill }: { fill: number }) {
+  const uid = useId().replace(/:/g, '')
+  const litGradientId = `sleep-moon-lit-${uid}`
+  const idleGlowId = `sleep-moon-idle-${uid}`
+  const phaseMaskId = `sleep-moon-mask-${uid}`
+  const terminatorFilterId = `sleep-moon-blur-${uid}`
+  const dropShadowId = `sleep-moon-shadow-${uid}`
+
   const travel = fill * MOON_SIZE
   const shadowOffsetX = travel * Math.cos(SHADOW_ANGLE_RAD)
   const shadowOffsetY = travel * Math.sin(SHADOW_ANGLE_RAD)
+  const shadowCx = MOON_RADIUS + shadowOffsetX
+  const shadowCy = MOON_RADIUS + shadowOffsetY
   const terminatorBlur = getTerminatorBlur(fill)
   const litOpacity = getLitOpacity(fill)
   const idleGlowOpacity = fill < 0.1 ? 0.55 * (1 - fill / 0.1) : 0
+  const frameOffset = (MOON_FRAME - MOON_SIZE) / 2
 
   return (
-    <div className="flex size-[208.507px] items-center justify-center">
-      <div
-        className="relative shrink-0 overflow-hidden rounded-full"
-        style={{
-          width: MOON_SIZE,
-          height: MOON_SIZE,
-          boxShadow:
-            'inset 0 0 24px rgba(0,0,0,0.55), 0 18px 40px rgba(0,0,0,0.35)',
-          background: 'rgba(0,0,0,0.35)',
-        }}
+    <div
+      className="flex shrink-0 items-center justify-center overflow-visible"
+      style={{ width: MOON_FRAME, height: MOON_FRAME }}
+    >
+      <svg
+        width={MOON_FRAME}
+        height={MOON_FRAME}
+        viewBox={`0 0 ${MOON_FRAME} ${MOON_FRAME}`}
+        className="overflow-visible"
+        aria-hidden
       >
-        <div
-          className="absolute inset-0 rounded-full"
-          style={{
-            opacity: litOpacity,
-            background: 'linear-gradient(180deg, #FFB347 0%, #FB923C 45%, #EF4444 100%)',
-            boxShadow: 'inset 0 0 20px rgba(255, 180, 80, 0.35)',
-          }}
-        />
+        <defs>
+          <linearGradient id={litGradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#FFB347" />
+            <stop offset="45%" stopColor="#FB923C" />
+            <stop offset="100%" stopColor="#EF4444" />
+          </linearGradient>
 
-        <div
-          className="absolute rounded-full"
-          style={{
-            width: MOON_SIZE,
-            height: MOON_SIZE,
-            left: shadowOffsetX,
-            top: shadowOffsetY,
-            background:
-              'radial-gradient(circle at 40% 40%, #2a2220 0%, #14110f 70%, #0a0908 100%)',
-            filter: `blur(${terminatorBlur}px)`,
-            opacity: fill >= 0.99 ? 0 : 1,
-            transition: 'opacity 200ms ease-out',
-            willChange: 'left, top',
-          }}
-        />
+          <radialGradient id={idleGlowId} cx="22%" cy="80%" r="50%">
+            <stop offset="0%" stopColor="rgba(255, 150, 70, 0.5)" />
+            <stop offset="100%" stopColor="rgba(255, 150, 70, 0)" />
+          </radialGradient>
 
-        {idleGlowOpacity > 0 && (
-          <div
-            className="pointer-events-none absolute inset-0 rounded-full"
-            style={{
-              opacity: idleGlowOpacity,
-              background:
-                'radial-gradient(ellipse 36% 30% at 22% 80%, rgba(255, 150, 70, 0.5) 0%, transparent 100%)',
-            }}
+          <filter
+            id={terminatorFilterId}
+            x="-80%"
+            y="-80%"
+            width="260%"
+            height="260%"
+          >
+            <feGaussianBlur stdDeviation={terminatorBlur} />
+          </filter>
+
+          <filter id={dropShadowId} x="-40%" y="-40%" width="180%" height="180%">
+            <feDropShadow dx="0" dy="14" stdDeviation="18" floodColor="rgba(0,0,0,0.35)" />
+          </filter>
+
+          <mask id={phaseMaskId}>
+            <circle cx={MOON_RADIUS + frameOffset} cy={MOON_RADIUS + frameOffset} r={MOON_RADIUS} fill="white" />
+            {fill < 0.99 ? (
+              <circle
+                cx={shadowCx + frameOffset}
+                cy={shadowCy + frameOffset}
+                r={MOON_RADIUS}
+                fill="black"
+                filter={terminatorBlur > 0 ? `url(#${terminatorFilterId})` : undefined}
+              />
+            ) : null}
+          </mask>
+        </defs>
+
+        <g filter={`url(#${dropShadowId})`}>
+          <circle
+            cx={MOON_RADIUS + frameOffset}
+            cy={MOON_RADIUS + frameOffset}
+            r={MOON_RADIUS}
+            fill="rgba(0,0,0,0.35)"
           />
-        )}
 
-        <div
-          className="pointer-events-none absolute inset-0 rounded-full"
-          style={{
-            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.06)',
-          }}
-        />
-      </div>
+          <circle
+            cx={MOON_RADIUS + frameOffset}
+            cy={MOON_RADIUS + frameOffset}
+            r={MOON_RADIUS}
+            fill={`url(#${litGradientId})`}
+            mask={`url(#${phaseMaskId})`}
+            opacity={litOpacity}
+          />
+
+          {idleGlowOpacity > 0 ? (
+            <circle
+              cx={MOON_RADIUS + frameOffset}
+              cy={MOON_RADIUS + frameOffset}
+              r={MOON_RADIUS}
+              fill={`url(#${idleGlowId})`}
+              mask={`url(#${phaseMaskId})`}
+              opacity={idleGlowOpacity}
+            />
+          ) : null}
+
+          <circle
+            cx={MOON_RADIUS + frameOffset}
+            cy={MOON_RADIUS + frameOffset}
+            r={MOON_RADIUS - 0.5}
+            fill="none"
+            stroke="rgba(255,255,255,0.06)"
+            strokeWidth="1"
+          />
+        </g>
+      </svg>
     </div>
   )
 }
@@ -163,7 +211,7 @@ export function SleepDurationMeter({
   const fill = useAnimatedFill(targetFill)
 
   return (
-    <div className="flex w-full flex-col items-center gap-6">
+    <div className="flex w-full flex-col items-center gap-6 overflow-visible">
       <SleepMoon fill={fill} />
 
       <div className="grid w-full grid-cols-3 gap-4">

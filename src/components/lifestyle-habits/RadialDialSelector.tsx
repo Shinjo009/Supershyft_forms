@@ -1,5 +1,7 @@
 import { RadialDialPill } from './RadialDialPill'
+import { arcPointerTouch } from './arcPathGeometry'
 import type { RadialDialArcLayout, RadialDialConfig } from './radialDialShared'
+import { MCQ_DIAL_DESKTOP_CLASS } from '../mcq/mcqLayout'
 import { useAnimatedDialRotation } from './useAnimatedDialRotation'
 
 function NestedGreyArc({ layout }: { layout: RadialDialArcLayout }) {
@@ -207,105 +209,6 @@ function getSlotArcLayout(
   }
 }
 
-/** Pointer tip on the orange arc midline — ray through arc center, clipped to arc bbox. */
-function arcPointerTouch(
-  arc: RadialDialArcLayout,
-  dialCenter: number,
-  hubRadius: number,
-  rotation = 0,
-): { x: number; y: number } {
-  const corners = [
-    { x: arc.x, y: arc.y },
-    { x: arc.x + arc.w, y: arc.y },
-    { x: arc.x, y: arc.y + arc.h },
-    { x: arc.x + arc.w, y: arc.y + arc.h },
-  ].map((c) =>
-    rotation === 0 ? c : rotatePointAround(c.x, c.y, dialCenter, dialCenter, rotation),
-  )
-
-  const midX = arc.x + arc.w / 2
-  const midY = arc.y + arc.h / 2
-  const mid =
-    rotation === 0
-      ? { x: midX, y: midY }
-      : rotatePointAround(midX, midY, dialCenter, dialCenter, rotation)
-
-  const dx = mid.x - dialCenter
-  const dy = mid.y - dialCenter
-  const dist = Math.hypot(dx, dy) || 1
-  const dirX = dx / dist
-  const dirY = dy / dist
-
-  const minX = Math.min(...corners.map((c) => c.x))
-  const maxX = Math.max(...corners.map((c) => c.x))
-  const minY = Math.min(...corners.map((c) => c.y))
-  const maxY = Math.max(...corners.map((c) => c.y))
-
-  const ts: number[] = []
-  if (Math.abs(dirX) > 1e-6) {
-    ts.push((minX - dialCenter) / dirX, (maxX - dialCenter) / dirX)
-  }
-  if (Math.abs(dirY) > 1e-6) {
-    ts.push((minY - dialCenter) / dirY, (maxY - dialCenter) / dirY)
-  }
-
-  const sorted = ts
-    .filter((t) => t > 1e-3)
-    .sort((a, b) => a - b)
-
-  if (sorted.length >= 2) {
-    // Pick the bbox crossing that contains the arc midpoint — not always the first pair
-    // (bottom-left arcs can graze the bbox corner first, then re-enter farther out).
-    let tNear = sorted[0]
-    let tFar = sorted[1]
-    let segmentIndex = 0
-
-    for (let i = 0; i < sorted.length - 1; i++) {
-      if (sorted[i] <= dist && dist <= sorted[i + 1]) {
-        tNear = sorted[i]
-        tFar = sorted[i + 1]
-        segmentIndex = i
-        break
-      }
-    }
-
-    if (dist > sorted[sorted.length - 1]) {
-      tNear = sorted[sorted.length - 2]
-      tFar = sorted[sorted.length - 1]
-      segmentIndex = sorted.length - 2
-    }
-
-    const span = tFar - tNear
-    let touchT: number
-
-    if (tNear > dist * 1.2) {
-      // Dial center sits on the arc bbox edge (e.g. bottom-right slot).
-      touchT = dist * 1.56
-    } else if (segmentIndex > 0) {
-      // Grazing bbox corner — the outer span is inflated; reach from entry to arc center.
-      const outwardFrac = span > 55 ? 0.76 : 0.62
-      touchT = tNear + (dist - tNear) * outwardFrac
-    } else {
-      // Sit on orange midline — wider arcs need a bit more outward reach.
-      const outwardFrac = span > 55 ? 0.76 : 0.62
-      touchT = tNear + span * outwardFrac
-    }
-
-    touchT = Math.max(touchT, hubRadius + 1)
-    touchT = Math.min(touchT, tFar - 2.5)
-    if (segmentIndex > 0) {
-      touchT = Math.min(touchT, dist * 1.02)
-    }
-
-    return {
-      x: dialCenter + dirX * touchT,
-      y: dialCenter + dirY * touchT,
-    }
-  }
-
-  return { x: mid.x, y: mid.y }
-}
-
 function pointerLineFromTouch(
   touchLocal: { x: number; y: number },
   config: RadialDialConfig<string>,
@@ -421,25 +324,6 @@ function GeneratedSlotDial<T extends string>({
     </g>
   )
 }
-
-function rotatePointAround(
-  x: number,
-  y: number,
-  cx: number,
-  cy: number,
-  degrees: number,
-) {
-  const rad = (degrees * Math.PI) / 180
-  const cos = Math.cos(rad)
-  const sin = Math.sin(rad)
-  const dx = x - cx
-  const dy = y - cy
-  return {
-    x: cx + dx * cos - dy * sin,
-    y: cy + dx * sin + dy * cos,
-  }
-}
-
 
 function SlotPointerLine({
   x1,
@@ -649,7 +533,7 @@ export function RadialDialSelector<T extends string>({
 
   return (
     <div
-      className="relative mx-auto"
+      className={`relative mx-auto ${MCQ_DIAL_DESKTOP_CLASS}`}
       style={{ width: config.width, height: config.height }}
     >
       <svg

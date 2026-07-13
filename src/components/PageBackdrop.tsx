@@ -1,32 +1,27 @@
-import backgroundImage from '../assets/bg.png'
 import backgroundMobileSvg from '../assets/Background (1).svg'
+import { APP_COLUMN_CLASS } from './mcq/mcqLayout'
 
-/** Full-viewport background — mobile uses shared Figma SVG wallpaper */
+/** Full-viewport background — same Figma mobile wallpaper at all breakpoints */
 export function PageBackdrop({
   children,
   mobileBackgroundSrc,
 }: {
   children: React.ReactNode
-  /** Override the default mobile wallpaper (e.g. Health Assessment screen) */
+  /** Override the default wallpaper (e.g. Health Assessment screen) */
   mobileBackgroundSrc?: string
 }) {
   const mobileBg = mobileBackgroundSrc ?? backgroundMobileSvg
 
   return (
     <div className="relative h-svh overflow-hidden bg-[#0d0616] font-sans text-white">
-      <div className="pointer-events-none fixed inset-0 lg:hidden" aria-hidden>
+      <div className="pointer-events-none fixed inset-0" aria-hidden>
         <img
           src={mobileBg}
           alt=""
           className="size-full object-cover object-top"
         />
       </div>
-      <div
-        className="pointer-events-none fixed inset-0 hidden bg-cover bg-center bg-no-repeat lg:block"
-        style={{ backgroundImage: `url(${backgroundImage})` }}
-        aria-hidden
-      />
-      <div className="relative z-[1] mx-auto h-full w-full max-w-[360px]">{children}</div>
+      <div className={`relative z-[1] ${APP_COLUMN_CLASS}`}>{children}</div>
     </div>
   )
 }

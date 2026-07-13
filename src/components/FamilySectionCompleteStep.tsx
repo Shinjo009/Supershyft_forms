@@ -3,6 +3,7 @@ import coinsCelebrationGif from '../assets/figma/coins-celebration.gif'
 import tickCircleSolid from '../assets/figma/tick-circle-solid.svg'
 import assessmentRadioImg from '../assets/Ellipse 13077.svg'
 import majesticonsCoins from '../assets/majesticons_coins-line.svg'
+import { ASSESSMENT_CARD_STACK_CLASS } from './mcq/mcqLayout'
 
 function BalanceBadge({ balance = 100 }: { balance?: number }) {
   return (
@@ -56,7 +57,7 @@ export function FamilySectionCompleteStep({
         <BalanceBadge balance={balance} />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-11 overflow-y-auto px-6">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-11 overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex flex-col items-center">
           <img
             src={coinsCelebrationGif}
@@ -85,7 +86,7 @@ export function FamilySectionCompleteStep({
           </div>
         </div>
 
-        <div className="flex w-full max-w-[294px] flex-col gap-[18px]">
+        <div className={ASSESSMENT_CARD_STACK_CLASS}>
           <div className="flex w-full items-center justify-between rounded-xl border border-[rgba(218,193,90,0.5)] bg-white/5 p-4 shadow-[0_0_5px_0_rgba(218,193,90,0.2)]">
             <div className="flex min-w-0 items-center gap-1.5">
               <img src={tickCircleSolid} alt="" className="size-[15px] shrink-0" aria-hidden />

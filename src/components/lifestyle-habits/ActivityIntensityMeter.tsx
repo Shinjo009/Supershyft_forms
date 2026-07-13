@@ -95,8 +95,8 @@ export function ActivityIntensityMeter({
   const animatedBars = useAnimatedBarCount(targetBars)
 
   return (
-    <div className="flex w-[326px] flex-col items-center rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-[33px] backdrop-blur-[5px]">
-      <div className="flex h-[128px] w-[300px] items-end justify-center gap-[6px]">
+    <div className="flex w-full flex-col items-center rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-[33px] backdrop-blur-[5px]">
+      <div className="flex h-[128px] w-full max-w-[300px] items-end justify-center gap-[6px] lg:max-w-[360px]">
         {ACTIVITY_INTENSITY_BAR_HEIGHTS.map((height, index) => {
           const isActive = index < Math.round(animatedBars)
 

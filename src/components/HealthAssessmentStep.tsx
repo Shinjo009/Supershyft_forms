@@ -1,4 +1,5 @@
 import { ContinueButton } from './ContinueButton'
+import { ASSESSMENT_CARD_STACK_CLASS, ASSESSMENT_SUBTITLE_CLASS } from './mcq/mcqLayout'
 import assessmentRadioImg from '../assets/Ellipse 13077.svg'
 import hourglassIcon from '../assets/Group.svg'
 import unlockCoinsIcon from '../assets/majesticons_coins-line.svg'
@@ -131,7 +132,7 @@ export function HealthAssessmentStep({
         <BalanceBadge balance={balance} />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-y-auto px-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex w-full flex-col items-center">
           <div className="mb-6 flex size-14 items-center justify-center rounded-xl border border-[rgba(144,223,158,0.5)] p-px shadow-[0_4px_12px_0_rgba(16,185,129,0.1)]">
             <img src={heartRateIcon} alt="" className="size-7" aria-hidden />
@@ -141,7 +142,7 @@ export function HealthAssessmentStep({
             <h2 className="text-center text-[18px] font-semibold tracking-[0.2px] text-white">
               Health Assessment
             </h2>
-            <p className="mt-1.5 max-w-[312px] text-center text-[12px] leading-4 text-[#9a9a9a]">
+            <p className={ASSESSMENT_SUBTITLE_CLASS}>
               Help our Bio-AI create a more personalized view of your lifestyle and health risks.
             </p>
           </div>
@@ -152,7 +153,7 @@ export function HealthAssessmentStep({
           </div>
         </div>
 
-        <div className="mx-auto flex w-full max-w-[294px] flex-col gap-[18px]">
+        <div className={ASSESSMENT_CARD_STACK_CLASS}>
           {ASSESSMENT_SECTIONS.map((section) => (
             <AssessmentCard
               key={section.id}
@@ -180,7 +181,7 @@ export function HealthAssessmentStep({
 
         <ContinueButton
           variant="mobileBar"
-          className="w-full"
+          className="w-full lg:mx-auto lg:max-w-[400px]"
           showChevron={false}
           onClick={onStartAssessment}
         >

@@ -13,27 +13,19 @@ import {
   Phone,
   Signpost,
   User,
-  Users,
   Venus,
-  X,
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
-import { PreferredDateCalendar } from './components/PreferredDateCalendar'
 import {
   clampBookingDate,
-  formatPreferredDateLabel,
   formatShortBookingDate,
   getBookableDates,
-  getBookingDateBounds,
   toIsoDate,
 } from './lib/bookingDates'
 import { loadPincodeLookup, lookupPincode } from './lib/pincodeLookup'
-// FRONTEND-ONLY: API disabled while redesigning screens.
-// import { onboardUserForEngagement, type OnboardUserForEngagementPayload } from './api/onboard'
 /** Set true when re-enabling validation before API goes live. */
 const ENFORCE_REQUIRED_FIELDS = false
 import { PageBackdrop } from './components/PageBackdrop'
-import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
 import { defaultFormData, type FormData } from './types'
 import backgroundAssessmentSvg from './assets/Background.svg'
@@ -137,49 +129,6 @@ function getBookedEmployeeIds(): Set<string> {
   }
 }
 
-/*
-function markEmployeeIdAsBooked(employeeId: string) {
-  if (isTestEmployeeId(employeeId) || typeof window === 'undefined') return
-  const normalized = normalizeEmployeeId(employeeId)
-  const booked = getBookedEmployeeIds()
-  booked.add(normalized)
-  window.localStorage.setItem(BOOKED_EMPLOYEE_IDS_STORAGE_KEY, JSON.stringify(Array.from(booked)))
-}
-
-function isTestEmployeeId(employeeId: string): boolean {
-  return normalizeEmployeeId(employeeId) === TEST_EMPLOYEE_ID
-}
-
-function employeeIdForOnboardApi(
-  employeeId: string,
-  gender: '' | 'male' | 'female',
-): string {
-  const normalized = normalizeEmployeeId(employeeId)
-  if (!isTestEmployeeId(normalized)) return normalized
-  const genderTag = gender === 'female' ? 'F' : gender === 'male' ? 'M' : 'X'
-  return `${TEST_EMPLOYEE_ID}-T-${genderTag}-${Date.now()}`
-}
-
-function contactForOnboardApi(employeeId: string, email: string, phone: string) {
-  if (!isTestEmployeeId(employeeId)) return { email, phone }
-  const tag = String(Date.now())
-  const at = email.indexOf('@')
-  const apiEmail =
-    at > 0 ? `${email.slice(0, at)}+t${tag}${email.slice(at)}` : `${email}+t${tag}@celebal-test.local`
-  const apiPhone = `9${tag.slice(-9)}`
-  return { email: apiEmail, phone: apiPhone }
-}
-
-const toApiTimeSlot = (slot: string) => {
-  const normalized = slot.trim()
-  if (!normalized) return '9:00'
-  const firstPart = normalized.split('-')[0]?.trim() || normalized
-  const hour = Number.parseInt(firstPart.split(':')[0] || '', 10)
-  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return '9:00'
-  return `${hour}:00`
-}
-*/
-
 function formatAddressForApi(form: FormData): string {
   return [form.houseNumber, form.street, form.landmark]
     .map((part) => part.trim())
@@ -226,20 +175,7 @@ function formatTimeSlotRange(slot: string): string {
   return `${startLabel} - ${endLabel} ${endMeridiem}`
 }
 
-function useIsLg() {
-  return false
-}
-
-function inputClass(short?: boolean) {
-  return [
-    'w-full rounded-[8px] bg-white/5 px-4 text-base text-white outline-none ring-1 ring-white/5 placeholder:text-[15px] placeholder:text-white/40 focus:ring-[#4b8d83]/70 lg:text-sm lg:placeholder:text-[13px]',
-    short ? 'h-10' : 'h-[44px]',
-  ].join(' ')
-}
-
-/** Figma mobile: 20px icon, 8px gap, Lato Medium 14px #999. Desktop: ~14px icon, 13px label #9a9a9a */
 type IconType = React.ComponentType<{ className?: string; strokeWidth?: number }>
-
 
 const EmployeeIdIcon: IconType = ({ className }) => (
   <svg
@@ -266,26 +202,10 @@ const EmployeeIdIcon: IconType = ({ className }) => (
   </svg>
 )
 
-const GenderIcon: IconType = ({ className }) => (
-  <svg
-    className={className}
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 14 18"
-    aria-hidden
-    fill="none"
-  >
-    <path
-      d="M12.1953 0H9.07032C8.82168 0 8.58322 0.0987721 8.40741 0.274587C8.23159 0.450403 8.13282 0.68886 8.13282 0.9375C8.13282 1.18614 8.23159 1.4246 8.40741 1.60041C8.58322 1.77623 8.82168 1.875 9.07032 1.875H9.9297L8.70782 3.09922C8.08216 2.5793 7.34545 2.21001 6.5545 2.01983C5.76355 1.82964 4.93949 1.82364 4.14586 2.00229C3.35222 2.18093 2.61022 2.53945 1.97705 3.0502C1.34388 3.56095 0.836461 4.21029 0.493921 4.94815C0.151381 5.68601 -0.0171317 6.49268 0.0013751 7.30596C0.0198819 8.11924 0.224914 8.91741 0.600663 9.63893C0.976412 10.3604 1.51284 10.986 2.16859 11.4674C2.82433 11.9489 3.58188 12.2733 4.38282 12.4156V13.4375H2.82032C2.57168 13.4375 2.33322 13.5363 2.15741 13.7121C1.98159 13.8879 1.88282 14.1264 1.88282 14.375C1.88282 14.6236 1.98159 14.8621 2.15741 15.0379C2.33322 15.2137 2.57168 15.3125 2.82032 15.3125H4.38282V16.5625C4.38282 16.8111 4.48159 17.0496 4.65741 17.2254C4.83322 17.4012 5.07168 17.5 5.32032 17.5C5.56896 17.5 5.80742 17.4012 5.98323 17.2254C6.15905 17.0496 6.25782 16.8111 6.25782 16.5625V15.3125H7.82032C8.06896 15.3125 8.30742 15.2137 8.48323 15.0379C8.65905 14.8621 8.75782 14.6236 8.75782 14.375C8.75782 14.1264 8.65905 13.8879 8.48323 13.7121C8.30742 13.5363 8.06896 13.4375 7.82032 13.4375H6.25782V12.4156C7.09685 12.266 7.8875 11.9164 8.56288 11.3966C9.23826 10.8767 9.77851 10.2019 10.1379 9.42911C10.4973 8.65632 10.6654 7.80834 10.6277 6.9569C10.5901 6.10545 10.348 5.27559 9.92188 4.5375L11.2578 3.20312V4.0625C11.2578 4.31114 11.3566 4.5496 11.5324 4.72541C11.7082 4.90123 11.9467 5 12.1953 5C12.444 5 12.6824 4.90123 12.8582 4.72541C13.034 4.5496 13.1328 4.31114 13.1328 4.0625V0.9375C13.1328 0.68886 13.034 0.450403 12.8582 0.274587C12.6824 0.0987721 12.444 0 12.1953 0ZM5.32032 10.625C4.64045 10.625 3.97584 10.4234 3.41055 10.0457C2.84525 9.66796 2.40466 9.1311 2.14448 8.50297C1.88431 7.87485 1.81623 7.18369 1.94887 6.51688C2.08151 5.85007 2.4089 5.23756 2.88964 4.75682C3.37038 4.27608 3.98289 3.94869 4.6497 3.81605C5.31651 3.68341 6.00767 3.75149 6.6358 4.01166C7.26392 4.27184 7.80078 4.71243 8.1785 5.27773C8.55621 5.84302 8.75782 6.50763 8.75782 7.1875C8.75679 8.09886 8.39429 8.97261 7.74986 9.61704C7.10543 10.2615 6.23169 10.624 5.32032 10.625Z"
-      fill="#9A9A9A"
-    />
-  </svg>
-)
-
 function labelRow(
   Icon: IconType,
   label: string,
   extra?: React.ReactNode,
-  mobile?: boolean,
   showRequired?: boolean,
   errorType?: 'missing' | 'invalid',
 ) {
@@ -299,14 +219,10 @@ function labelRow(
         : ''
   return (
     <div className="flex items-center gap-2">
-      <span
-        className={`flex shrink-0 items-center justify-center ${mobile ? 'size-5 text-[#999]' : 'size-3.5 text-[#9a9a9a]'}`}
-      >
-        <Icon className={mobile ? 'size-5' : 'size-3.5'} strokeWidth={1.75} />
+      <span className="flex size-5 shrink-0 items-center justify-center text-[#999]">
+        <Icon className="size-5" strokeWidth={1.75} />
       </span>
-      <span
-        className={`font-medium ${mobile ? 'text-[14px] leading-normal text-[#999]' : 'text-[13px] text-[#9a9a9a]'}`}
-      >
+      <span className="text-[14px] font-medium leading-normal text-[#999]">
         {label}
         {showRequired ? (
           <span className="text-[#ff6b6b]">
@@ -320,14 +236,10 @@ function labelRow(
   )
 }
 
-
 export default function BookAppointment() {
-  const isLg = useIsLg()
   const [step, setStep] = useState(1)
   const [maxReachedStep, setMaxReachedStep] = useState(1)
   const [form, setForm] = useState<FormData>(defaultFormData)
-  const [savedMembers] = useState<FormData[]>([])
-  const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
   const [uiError, setUiError] = useState('')
   const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
@@ -353,8 +265,6 @@ export default function BookAppointment() {
     window.addEventListener(BOOK_APPOINTMENT_ERROR_EVENT, handler as EventListener)
     return () => window.removeEventListener(BOOK_APPOINTMENT_ERROR_EVENT, handler as EventListener)
   }, [])
-
-  const primaryMember = savedMembers[0]
 
   const goNextFromPersonal = () => {
     if (!ENFORCE_REQUIRED_FIELDS) {
@@ -494,8 +404,6 @@ export default function BookAppointment() {
     setStep(3)
   }
 
-  const allMembers = useMemo(() => [...savedMembers, form], [savedMembers, form])
-
   const handleConfirmBooking = async () => {
     if (isSubmittingBooking) return
 
@@ -587,58 +495,17 @@ export default function BookAppointment() {
     }
 
     setIsSubmittingBooking(true)
-
-    try {
-      // FRONTEND-ONLY: payload/API disabled while redesigning screens.
-      /*
-      const wantsDoctorConsultation = form.personalizedDoctorConsultation === 'yes'
-      const apiContact = contactForOnboardApi(normalizedEmployeeId, trimmedEmail, trimmedPhone)
-
-      const payload: OnboardUserForEngagementPayload = {
-        age: safeAge,
-        first_name: form.firstName,
-        last_name: form.lastName,
-        email: apiContact.email,
-        phone: apiContact.phone,
-        gender: form.gender,
-        address: apiAddress,
-        pincode: apiPincode,
-        city: apiCity,
-        state: apiState,
-        country: 'India',
-        blood_collection_date: form.appointmentDate,
-        blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
-        participants_employee_id: employeeIdForOnboardApi(normalizedEmployeeId, form.gender),
-        participant_blood_group: 'NA',
-        want_doctor_consultation: wantsDoctorConsultation,
-      }
-
-      await onboardUserForEngagement(payload)
-      markEmployeeIdAsBooked(normalizedEmployeeId)
-      */
-      setStep(5)
-    } catch (error) {
-      logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
-    } finally {
-      setIsSubmittingBooking(false)
-    }
+    setStep(5)
+    setIsSubmittingBooking(false)
   }
 
   const mobileScreenTitle = 'Book Appointment'
 
-  const isMobile = !isLg
   const showBack = step > 1
   const hideGlobalContinue = step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11 || step === 12 || step === 13
   const hideStepper = step >= 5
   const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11 || step === 12
   const confirmStepperBorder = step === 4
-
-  const handleClose = () => {
-    setUiError('')
-    setStep(1)
-  }
-
-  const showClose = step !== 2
 
   const handleStepContinue = () => {
     if (step === 1) goNextFromPersonal()
@@ -685,18 +552,7 @@ export default function BookAppointment() {
           <h1 className="text-center text-[20px] font-semibold leading-6 text-white">
             {mobileScreenTitle}
           </h1>
-          {showClose ? (
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex size-8 items-center justify-end text-white"
-              aria-label="Close"
-            >
-              <X className="size-6" strokeWidth={1.75} />
-            </button>
-          ) : (
-            <span className="size-8" aria-hidden />
-          )}
+          <span className="size-8" aria-hidden />
         </header>
         )}
 
@@ -710,7 +566,6 @@ export default function BookAppointment() {
           >
             <Stepper
               current={step}
-              compact
               maxReachable={maxReachedStep}
               onStepClick={(target) => setStep(target)}
             />
@@ -739,24 +594,15 @@ export default function BookAppointment() {
                 ? 'min-h-0 min-w-0 flex-1 overflow-hidden'
                 : step === 5
                   ? 'min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-                  : 'min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto'
+                  : 'min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
             }
           >
             {step === 1 && (
               <PersonalStep
                 form={form}
                 update={update}
-                isLg={isLg}
-                inputClass={inputClass}
                 labelRow={labelRow}
-                onContinue={goNextFromPersonal}
                 showMissingRequired={ENFORCE_REQUIRED_FIELDS && attemptedPersonalContinue}
-                savedMembers={savedMembers}
-                expandedMemberIndex={expandedMemberIndex}
-                onToggleMember={(i) =>
-                  setExpandedMemberIndex((cur) => (cur === i ? null : i))
-                }
-                primaryMember={primaryMember}
               />
             )}
             {step === 2 && (
@@ -764,7 +610,6 @@ export default function BookAppointment() {
                 form={form}
                 update={update}
                 labelRow={labelRow}
-                isMobile={isMobile}
                 showMissingRequired={ENFORCE_REQUIRED_FIELDS && attemptedAddressContinue}
               />
             )}
@@ -772,27 +617,19 @@ export default function BookAppointment() {
               <ScheduleStep
                 form={form}
                 update={update}
-                isMobile={isMobile}
                 showMissingRequired={ENFORCE_REQUIRED_FIELDS && attemptedScheduleContinue}
               />
             )}
             {step === 4 && (
               <ConfirmStep
                 form={form}
-                members={allMembers}
                 onEdit={(s) => setStep(s)}
                 onProceed={handleConfirmBooking}
                 isSubmitting={isSubmittingBooking}
-                isMobile={isMobile}
               />
             )}
             {step === 5 && (
-              <BookingConfirmedStep
-                form={form}
-                members={allMembers}
-                isMobile={isMobile}
-                onContinue={() => setStep(6)}
-              />
+              <BookingConfirmedStep form={form} />
             )}
             {step === 6 && (
               <HealthAssessmentStep balance={50} onStartAssessment={() => setStep(7)} />
@@ -838,7 +675,15 @@ export default function BookAppointment() {
             )}
           </div>
 
-          {!hideGlobalContinue ? (
+          {step === 5 ? (
+            <ContinueButton
+              variant="mobileBar"
+              className="mt-6 w-full shrink-0"
+              onClick={() => setStep(6)}
+            >
+              Continue
+            </ContinueButton>
+          ) : !hideGlobalContinue ? (
             <div className="mt-6 shrink-0">
               <ContinueButton variant={continueVariant} onClick={handleStepContinue}>
                 Continue
@@ -855,103 +700,27 @@ const mobileFieldInput =
   'h-10 w-full rounded-[8px] border-0 bg-white/5 px-4 text-[12px] text-white outline-none placeholder:text-[12px] placeholder:text-white/60 focus:ring-1 focus:ring-[#4b8d83]'
 const mobileFieldInputName =
   'h-10 w-full rounded-[8px] border-0 bg-white/5 px-4 text-[14px] text-white outline-none placeholder:text-[14px] placeholder:text-white/60 focus:ring-1 focus:ring-[#4b8d83]'
-const mobileFieldInput14 = mobileFieldInput
-
-function EmployeeIdField({
-  value,
-  onChange,
-  variant,
-}: {
-  value: string
-  onChange: (fullId: string) => void
-  variant: 'mobile' | 'desktop'
-}) {
-  const isMobile = variant === 'mobile'
-  const suffix = getEmployeeIdSuffix(value)
-
-  return (
-    <div
-      className={[
-        'flex w-full items-stretch overflow-hidden bg-white/5 ring-1 ring-white/5 focus-within:ring-[#4b8d83]/70',
-        isMobile ? 'h-10 rounded-lg' : 'h-[44px] rounded-[8px]',
-      ].join(' ')}
-    >
-      <span
-        className={[
-          'flex shrink-0 items-center border-r border-white/10 bg-white/[0.04] font-semibold tracking-wide text-white/75',
-          isMobile ? 'px-3 text-[14px]' : 'px-4 text-sm',
-        ].join(' ')}
-        aria-hidden
-      >
-        {EMPLOYEE_ID_PREFIX}
-      </span>
-      <input
-        className={[
-          'min-w-0 flex-1 border-0 bg-transparent text-white outline-none placeholder:text-white/40',
-          isMobile ? 'px-3 text-[16px] placeholder:text-[13px]' : 'px-4 text-base placeholder:text-[15px] lg:text-sm lg:placeholder:text-[13px]',
-        ].join(' ')}
-        inputMode="numeric"
-        autoComplete="off"
-        placeholder="4196"
-        maxLength={4}
-        aria-label="Employee ID number"
-        value={suffix}
-        onChange={(e) => onChange(buildEmployeeIdFromSuffix(e.target.value))}
-      />
-    </div>
-  )
-}
 
 function PersonalStep({
   form,
   update,
-  isLg,
-  inputClass,
   labelRow,
-  onContinue,
   showMissingRequired,
-  savedMembers,
-  expandedMemberIndex,
-  onToggleMember,
-  primaryMember,
 }: {
   form: FormData
   update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
-  isLg: boolean
-  inputClass: (short?: boolean) => string
   labelRow: (
     Icon: IconType,
     label: string,
     extra?: React.ReactNode,
-    mobile?: boolean,
     showRequired?: boolean,
     errorType?: 'missing' | 'invalid',
   ) => React.ReactNode
-  onContinue: () => void
   showMissingRequired?: boolean
-  savedMembers: FormData[]
-  expandedMemberIndex: number | null
-  onToggleMember: (index: number) => void
-  primaryMember?: FormData
 }) {
-  const hasSavedMembers = savedMembers.length > 0
-
-  const phoneValue = hasSavedMembers && form.useSamePhone && primaryMember ? primaryMember.phone : form.phone
-  const emailValue = hasSavedMembers && form.useSameEmail && primaryMember ? primaryMember.email : form.email
-
-  const toggleUseSamePhone = (next: boolean) => {
-    update('useSamePhone', next)
-    if (next && primaryMember) update('phone', primaryMember.phone)
-  }
-  const toggleUseSameEmail = (next: boolean) => {
-    update('useSameEmail', next)
-    if (next && primaryMember) update('email', primaryMember.email)
-  }
-
   const showRequired = Boolean(showMissingRequired)
   const isMissing = (value: string) => showRequired && !value.trim()
   const isMissingGender = showRequired && !form.gender
-  const isMissingRelation = showRequired && !form.relation.trim()
   const fullNameError: 'missing' | 'invalid' | undefined = !showRequired
     ? undefined
     : !form.firstName.trim() || !form.lastName.trim()
@@ -961,623 +730,132 @@ function PersonalStep({
         : undefined
   const phoneError: 'missing' | 'invalid' | undefined = !showRequired
     ? undefined
-    : !phoneValue.trim()
+    : !form.phone.trim()
       ? 'missing'
-      : !/^\d{10}$/.test(phoneValue.trim())
+      : !/^\d{10}$/.test(form.phone.trim())
         ? 'invalid'
         : undefined
   const emailError: 'missing' | 'invalid' | undefined = !showRequired
     ? undefined
-    : !emailValue.trim()
+    : !form.email.trim()
       ? 'missing'
-      : !EMAIL_REGEX.test(emailValue.trim())
+      : !EMAIL_REGEX.test(form.email.trim())
         ? 'invalid'
         : undefined
 
-  if (!isLg && hasSavedMembers) {
-    const relationPillBase =
-      'flex h-10 items-center justify-center rounded-full px-2 text-[13px] leading-none transition'
-    const relationPillSelected =
-      'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-    const relationPillIdle = 'bg-white/5 text-[#9A9A9A]'
-
-    return (
-      <div className="flex min-h-0 flex-col gap-5 pb-2">
-        <div className="flex flex-col gap-3">
-          {savedMembers.map((m, i) => (
-            <SavedMemberCard
-              key={i}
-              member={m}
-              expanded={expandedMemberIndex === i}
-              onToggle={() => onToggleMember(i)}
-            />
-          ))}
-        </div>
-
-        <div className="flex flex-col gap-5">
-          <h2 className="text-[20px] font-medium leading-none text-white">
-            Details for Sample collection
-          </h2>
-          <div className="flex flex-col gap-1">
-            {labelRow(User, 'Full Name', undefined, true, Boolean(fullNameError), fullNameError)}
-            <div className="flex gap-2">
-              <input
-                className={`${mobileFieldInput14} min-w-0 flex-1`}
-                placeholder="First Name"
-                autoComplete="given-name"
-                value={form.firstName}
-                onChange={(e) => update('firstName', sanitizeName(e.target.value))}
-              />
-              <input
-                className={`${mobileFieldInput14} min-w-0 flex-1`}
-                placeholder="Last Name"
-                autoComplete="family-name"
-                value={form.lastName}
-                onChange={(e) => update('lastName', sanitizeName(e.target.value))}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            {labelRow(GenderIcon, 'Gender', undefined, true, isMissingGender)}
-            <div className="flex h-10 gap-6">
-              <button
-                type="button"
-                onClick={() => update('gender', 'male')}
-                className={[
-                  'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs leading-4 transition',
-                  form.gender === 'male'
-                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
-                    : 'bg-white/5 text-[#999]',
-                ].join(' ')}
-              >
-                <Mars className="size-3.5 shrink-0 opacity-90" strokeWidth={2} />
-                Male
-              </button>
-              <button
-                type="button"
-                onClick={() => update('gender', 'female')}
-                className={[
-                  'flex flex-1 items-center justify-center gap-2 rounded-full px-2.5 py-1 text-xs leading-4 transition',
-                  form.gender === 'female'
-                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white shadow-[0_0_12px_rgba(75,141,131,0.35)]'
-                    : 'bg-white/5 text-[#999]',
-                ].join(' ')}
-              >
-                <Venus className="size-4 shrink-0 opacity-90" strokeWidth={2} />
-                Female
-              </button>
-            </div>
-          </div>
-
-
-          <div className="flex flex-col gap-1">
-            {labelRow(Users, 'Relation', undefined, true, isMissingRelation)}
-            <div className="grid grid-cols-3 gap-2">
-              {RELATION_OPTIONS.map((opt) => {
-                const id = opt.toLowerCase()
-                const selected = form.relation === id
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => update('relation', id)}
-                    className={[
-                      relationPillBase,
-                      selected ? relationPillSelected : relationPillIdle,
-                    ].join(' ')}
-                  >
-                    {opt}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            {labelRow(Calendar, 'Age', undefined, true, isMissing(form.age))}
-            <input
-              className={mobileFieldInput14}
-              inputMode="numeric"
-              placeholder="Age"
-              maxLength={2}
-              value={form.age}
-              onChange={(e) => update('age', sanitizeAge(e.target.value))}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            {labelRow(
-              Phone,
-              'Phone',
-              <UseSameToggle
-                checked={form.useSamePhone}
-                onChange={toggleUseSamePhone}
-                label="Same as before"
-              />,
-              true,
-              Boolean(phoneError),
-              phoneError,
-            )}
-            <input
-              className={mobileFieldInput14}
-              inputMode="tel"
-              placeholder="+91 999999999"
-              maxLength={10}
-              disabled={form.useSamePhone}
-              value={phoneValue}
-              onChange={(e) => update('phone', sanitizePhone(e.target.value))}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            {labelRow(
-              Mail,
-              'Email',
-              <UseSameToggle checked={form.useSameEmail} onChange={toggleUseSameEmail} />,
-              true,
-              Boolean(emailError),
-              emailError,
-            )}
-            <input
-              className={mobileFieldInput14}
-              type="email"
-              inputMode="email"
-              placeholder="Email"
-              disabled={form.useSameEmail}
-              value={emailValue}
-              onChange={(e) => update('email', e.target.value)}
-            />
-          </div>
-
-
-          <div className="flex flex-col gap-1">
-            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true, isMissing(form.employeeId))}
-            <EmployeeIdField
-              variant="mobile"
-              value={form.employeeId}
-              onChange={(fullId) => update('employeeId', fullId)}
-            />
-          </div>
-
-        </div>
-
-      </div>
-    )
-  }
-
-  if (!isLg) {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-1">
-          {labelRow(User, 'Full Name', undefined, true, Boolean(fullNameError), fullNameError)}
-          <div className="flex gap-2">
-            <input
-              className={`${mobileFieldInputName} min-w-0 flex-1`}
-              placeholder="First name"
-              autoComplete="given-name"
-              value={form.firstName}
-              onChange={(e) => update('firstName', sanitizeName(e.target.value))}
-            />
-            <input
-              className={`${mobileFieldInputName} min-w-0 flex-1`}
-              placeholder="Last Name"
-              autoComplete="family-name"
-              value={form.lastName}
-              onChange={(e) => update('lastName', sanitizeName(e.target.value))}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          {labelRow(Phone, 'Phone', undefined, true, Boolean(phoneError), phoneError)}
-          <input
-            className={mobileFieldInput}
-            inputMode="tel"
-            placeholder="+91 999999999"
-            maxLength={10}
-            value={form.phone}
-            onChange={(e) => update('phone', sanitizePhone(e.target.value))}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          {labelRow(Mail, 'Email', undefined, true, Boolean(emailError), emailError)}
-          <input
-            className={mobileFieldInput}
-            type="email"
-            inputMode="email"
-            placeholder="abc.xyz@gmail.com"
-            autoComplete="email"
-            value={form.email}
-            onChange={(e) => update('email', e.target.value)}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          {labelRow(Calendar, 'Age', undefined, true, isMissing(form.age))}
-          <input
-            className={mobileFieldInput}
-            inputMode="numeric"
-            placeholder="24"
-            maxLength={2}
-            value={form.age}
-            onChange={(e) => update('age', sanitizeAge(e.target.value))}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          {labelRow(User, 'Gender', undefined, true, isMissingGender)}
-          <div className="flex h-10 gap-6">
-            <button
-              type="button"
-              onClick={() => update('gender', 'male')}
-              className={[
-                'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] leading-4 transition',
-                form.gender === 'male'
-                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                  : 'bg-white/5 text-[#999]',
-              ].join(' ')}
-            >
-              <Mars className="size-3 shrink-0" strokeWidth={2} />
-              Male
-            </button>
-            <button
-              type="button"
-              onClick={() => update('gender', 'female')}
-              className={[
-                'flex flex-1 items-center justify-center gap-2.5 rounded-full px-2.5 py-1 text-[12px] leading-4 transition',
-                form.gender === 'female'
-                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                  : 'bg-white/5 text-[#999]',
-              ].join(' ')}
-            >
-              <Venus className="size-2.5 shrink-0" strokeWidth={2} />
-              Female
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className="flex size-6 shrink-0 items-center justify-center text-[#999]">
-              <EmployeeIdIcon className="size-6" />
-            </span>
-            <span className="text-[14px] font-medium text-[#999]">
-              Employee ID
-              {isMissing(form.employeeId) ? (
-                <span className="text-[#ff6b6b]"> * Field is required</span>
-              ) : null}
-            </span>
-          </div>
-          <input
-            className={mobileFieldInput}
-            inputMode="numeric"
-            placeholder="1324"
-            maxLength={4}
-            value={getEmployeeIdSuffix(form.employeeId)}
-            onChange={(e) => update('employeeId', buildEmployeeIdFromSuffix(e.target.value))}
-          />
-        </div>
-      </div>
-    )
-  }
-
-  const genderButtons = (
-    <div className="flex gap-3">
-      <button
-        type="button"
-        onClick={() => update('gender', 'male')}
-        className={[
-          'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm text-[#9a9a9a]',
-          form.gender === 'male'
-            ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-            : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)]',
-        ].join(' ')}
-      >
-        <Mars className="size-4" />
-        <span>Male</span>
-      </button>
-      <button
-        type="button"
-        onClick={() => update('gender', 'female')}
-        className={[
-          'flex h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] text-sm',
-          form.gender === 'female'
-            ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-            : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#9a9a9a]',
-        ].join(' ')}
-      >
-        <Venus className="size-4" />
-        <span>Female</span>
-      </button>
-    </div>
-  )
-
-
-  if (hasSavedMembers) {
-    return (
-      <>
-        <h2 className="mb-5 text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
-          Details for Sample collection
-        </h2>
-
-        <div className="mb-6 flex flex-col gap-3">
-          {savedMembers.map((m, i) => (
-            <SavedMemberCard
-              key={i}
-              member={m}
-              expanded={expandedMemberIndex === i}
-              onToggle={() => onToggleMember(i)}
-            />
-          ))}
-        </div>
-
-        <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
-          <div>
-            {labelRow(User, 'Full Name', undefined, false, Boolean(fullNameError), fullNameError)}
-            <div className="flex gap-2">
-              <input
-                className={`${inputClass()} min-w-0 flex-1`}
-                placeholder="First Name"
-                autoComplete="given-name"
-                value={form.firstName}
-                onChange={(e) => update('firstName', sanitizeName(e.target.value))}
-              />
-              <input
-                className={`${inputClass()} min-w-0 flex-1`}
-                placeholder="Last Name"
-                autoComplete="family-name"
-                value={form.lastName}
-                onChange={(e) => update('lastName', sanitizeName(e.target.value))}
-              />
-            </div>
-          </div>
-
-          <div>
-            {labelRow(
-              Phone,
-              'Phone Number (Whatsapp)',
-              <UseSameToggle
-                checked={form.useSamePhone}
-                onChange={toggleUseSamePhone}
-              />,
-              false,
-              Boolean(phoneError),
-              phoneError,
-            )}
-            <input
-              className={inputClass()}
-              placeholder="+91 999999999"
-              inputMode="tel"
-              maxLength={10}
-              disabled={form.useSamePhone}
-              value={phoneValue}
-              onChange={(e) => update('phone', sanitizePhone(e.target.value))}
-            />
-          </div>
-
-          <div>
-            {labelRow(
-              Mail,
-              'Email',
-              <UseSameToggle
-                checked={form.useSameEmail}
-                onChange={toggleUseSameEmail}
-              />,
-              false,
-              Boolean(emailError),
-              emailError,
-            )}
-            <input
-              className={inputClass()}
-              placeholder="Email"
-              type="email"
-              disabled={form.useSameEmail}
-              value={emailValue}
-              onChange={(e) => update('email', e.target.value)}
-            />
-          </div>
-
-
-          <div>
-            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false, isMissing(form.employeeId))}
-            <EmployeeIdField
-              variant="desktop"
-              value={form.employeeId}
-              onChange={(fullId) => update('employeeId', fullId)}
-            />
-          </div>
-
-          <div>
-            {labelRow(Calendar, 'Age', undefined, false, isMissing(form.age))}
-            <input
-              className={inputClass()}
-              placeholder="Age"
-              inputMode="numeric"
-              maxLength={2}
-              value={form.age}
-              onChange={(e) => update('age', sanitizeAge(e.target.value))}
-            />
-          </div>
-
-          <div>
-            {labelRow(GenderIcon, 'Gender', undefined, false, isMissingGender)}
-            {genderButtons}
-          </div>
-
-
-          <div>
-            {labelRow(Users, 'Relation', undefined, false, isMissingRelation)}
-            <div className="grid grid-cols-3 gap-3">
-              {RELATION_OPTIONS.map((opt) => {
-                const id = opt.toLowerCase()
-                const selected = form.relation === id
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => update('relation', id)}
-                    className={[
-                      'flex h-[44px] items-center justify-center gap-2 rounded-[6px] text-sm transition',
-                      selected
-                        ? 'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] text-white'
-                        : 'bg-[linear-gradient(90deg,rgba(37,52,53,0.72)_0%,rgba(13,21,23,0.64)_100%)] text-[#9a9a9a]',
-                    ].join(' ')}
-                  >
-                    <User className="size-3.5 opacity-80" strokeWidth={1.75} />
-                    <span>{opt}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-        </div>
-
-        <div className="mt-4 flex justify-end">
-          <ContinueButton onClick={onContinue}>Continue</ContinueButton>
-        </div>
-      </>
-    )
-  }
-
   return (
-    <>
-      <h2 className="mb-7 text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
-        Details for Sample collection
-      </h2>
-
-      <div className="grid content-start gap-6 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6">
-        <div>
-          {labelRow(User, 'Full Name', undefined, false, Boolean(fullNameError), fullNameError)}
-          <div className="flex gap-2">
-            <input
-              className={`${inputClass()} min-w-0 flex-1`}
-              placeholder="First Name"
-              autoComplete="given-name"
-              value={form.firstName}
-              onChange={(e) => update('firstName', sanitizeName(e.target.value))}
-            />
-            <input
-              className={`${inputClass()} min-w-0 flex-1`}
-              placeholder="Last Name"
-              autoComplete="family-name"
-              value={form.lastName}
-              onChange={(e) => update('lastName', sanitizeName(e.target.value))}
-            />
-          </div>
-        </div>
-
-        <div>
-          {labelRow(
-            Phone,
-            'Phone Number (Whatsapp)',
-            undefined,
-            false,
-            Boolean(phoneError),
-            phoneError,
-          )}
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        {labelRow(User, 'Full Name', undefined, Boolean(fullNameError), fullNameError)}
+        <div className="flex gap-2">
           <input
-            className={inputClass()}
-            placeholder="Phone"
-            inputMode="tel"
-            maxLength={10}
-            value={form.phone}
-            onChange={(e) => update('phone', sanitizePhone(e.target.value))}
+            className={`${mobileFieldInputName} min-w-0 flex-1`}
+            placeholder="First name"
+            autoComplete="given-name"
+            value={form.firstName}
+            onChange={(e) => update('firstName', sanitizeName(e.target.value))}
           />
-        </div>
-
-        <div>
-          {labelRow(Mail, 'Email ID', undefined, false, Boolean(emailError), emailError)}
           <input
-            className={inputClass()}
-            placeholder="Email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            value={form.email}
-            onChange={(e) => update('email', e.target.value)}
+            className={`${mobileFieldInputName} min-w-0 flex-1`}
+            placeholder="Last Name"
+            autoComplete="family-name"
+            value={form.lastName}
+            onChange={(e) => update('lastName', sanitizeName(e.target.value))}
           />
         </div>
-
-
-        <div>
-          {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false, isMissing(form.employeeId))}
-          <EmployeeIdField
-            variant="desktop"
-            value={form.employeeId}
-            onChange={(fullId) => update('employeeId', fullId)}
-          />
-        </div>
-
-        <div>
-          {labelRow(Calendar, 'Age', undefined, false, isMissing(form.age))}
-          <input
-            className={inputClass()}
-            placeholder="Age"
-            inputMode="numeric"
-            maxLength={2}
-            value={form.age}
-            onChange={(e) => update('age', sanitizeAge(e.target.value))}
-          />
-        </div>
-
-        <div>
-          {labelRow(GenderIcon, 'Gender', undefined, false, isMissingGender)}
-          {genderButtons}
-        </div>
-
-
       </div>
 
-      <div className="mt-4 flex justify-end">
-        <ContinueButton onClick={onContinue}>Continue</ContinueButton>
-      </div>
-    </>
-  )
-}
-
-function UseSameToggle({
-  checked,
-  onChange,
-  label = 'Use Same',
-}: {
-  checked: boolean
-  onChange: (next: boolean) => void
-  label?: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      aria-pressed={checked}
-      className="ml-auto flex items-center gap-1.5 text-[12px] font-medium text-[#9a9a9a] transition hover:text-white/90"
-    >
-      <span>{label}</span>
-      {checked ? (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          aria-hidden
-        >
-          <path
-            fillRule="evenodd"
-            clipRule="evenodd"
-            d="M3.33333 2C2.97971 2 2.64057 2.14048 2.39052 2.39052C2.14048 2.64057 2 2.97971 2 3.33333V12.6667C2 13.0203 2.14048 13.3594 2.39052 13.6095C2.64057 13.8595 2.97971 14 3.33333 14H12.6667C13.0203 14 13.3594 13.8595 13.6095 13.6095C13.8595 13.3594 14 13.0203 14 12.6667V3.33333C14 2.97971 13.8595 2.64057 13.6095 2.39052C13.3594 2.14048 13.0203 2 12.6667 2H3.33333ZM3.33333 3.33333H12.6667V12.6667H3.33333V3.33333ZM11.3 6.53C11.3637 6.4685 11.4145 6.39494 11.4494 6.3136C11.4843 6.23227 11.5027 6.14479 11.5035 6.05627C11.5043 5.96775 11.4874 5.87996 11.4539 5.79803C11.4204 5.7161 11.3709 5.64166 11.3083 5.57907C11.2457 5.51647 11.1712 5.46697 11.0893 5.43345C11.0074 5.39993 10.9196 5.38306 10.8311 5.38383C10.7425 5.3846 10.6551 5.40299 10.5737 5.43793C10.4924 5.47287 10.4188 5.52366 10.3573 5.58733L7.05733 8.88733L5.64333 7.47333C5.58144 7.41139 5.50795 7.36225 5.42706 7.32871C5.34617 7.29517 5.25947 7.2779 5.1719 7.27787C4.99506 7.2778 4.82543 7.34799 4.70033 7.473C4.57524 7.59801 4.50493 7.76758 4.50487 7.94443C4.5048 8.12128 4.57499 8.29091 4.7 8.416L6.53867 10.2547C6.60677 10.3228 6.68763 10.3768 6.77662 10.4137C6.86561 10.4506 6.961 10.4696 7.05733 10.4696C7.15367 10.4696 7.24905 10.4506 7.33805 10.4137C7.42704 10.3768 7.5079 10.3228 7.576 10.2547L11.3 6.53Z"
-            fill="#9A9A9A"
-          />
-        </svg>
-      ) : (
-        <span
-          className="size-4 rounded-[2px] border border-[#9A9A9A]/70"
-          aria-hidden
+      <div className="flex flex-col gap-1">
+        {labelRow(Phone, 'Phone', undefined, Boolean(phoneError), phoneError)}
+        <input
+          className={mobileFieldInput}
+          inputMode="tel"
+          placeholder="+91 999999999"
+          maxLength={10}
+          value={form.phone}
+          onChange={(e) => update('phone', sanitizePhone(e.target.value))}
         />
-      )}
-    </button>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {labelRow(Mail, 'Email', undefined, Boolean(emailError), emailError)}
+        <input
+          className={mobileFieldInput}
+          type="email"
+          inputMode="email"
+          placeholder="abc.xyz@gmail.com"
+          autoComplete="email"
+          value={form.email}
+          onChange={(e) => update('email', e.target.value)}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {labelRow(Calendar, 'Age', undefined, isMissing(form.age))}
+        <input
+          className={mobileFieldInput}
+          inputMode="numeric"
+          placeholder="24"
+          maxLength={2}
+          value={form.age}
+          onChange={(e) => update('age', sanitizeAge(e.target.value))}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {labelRow(User, 'Gender', undefined, isMissingGender)}
+        <div className="flex h-10 gap-6">
+          <button
+            type="button"
+            onClick={() => update('gender', 'male')}
+            className={[
+              'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] leading-4 transition',
+              form.gender === 'male'
+                ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                : 'bg-white/5 text-[#999]',
+            ].join(' ')}
+          >
+            <Mars className="size-3 shrink-0" strokeWidth={2} />
+            Male
+          </button>
+          <button
+            type="button"
+            onClick={() => update('gender', 'female')}
+            className={[
+              'flex flex-1 items-center justify-center gap-2.5 rounded-full px-2.5 py-1 text-[12px] leading-4 transition',
+              form.gender === 'female'
+                ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                : 'bg-white/5 text-[#999]',
+            ].join(' ')}
+          >
+            <Venus className="size-2.5 shrink-0" strokeWidth={2} />
+            Female
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <span className="flex size-6 shrink-0 items-center justify-center text-[#999]">
+            <EmployeeIdIcon className="size-6" />
+          </span>
+          <span className="text-[14px] font-medium text-[#999]">
+            Employee ID
+            {isMissing(form.employeeId) ? (
+              <span className="text-[#ff6b6b]"> * Field is required</span>
+            ) : null}
+          </span>
+        </div>
+        <input
+          className={mobileFieldInput}
+          inputMode="numeric"
+          placeholder="1324"
+          maxLength={4}
+          value={getEmployeeIdSuffix(form.employeeId)}
+          onChange={(e) => update('employeeId', buildEmployeeIdFromSuffix(e.target.value))}
+        />
+      </div>
+    </div>
   )
 }
 
@@ -1585,7 +863,6 @@ function AddressStep({
   form,
   update,
   labelRow,
-  isMobile,
   showMissingRequired,
 }: {
   form: FormData
@@ -1594,11 +871,9 @@ function AddressStep({
     Icon: IconType,
     label: string,
     extra?: React.ReactNode,
-    mobile?: boolean,
     showRequired?: boolean,
     errorType?: 'missing' | 'invalid',
   ) => React.ReactNode
-  isMobile: boolean
   showMissingRequired?: boolean
 }) {
   const showRequired = Boolean(showMissingRequired)
@@ -1616,8 +891,6 @@ function AddressStep({
       : !/^\d{6}$/.test(form.pincode.trim())
         ? 'invalid'
         : undefined
-
-  const fieldClass = isMobile ? mobileFieldInput : inputClass(true)
 
   useEffect(() => {
     void loadPincodeLookup().catch(() => {
@@ -1673,11 +946,11 @@ function AddressStep({
         : null
 
   return (
-    <div className={`flex flex-col ${isMobile ? 'gap-6' : 'gap-5'}`}>
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        {labelRow(House, 'House No./ Building', undefined, isMobile, isMissing(form.houseNumber))}
+        {labelRow(House, 'House No./ Building', undefined, isMissing(form.houseNumber))}
         <input
-          className={fieldClass}
+          className={mobileFieldInput}
           placeholder="350 A, Avenue Street"
           value={form.houseNumber}
           onChange={(e) => update('houseNumber', e.target.value)}
@@ -1685,9 +958,9 @@ function AddressStep({
       </div>
 
       <div className="flex flex-col gap-1">
-        {labelRow(Signpost, 'Area/ Street', undefined, isMobile, isMissing(form.street))}
+        {labelRow(Signpost, 'Area/ Street', undefined, isMissing(form.street))}
         <input
-          className={fieldClass}
+          className={mobileFieldInput}
           placeholder="Area/ Street"
           value={form.street}
           onChange={(e) => update('street', e.target.value)}
@@ -1695,9 +968,9 @@ function AddressStep({
       </div>
 
       <div className="flex flex-col gap-1">
-        {labelRow(Building2, 'Landmark', undefined, isMobile, isMissing(form.landmark))}
+        {labelRow(Building2, 'Landmark', undefined, isMissing(form.landmark))}
         <input
-          className={fieldClass}
+          className={mobileFieldInput}
           placeholder="opp. Pink Salt Cafe"
           value={form.landmark}
           onChange={(e) => update('landmark', e.target.value)}
@@ -1705,9 +978,9 @@ function AddressStep({
       </div>
 
       <div className="flex flex-col gap-1">
-        {labelRow(MapPinned, 'Pincode', undefined, isMobile, Boolean(pincodeError), pincodeError)}
+        {labelRow(MapPinned, 'Pincode', undefined, Boolean(pincodeError), pincodeError)}
         <input
-          className={fieldClass}
+          className={mobileFieldInput}
           inputMode="numeric"
           placeholder="402201"
           maxLength={6}
@@ -1720,50 +993,33 @@ function AddressStep({
       </div>
 
       <div className="flex flex-col gap-1">
-        {labelRow(MapPin, 'City', undefined, isMobile, isMissing(form.city))}
+        {labelRow(MapPin, 'City', undefined, isMissing(form.city))}
         <input
-          className={fieldClass}
+          className={mobileFieldInput}
           placeholder="Mumbai"
           value={form.city}
           onChange={(e) => update('city', e.target.value)}
         />
       </div>
-
-      {!isMobile ? (
-        <div className="flex flex-col gap-1">
-          {labelRow(Map, 'State', undefined, isMobile, isMissing(form.state))}
-          <input
-            className={fieldClass}
-            placeholder="Maharashtra"
-            value={form.state}
-            onChange={(e) => update('state', e.target.value)}
-          />
-        </div>
-      ) : null}
     </div>
   )
 }
 
 function ConfirmStep({
   form,
-  members,
   onEdit,
   onProceed,
   isSubmitting,
-  isMobile = false,
 }: {
   form: FormData
-  members: FormData[]
   onEdit: (step: number) => void
   onProceed: () => void
   isSubmitting: boolean
-  isMobile?: boolean
 }) {
-  const primary = members[0] ?? form
   const fullAddress = [form.houseNumber, form.street].filter(Boolean).join(', ')
   const timeRange = formatTimeSlotRange(form.appointmentTime)
   return (
-    <div className={`flex flex-col ${isMobile ? 'gap-3' : 'gap-3'}`}>
+    <div className="flex flex-col gap-3">
       <h2 className="text-[18px] font-semibold text-white">Confirm Details</h2>
 
       <section className="rounded-[8px] bg-white/5 p-3">
@@ -1773,7 +1029,7 @@ function ConfirmStep({
             Edit
           </button>
         </div>
-        <MemberSummary member={primary} showRelation={false} dense />
+        <MemberSummary member={form} showRelation={false} dense />
       </section>
 
       <section className="rounded-[8px] bg-white/5 p-3">
@@ -1907,15 +1163,12 @@ function PreferredTimeSlotIcon() {
 function ScheduleStep({
   form,
   update,
-  isMobile,
   showMissingRequired,
 }: {
   form: FormData
   update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
-  isMobile: boolean
   showMissingRequired?: boolean
 }) {
-  const [calendarOpen, setCalendarOpen] = useState(false)
   const bookableDates = useMemo(() => getBookableDates(), [])
 
   useEffect(() => {
@@ -1932,134 +1185,50 @@ function ScheduleStep({
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)]'
   const idleDateClass = 'bg-white/5'
 
-  const sectionLabelClass = isMobile
-    ? 'font-sans text-[14px] font-medium leading-normal text-[#9A9A9A]'
-    : 'text-[24px] font-medium leading-none text-white'
-
-  if (isMobile) {
-    return (
-      <div className="flex min-w-0 flex-col gap-6">
-        <section className="flex min-w-0 flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <PreferredDateIcon />
-            <h2 className={sectionLabelClass}>
-              Preferred Date
-              {showMissingRequired && !form.appointmentDate ? (
-                <span className="text-[#ff6b6b]"> * Field is required</span>
-              ) : null}
-            </h2>
-          </div>
-          <div className="flex w-full min-w-0 gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {bookableDates.map((date) => {
-              const iso = toIsoDate(date)
-              const selected = form.appointmentDate === iso
-              return (
-                <button
-                  key={iso}
-                  type="button"
-                  onClick={() => update('appointmentDate', iso)}
-                  aria-pressed={selected}
-                  className={[
-                    'mx-0 flex h-[75px] w-[70px] shrink-0 flex-col items-center justify-center gap-1 rounded-[6px] px-4 transition',
-                    selected ? selectedDateClass : idleDateClass,
-                  ].join(' ')}
-                >
-                  <span className={selected ? 'text-[12px] font-medium text-white' : 'text-[12px] font-medium text-[#9a9a9a]/80'}>
-                    {DAY_LABELS[date.getDay()]}
-                  </span>
-                  <span className={selected ? 'text-[18px] font-semibold text-white' : 'text-[18px] font-semibold text-[#9a9a9a]/80'}>
-                    {date.getDate()}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </section>
-
-        <section className="flex flex-col gap-3">
-          <div className="flex items-start gap-2">
-            <PreferredTimeSlotIcon />
-            <div className="flex flex-col gap-1">
-              <h2 className={sectionLabelClass}>
-                Preferred Time Slot
-                {showMissingRequired && !form.appointmentTime ? (
-                  <span className="text-[#ff6b6b]"> * Field is required</span>
-                ) : null}
-              </h2>
-              <p className="pl-7 text-[10px] font-light text-[#ccc]">Collection window is of 1 hour</p>
-            </div>
-          </div>
-          <div className="grid w-full grid-cols-3 gap-2 px-1">
-            {SCHEDULE_TIME_SLOTS.map((slot) => {
-              const selected = form.appointmentTime === slot
-              return (
-                <button
-                  key={slot}
-                  type="button"
-                  onClick={() => update('appointmentTime', slot)}
-                  aria-pressed={selected}
-                  className={[
-                    'flex h-10 w-full items-center justify-center rounded-full border text-[14px] font-medium transition',
-                    selected ? selectedSlotClass : idleSlotClass,
-                  ].join(' ')}
-                >
-                  <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>{slot}</span>
-                </button>
-              )
-            })}
-          </div>
-        </section>
-      </div>
-    )
-  }
-
-  const dateButtonLabel = form.appointmentDate
-    ? formatPreferredDateLabel(form.appointmentDate)
-    : 'Select date'
-  const { min: bookingMin, max: bookingMax } = getBookingDateBounds()
+  const sectionLabelClass =
+    'font-sans text-[14px] font-medium leading-normal text-[#9A9A9A]'
 
   return (
-    <div className="flex flex-col items-start gap-9 self-stretch">
-      <section className="flex flex-col items-start gap-6 self-stretch">
-        <h2 className={sectionLabelClass}>
-          Preferred Date
-          {showMissingRequired && !form.appointmentDate ? (
-            <span className="text-[#ff6b6b]"> * Field is required</span>
-          ) : null}
-        </h2>
-        <button
-          type="button"
-          onClick={() => setCalendarOpen(true)}
-          aria-haspopup="dialog"
-          aria-expanded={calendarOpen}
-          className={[
-            'flex min-h-[56px] w-full items-center justify-between gap-3 rounded-[6px] border border-white/[0.08] bg-white/5 px-4 transition hover:bg-white/[0.08]',
-            showMissingRequired && !form.appointmentDate ? 'border-[#ff6b6b]/60' : '',
-          ].join(' ')}
-        >
-          <span
-            className={[
-              'text-left text-[14px] font-medium leading-normal',
-              form.appointmentDate ? 'text-white' : 'text-[#9a9a9a]',
-            ].join(' ')}
-          >
-            {dateButtonLabel}
-          </span>
-        </button>
-        <p className="text-[11px] font-light text-[#999]">
-          Selectable: {formatPreferredDateLabel(toIsoDate(bookingMin))} – 30 Jun{' '}
-          {bookingMax.getFullYear()}
-        </p>
-        <PreferredDateCalendar
-          open={calendarOpen}
-          value={form.appointmentDate}
-          onClose={() => setCalendarOpen(false)}
-          onConfirm={(iso) => update('appointmentDate', iso)}
-        />
+    <div className="flex min-w-0 flex-col gap-6">
+      <section className="flex min-w-0 flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <PreferredDateIcon />
+          <h2 className={sectionLabelClass}>
+            Preferred Date
+            {showMissingRequired && !form.appointmentDate ? (
+              <span className="text-[#ff6b6b]"> * Field is required</span>
+            ) : null}
+          </h2>
+        </div>
+        <div className="flex w-full min-w-0 gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {bookableDates.map((date) => {
+            const iso = toIsoDate(date)
+            const selected = form.appointmentDate === iso
+            return (
+              <button
+                key={iso}
+                type="button"
+                onClick={() => update('appointmentDate', iso)}
+                aria-pressed={selected}
+                className={[
+                  'mx-0 flex h-[75px] w-[70px] shrink-0 flex-col items-center justify-center gap-1 rounded-[6px] px-4 transition',
+                  selected ? selectedDateClass : idleDateClass,
+                ].join(' ')}
+              >
+                <span className={selected ? 'text-[12px] font-medium text-white' : 'text-[12px] font-medium text-[#9a9a9a]/80'}>
+                  {DAY_LABELS[date.getDay()]}
+                </span>
+                <span className={selected ? 'text-[18px] font-semibold text-white' : 'text-[18px] font-semibold text-[#9a9a9a]/80'}>
+                  {date.getDate()}
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </section>
 
-      <section className="flex flex-col items-start gap-6 self-stretch">
-        <div className="flex items-center gap-2">
+      <section className="flex flex-col gap-3">
+        <div className="flex items-start gap-2">
           <PreferredTimeSlotIcon />
           <div className="flex flex-col gap-1">
             <h2 className={sectionLabelClass}>
@@ -2068,10 +1237,10 @@ function ScheduleStep({
                 <span className="text-[#ff6b6b]"> * Field is required</span>
               ) : null}
             </h2>
-            <p className="text-[10px] font-light text-[#ccc]">Collection window is of 1 hour</p>
+            <p className="pl-7 text-[10px] font-light text-[#ccc]">Collection window is of 1 hour</p>
           </div>
         </div>
-        <div className="grid w-full grid-cols-3 gap-4">
+        <div className="grid w-full grid-cols-3 gap-2 px-1">
           {SCHEDULE_TIME_SLOTS.map((slot) => {
             const selected = form.appointmentTime === slot
             return (
@@ -2081,7 +1250,7 @@ function ScheduleStep({
                 onClick={() => update('appointmentTime', slot)}
                 aria-pressed={selected}
                 className={[
-                  'flex h-[44px] w-full items-center justify-center rounded-[6px] border text-sm transition',
+                  'flex h-10 w-full items-center justify-center rounded-full border text-[14px] font-medium transition',
                   selected ? selectedSlotClass : idleSlotClass,
                 ].join(' ')}
               >
@@ -2107,20 +1276,9 @@ function formatBookingDate(iso: string): string {
   return `${DAY_LABELS[d.getDay()]}, ${d.getDate()} ${MONTH_LABELS[d.getMonth()]}`
 }
 
-function BookingConfirmedStep({
-  form,
-  members,
-  isMobile,
-  onContinue,
-}: {
-  form: FormData
-  members: FormData[]
-  isMobile: boolean
-  onContinue: () => void
-}) {
-  const memberName = members
-    .map((m) => [m.firstName, m.lastName].filter(Boolean).join(' '))
-    .filter(Boolean)[0] || '—'
+function BookingConfirmedStep({ form }: { form: FormData }) {
+  const memberName =
+    [form.firstName, form.lastName].filter(Boolean).join(' ') || '—'
   const bookingDate = formatShortBookingDate(form.appointmentDate)
   const timeRange = formatTimeSlotRange(form.appointmentTime).replace(' - ', '-')
   const bookingDateTime = `${bookingDate}  |  ${timeRange}`
@@ -2170,23 +1328,9 @@ function BookingConfirmedStep({
     </div>
   )
 
-  if (isMobile) {
-    return (
-      <div className="flex min-h-full w-full flex-col justify-between">
-        {content}
-        <ContinueButton variant="mobileBar" className="mt-6 w-full shrink-0" onClick={onContinue}>
-          Continue
-        </ContinueButton>
-      </div>
-    )
-  }
-
   return (
-    <div className="mx-auto flex w-full max-w-[520px] flex-col items-center gap-8 py-6">
+    <div className="flex w-full flex-col items-center gap-8">
       {content}
-      <ContinueButton variant="mobileBar" className="w-full" onClick={onContinue}>
-        Continue
-      </ContinueButton>
     </div>
   )
 }

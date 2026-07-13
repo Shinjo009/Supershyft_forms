@@ -8,6 +8,7 @@ import {
   ALCOHOL_PILL_GRADIENT_FULL,
   ALCOHOL_PILL_GRADIENT_HALF,
 } from './alcoholConsumptionConfig'
+import { MCQ_PILL_CHIP_CLASS } from '../mcq/mcqLayout'
 
 const OPTION_LABELS = Object.fromEntries(
   HEALTH_WELLNESS_PRIORITY_OPTIONS.map((option) => [option.id, option.label]),
@@ -90,7 +91,7 @@ export function HealthWellnessPrioritiesOptions({
                   ? 'min-w-0 flex-1'
                   : row.fullWidth !== false
                     ? 'w-full'
-                    : 'w-[155px]'
+                    : MCQ_PILL_CHIP_CLASS
               }
               onClick={() => handleToggle(optionId)}
             />

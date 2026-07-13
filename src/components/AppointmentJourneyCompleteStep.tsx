@@ -1,6 +1,7 @@
 import coinsCelebrationGif from '../assets/figma/coins-celebration.gif'
 import majesticonsCoins from '../assets/majesticons_coins-line.svg'
 import { ContinueButton } from './ContinueButton'
+import { JOURNEY_COMPLETE_CONTENT_CLASS, ASSESSMENT_CONTENT_MAX_CLASS } from './mcq/mcqLayout'
 import { SuperCoinsProgressRail } from './SuperCoinsProgressRail'
 
 const TOTAL_SUPERCOINS = 250
@@ -15,6 +16,8 @@ function formatBookingDisplayId(employeeId: string): string {
 }
 
 /** Figma 5657:51356 — final appointment + assessment journey complete */
+const APP_LOGIN_URL = 'https://app.supershyft.com/#login'
+
 export function AppointmentJourneyCompleteStep({
   bookingId = 'XYZ 123',
   onDownloadApp,
@@ -22,10 +25,18 @@ export function AppointmentJourneyCompleteStep({
   bookingId?: string
   onDownloadApp?: () => void
 }) {
+  const handleDownloadApp = () => {
+    if (onDownloadApp) {
+      onDownloadApp()
+      return
+    }
+    window.location.assign(APP_LOGIN_URL)
+  }
+
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col pb-6 pt-[84px]">
-      <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6">
-        <div className="flex w-full max-w-[312px] flex-col items-center gap-6">
+      <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className={JOURNEY_COMPLETE_CONTENT_CLASS}>
           <div className="flex flex-col items-center">
             <img
               src={coinsCelebrationGif}
@@ -71,12 +82,12 @@ export function AppointmentJourneyCompleteStep({
         </div>
       </div>
 
-      <div className="mx-auto mt-6 flex w-full max-w-[312px] shrink-0 flex-col items-center gap-1.5 px-6">
+      <div className={`mx-auto mt-6 flex w-full ${ASSESSMENT_CONTENT_MAX_CLASS} shrink-0 flex-col items-center gap-1.5 px-6`}>
         <ContinueButton
           variant="mobileBar"
           className="h-[52px] w-full shadow-[0_12px_10px_rgba(255,255,255,0.15)]"
           showChevron={false}
-          onClick={onDownloadApp}
+          onClick={handleDownloadApp}
         >
           Download the App
         </ContinueButton>

@@ -18,7 +18,7 @@ function WaterIntakePill({
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-[38px] w-[139px] items-center justify-center rounded-[24px] border-[0.5px] border-solid px-[10px] py-1 text-center text-[12px] leading-5 text-white ${
+      className={`flex h-[38px] w-[139px] items-center justify-center rounded-[24px] border-[0.5px] border-solid px-[10px] py-1 text-center text-[12px] leading-5 text-white lg:w-full ${
         selected ? 'min-h-[40px] font-semibold' : 'font-normal'
       }`}
       style={
@@ -51,7 +51,7 @@ export function WaterIntakeSelector({
     <div className="flex w-full items-center justify-between gap-2">
       <WaterIntakeBottle liters={reading.liters} fillRatio={reading.fillRatio} />
 
-      <div className="flex w-[139px] shrink-0 flex-col gap-2">
+      <div className="flex w-[139px] shrink-0 flex-col gap-2 lg:w-[160px]">
         {WATER_INTAKE_OPTIONS.map((option) => (
           <WaterIntakePill
             key={option.id}

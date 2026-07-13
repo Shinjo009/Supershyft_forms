@@ -249,7 +249,7 @@ function Question1DietType({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 1 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}
@@ -274,7 +274,7 @@ function Question2DailyFoodGroups({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 2 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}
@@ -300,7 +300,7 @@ function Question3BreakfastFrequency({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 3 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}
@@ -325,7 +325,7 @@ function Question4FreshFruitsFrequency({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 4 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}
@@ -350,7 +350,7 @@ function Question5FreshVegetablesFrequency({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 5 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}
@@ -375,7 +375,7 @@ function Question6BakedGoodsFrequency({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 6 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}
@@ -400,7 +400,7 @@ function Question7SugaryDrinksFrequency({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 7 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}
@@ -434,7 +434,7 @@ function Question8And9SaltDiet({
   onInfoClickQ9: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-12">
+    <div className="flex w-full flex-col gap-12">
       <div className="flex flex-col gap-8">
         <McqQuestionHeader
           theme="nutrition"
@@ -476,7 +476,7 @@ function Question10CoffeeTeaIntake({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 10 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}
@@ -501,7 +501,7 @@ function Question11CoffeeTeaType({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 11 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}
@@ -527,7 +527,7 @@ function Question12MarketButterFrequency({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 12 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}
@@ -552,7 +552,7 @@ function Question13RedMeatFrequency({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 13 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}
@@ -577,7 +577,7 @@ function Question14WaterIntake({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 14 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}
@@ -603,7 +603,7 @@ function Question15IllnessFrequency({
   onInfoClick: () => void
 }) {
   return (
-    <div className="flex w-[326px] flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <McqQuestionHeader
         theme="nutrition"
         questionLabel={`Question 15 of ${NUTRITION_LOG_TOTAL_QUESTIONS}`}

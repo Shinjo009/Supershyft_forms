@@ -3,6 +3,7 @@ import coinsCelebrationGif from '../assets/figma/coins-celebration.gif'
 import tickCircleSolid from '../assets/figma/tick-circle-solid.svg'
 import majesticonsCoins from '../assets/majesticons_coins-line.svg'
 import { ContinueButton } from './ContinueButton'
+import { ASSESSMENT_CARD_STACK_CLASS, ASSESSMENT_CONTENT_MAX_CLASS } from './mcq/mcqLayout'
 
 function BalanceBadge({ balance = 200 }: { balance?: number }) {
   return (
@@ -57,7 +58,7 @@ export function NutritionSectionCompleteStep({
         <BalanceBadge balance={balance} />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-11 overflow-y-auto px-6">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-11 overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex flex-col items-center">
           <img
             src={coinsCelebrationGif}
@@ -83,7 +84,7 @@ export function NutritionSectionCompleteStep({
           </div>
         </div>
 
-        <div className="flex w-full max-w-[294px] flex-col gap-[18px]">
+        <div className={ASSESSMENT_CARD_STACK_CLASS}>
           <CompletedSectionRow title="Family History" coins="+50 COINS" />
           <CompletedSectionRow title="Lifestyle & Habits" coins="+70 COINS" />
           <CompletedSectionRow title="Nutrition Log" coins="+80 COINS" />
@@ -92,7 +93,7 @@ export function NutritionSectionCompleteStep({
         {onContinue ? (
           <ContinueButton
             variant="mobileBar"
-            className="w-full max-w-[294px]"
+            className={`w-full ${ASSESSMENT_CONTENT_MAX_CLASS}`}
             showChevron={false}
             onClick={onContinue}
           >

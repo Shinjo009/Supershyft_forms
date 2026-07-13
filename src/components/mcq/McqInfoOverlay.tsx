@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { McqInfoItem, McqInfoTheme } from './mcqInfoTypes'
 import { GLOW_CLASS_BY_THEME, SEPARATOR_BY_THEME, TEXT_CLASS_BY_THEME } from './mcqInfoTypes'
+import { MCQ_INFO_CARD_CLASS } from './mcqLayout'
 
 export type { McqInfoItem, McqInfoTheme }
 
@@ -38,7 +39,7 @@ export function McqInfoOverlay({
       role="presentation"
     >
       <div
-        className="relative w-[335px] overflow-hidden rounded-[24px] border border-[rgba(255,255,255,0.5)] bg-[rgba(0,0,0,0.5)] px-[21px] py-[31px] shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] backdrop-blur-[5px]"
+        className={MCQ_INFO_CARD_CLASS}
         role="dialog"
         aria-modal="true"
         aria-label="Question information"

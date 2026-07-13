@@ -62,7 +62,7 @@ export function NutritionMultiSelectGridOptions<T extends string>({
   onToggle: (value: T) => void
 }) {
   return (
-    <div className="grid w-[326px] grid-cols-2 gap-4">
+    <div className="grid w-full grid-cols-2 gap-4">
       {options.map((option) => (
         <div key={option.id} className={option.fullWidth ? 'col-span-2' : undefined}>
           <NutritionMultiSelectGridPill

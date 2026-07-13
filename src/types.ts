@@ -6,7 +6,6 @@ export type FormData = {
   employeeId: string
   age: string
   gender: '' | 'male' | 'female'
-  personalizedDoctorConsultation: '' | 'yes' | 'no'
   street: string
   landmark: string
   pincode: string
@@ -14,8 +13,6 @@ export type FormData = {
   state: string
   relation: string
   houseNumber: string
-  useSamePhone: boolean
-  useSameEmail: boolean
   appointmentDate: string
   appointmentTime: string
 }
@@ -28,7 +25,6 @@ export const defaultFormData: FormData = {
   employeeId: '',
   age: '',
   gender: '',
-  personalizedDoctorConsultation: '',
   street: '',
   landmark: '',
   pincode: '',
@@ -36,8 +32,6 @@ export const defaultFormData: FormData = {
   state: 'Maharashtra',
   relation: 'spouse',
   houseNumber: '',
-  useSamePhone: true,
-  useSameEmail: true,
   appointmentDate: '',
   appointmentTime: '',
 }
