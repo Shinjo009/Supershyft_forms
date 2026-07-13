@@ -3,7 +3,6 @@ import backIcon from '../../assets/nutrition-log/back-icon.svg'
 import nextChevronIcon from '../../assets/nutrition-log/next-chevron.svg'
 import progressFillImg from '../../assets/nutrition-log/progress-fill.svg'
 import progressTrackImg from '../../assets/nutrition-log/progress-track.svg'
-import smallCoinImg from '../../assets/smallcoin.svg'
 import type { NutritionQuestionPreview } from '../../data/nutritionLogQuestions'
 import {
   MCQ_SHELL_CLASS,
@@ -30,7 +29,7 @@ export function NutritionLogMcqShell({
 
   return (
     <div className={MCQ_SHELL_CLASS}>
-      <header className="flex shrink-0 items-center justify-between px-4 pb-0 pt-10">
+      <header className="flex shrink-0 items-center px-4 pb-0 pt-10">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <button
             type="button"
@@ -43,12 +42,6 @@ export function NutritionLogMcqShell({
           <h1 className="shrink-0 whitespace-nowrap text-[19px] tracking-[0.095px] text-white">
             Nutrition Log
           </h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <span className="text-right text-[14px] font-light uppercase leading-5 text-[#9a9a9a]">
-            +50{' '}
-          </span>
-          <img src={smallCoinImg} alt="" className="size-6" aria-hidden />
         </div>
       </header>
 

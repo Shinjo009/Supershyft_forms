@@ -14,6 +14,7 @@ import {
   Signpost,
   User,
   Venus,
+  X,
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
 import {
@@ -33,7 +34,6 @@ import lastPageBackgroundSvg from './assets/lastpage BG.svg'
 import nutritionEndBackgroundSvg from './assets/nutritionend.svg'
 import nutritionLogBackgroundSvg from './assets/nutritionlogstart.svg'
 import familyHistoryBackgroundSvg from './assets/family history.svg'
-import coinsCelebrationGif from './assets/figma/coins-celebration.gif'
 import lifestyleHabitsBackgroundSvg from './assets/lifestyle-habits/background.svg'
 import { FamilyHistoryMcqStep } from './components/FamilyHistoryMcqStep'
 import { FamilySectionCompleteStep } from './components/FamilySectionCompleteStep'
@@ -43,7 +43,8 @@ import { LifestyleSectionCompleteStep } from './components/LifestyleSectionCompl
 import { NutritionLogMcqStep } from './components/NutritionLogMcqStep'
 import { AppointmentJourneyCompleteStep } from './components/AppointmentJourneyCompleteStep'
 import { NutritionSectionCompleteStep } from './components/NutritionSectionCompleteStep'
-import { SuperCoinsProgressRail } from './components/SuperCoinsProgressRail'
+import slotConfirmedIcon from './assets/figma/slot-confirmed-icon.svg'
+import packageIcon from './assets/figma/package-icon.svg'
 
 const RELATION_OPTIONS = [
   'Parent',
@@ -552,7 +553,18 @@ export default function BookAppointment() {
           <h1 className="text-center text-[20px] font-semibold leading-6 text-white">
             {mobileScreenTitle}
           </h1>
-          <span className="size-8" aria-hidden />
+          {step === 5 || step === 13 ? (
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="flex size-8 items-center justify-end text-white"
+              aria-label="Close"
+            >
+              <X className="size-6" strokeWidth={1.75} />
+            </button>
+          ) : (
+            <span className="size-8" aria-hidden />
+          )}
         </header>
         )}
 
@@ -592,8 +604,8 @@ export default function BookAppointment() {
             className={
               step === 7 || step === 9 || step === 11
                 ? 'min-h-0 min-w-0 flex-1 overflow-hidden'
-                : step === 5
-                  ? 'min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+                : step === 5 || step === 8 || step === 10 || step === 12
+                  ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
                   : 'min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
             }
           >
@@ -632,7 +644,7 @@ export default function BookAppointment() {
               <BookingConfirmedStep form={form} />
             )}
             {step === 6 && (
-              <HealthAssessmentStep balance={50} onStartAssessment={() => setStep(7)} />
+              <HealthAssessmentStep onStartAssessment={() => setStep(7)} />
             )}
             {step === 7 && (
               <FamilyHistoryMcqStep
@@ -642,7 +654,6 @@ export default function BookAppointment() {
             )}
             {step === 8 && (
               <FamilySectionCompleteStep
-                balance={100}
                 onStartLifestyle={() => setStep(9)}
               />
             )}
@@ -654,7 +665,6 @@ export default function BookAppointment() {
             )}
             {step === 10 && (
               <LifestyleSectionCompleteStep
-                balance={170}
                 onStartNutrition={() => setStep(11)}
               />
             )}
@@ -666,7 +676,6 @@ export default function BookAppointment() {
             )}
             {step === 12 && (
               <NutritionSectionCompleteStep
-                balance={200}
                 onContinue={() => setStep(13)}
               />
             )}
@@ -678,7 +687,7 @@ export default function BookAppointment() {
           {step === 5 ? (
             <ContinueButton
               variant="mobileBar"
-              className="mt-6 w-full shrink-0"
+              className="mt-6 !h-[52px] w-full shrink-0 border border-[#969696] shadow-[0_12px_20px_rgba(255,255,255,0.15)]"
               onClick={() => setStep(6)}
             >
               Continue
@@ -1286,51 +1295,65 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
     .filter(Boolean)
     .filter((part, index, arr) => arr.indexOf(part) === index)
     .join(', ') || '—'
-
-  const content = (
-    <div className="flex w-full flex-col items-center gap-8">
-      <div className="flex flex-col items-center">
-        <img
-          src={coinsCelebrationGif}
-          alt=""
-          className="pointer-events-none h-[156px] w-[266px] object-contain"
-          aria-hidden
-        />
-        <div className="mt-[-14px] flex items-center gap-1 rounded-full border border-white/5 bg-[rgba(144,223,158,0.1)] px-3 py-0.5">
-          <CoinsLineIcon />
-          <span className="text-[12px] font-medium text-[#90df9e]">+50 SuperCoins</span>
-          <span className="text-[12px] font-medium text-[#e4e4e4]">earned</span>
-        </div>
-      </div>
-
-      <SuperCoinsProgressRail />
-
-      <div className="w-full rounded-xl border border-[rgba(144,223,158,0.2)] bg-[rgba(75,141,131,0.1)] p-[13px]">
-        <SuccessDetailRow icon={<CalendarIcon />} label="Date & Time" value={bookingDateTime} />
-        <div className="mt-3">
-          <SuccessDetailRow icon={<UserIcon />} label="Member Name" value={memberName} />
-        </div>
-        <div className="mt-3">
-          <SuccessDetailRow icon={<LocationIcon />} label="Location" value={locationLabel} />
-        </div>
-      </div>
-
-      <div className="flex w-full items-end justify-between">
-        <div>
-          <p className="text-[12px] tracking-[-0.06em] text-[#9a9a9a]">Step 2</p>
-          <p className="text-[16px] text-white">Health Assessment</p>
-        </div>
-        <p className="text-[11px] text-[#9a9a9a]">
-          <span className="text-[14px] font-semibold tracking-[-0.06em] text-[#dac15a]">+200 </span>
-          Supercoins
-        </p>
-      </div>
-    </div>
-  )
+  const packageLabel =
+    form.gender === 'female'
+      ? 'Full Body with Vitamins, Women Peak Performance'
+      : 'Full Body with Vitamins, Men Peak Performance'
 
   return (
-    <div className="flex w-full flex-col items-center gap-8">
-      {content}
+    <div className="flex min-h-full w-full flex-col items-center gap-3">
+      <div className="flex w-full flex-col items-center gap-1.5">
+        <div className="flex size-14 items-center justify-center rounded-xl border border-[rgba(144,223,158,0.5)] shadow-[0_4px_12px_rgba(16,185,129,0.1)]">
+          <img src={slotConfirmedIcon} alt="" className="size-7" aria-hidden />
+        </div>
+        <div className="flex w-full flex-col items-center pb-3 text-center">
+          <h2 className="text-[18px] font-semibold tracking-[0.2px] text-white">
+            Slot Confirmed!
+          </h2>
+          <p className="text-[12px] leading-4 text-[#9a9a9a]">
+            Complete the Health Assessment To confirm your booking.
+          </p>
+        </div>
+      </div>
+
+      <div className="w-full overflow-hidden rounded-xl border border-white/10 bg-white/5 px-[17px] py-[25px] backdrop-blur-[12px]">
+        <div className="flex w-full items-center justify-between whitespace-nowrap">
+          <div className="flex flex-col items-start gap-1">
+            <p className="text-[16px] font-semibold leading-[18px] tracking-[-0.96px] text-white">
+              Step 1
+            </p>
+            <p className="text-[11px] leading-3 text-[#90df9e]">Completed</p>
+          </div>
+          <div className="flex flex-col items-start gap-1">
+            <p className="text-[16px] font-semibold leading-[18px] tracking-[-0.96px] text-white">
+              Step 2
+            </p>
+            <p className="text-[11px] font-light leading-3 text-[#9a9a9a]">Pending</p>
+          </div>
+        </div>
+        <div className="relative mt-4 h-2 w-full rounded-full bg-white/10">
+          <div className="absolute inset-y-0 left-0 w-[29%] rounded-full bg-[#dac15a]" />
+          <div className="absolute left-[29%] top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[#dac15a] bg-white shadow-[0_0_15px_#dac15a]" />
+        </div>
+      </div>
+
+      <div className="flex w-full flex-col gap-6 rounded-xl border border-[rgba(144,223,158,0.2)] bg-[rgba(75,141,131,0.1)] p-[13px]">
+        <SuccessDetailRow icon={<CalendarIcon />} label="Date & Time" value={bookingDateTime} />
+        <SuccessDetailRow
+          icon={<img src={packageIcon} alt="" className="size-5" aria-hidden />}
+          label="Package"
+          value={packageLabel}
+        />
+        <SuccessDetailRow icon={<UserIcon />} label="Member Name" value={memberName} />
+        <SuccessDetailRow icon={<LocationIcon />} label="Location" value={locationLabel} />
+      </div>
+
+      <div className="mt-auto flex w-full flex-col items-start gap-1 pt-4">
+        <p className="text-[12px] tracking-[-0.06em] text-[#9a9a9a]">Step 2</p>
+        <p className="text-[16px] leading-[18px] tracking-[-0.06em] text-white">
+          Health Assessment
+        </p>
+      </div>
     </div>
   )
 }
@@ -1351,18 +1374,9 @@ function SuccessDetailRow({
       </span>
       <div className="min-w-0">
         <p className="text-[10px] text-[#9a9a9a]">{label}</p>
-        <p className="truncate text-[15px] font-medium text-[#ccc]">{value}</p>
+        <p className="text-[15px] font-medium leading-normal text-[#ccc]">{value}</p>
       </div>
     </div>
-  )
-}
-
-function CoinsLineIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <circle cx="8" cy="8" r="5.5" stroke="#90DF9E" strokeWidth="1.2" />
-      <path d="M8 5.5V10.5M6.25 8H9.75" stroke="#90DF9E" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
   )
 }
 

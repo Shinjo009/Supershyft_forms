@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import backIcon from '../../assets/family-history/back-icon.svg'
-import coinBadgeImg from '../../assets/family-history/coin-badge.png'
 import nextChevronIcon from '../../assets/family-history/next-chevron.svg'
 import progressFillImg from '../../assets/family-history/progress-fill.svg'
 import progressTrackImg from '../../assets/family-history/progress-track.svg'
@@ -32,7 +31,7 @@ export function FamilyHistoryMcqShell({
 
   return (
     <div className={MCQ_SHELL_CLASS}>
-      <header className="flex shrink-0 items-center justify-between px-4 pb-0 pt-10">
+      <header className="flex shrink-0 items-center px-4 pb-0 pt-10">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <button
             type="button"
@@ -45,25 +44,6 @@ export function FamilyHistoryMcqShell({
           <h1 className="shrink-0 whitespace-nowrap text-[19px] tracking-[0.095px] text-white">
             Family History
           </h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <span className="text-right text-[14px] font-light uppercase leading-5 text-[#9a9a9a]">
-            +50{' '}
-          </span>
-          <div className="relative h-[23px] w-[25px] shrink-0 overflow-hidden">
-            <img
-              src={coinBadgeImg}
-              alt=""
-              className="absolute max-w-none"
-              style={{
-                height: '266.02%',
-                width: '246.85%',
-                left: '-13.51%',
-                top: '-16.5%',
-              }}
-              aria-hidden
-            />
-          </div>
         </div>
       </header>
 

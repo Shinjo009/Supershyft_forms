@@ -1,10 +1,6 @@
-import coinsCelebrationGif from '../assets/figma/coins-celebration.gif'
-import majesticonsCoins from '../assets/majesticons_coins-line.svg'
+import bookingConfirmedCheck from '../assets/figma/booking-confirmed-check.svg'
 import { ContinueButton } from './ContinueButton'
 import { JOURNEY_COMPLETE_CONTENT_CLASS, ASSESSMENT_CONTENT_MAX_CLASS } from './mcq/mcqLayout'
-import { SuperCoinsProgressRail } from './SuperCoinsProgressRail'
-
-const TOTAL_SUPERCOINS = 250
 
 function formatBookingDisplayId(employeeId: string): string {
   const normalized = employeeId.trim().toUpperCase()
@@ -15,7 +11,7 @@ function formatBookingDisplayId(employeeId: string): string {
   return normalized
 }
 
-/** Figma 5657:51356 — final appointment + assessment journey complete */
+/** Figma node 6120:15284 — final appointment journey complete (without coins) */
 const APP_LOGIN_URL = 'https://app.supershyft.com/#login'
 
 export function AppointmentJourneyCompleteStep({
@@ -36,30 +32,19 @@ export function AppointmentJourneyCompleteStep({
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col pb-6 pt-[84px]">
       <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className={JOURNEY_COMPLETE_CONTENT_CLASS}>
-          <div className="flex flex-col items-center">
-            <img
-              src={coinsCelebrationGif}
-              alt=""
-              className="pointer-events-none mb-[-14px] h-[188px] w-[266px] border-0 object-contain outline-none"
-              aria-hidden
-            />
-            <div className="flex items-center justify-center gap-1 rounded-full border border-white/5 bg-[rgba(144,223,158,0.1)] px-3 py-0">
-              <img src={majesticonsCoins} alt="" className="size-4" aria-hidden />
-              <span className="text-[12px] font-medium leading-[22.5px] text-[#90df9e]">
-                +250 SuperCoins
-              </span>
-              <span className="text-[12px] font-medium leading-[22.5px] text-[#e4e4e4]">
-                earned
-              </span>
+        <div className={`${JOURNEY_COMPLETE_CONTENT_CLASS} gap-6`}>
+          <div className="flex w-full flex-col items-center gap-6">
+            <div className="flex flex-col items-center py-2">
+              <div className="flex size-24 items-center justify-center rounded-full bg-[#f973a9] shadow-[0_0_20px_rgba(249,115,169,0.4)]">
+                <img src={bookingConfirmedCheck} alt="" className="size-10" aria-hidden />
+              </div>
             </div>
+            <h2 className="pb-3 text-center text-[18px] font-semibold tracking-[0.2px] text-white">
+              Appointment Booking Confirmed!
+            </h2>
           </div>
 
-          <div className="flex w-full flex-col items-center gap-6 overflow-visible rounded-[12px] border border-white/10 bg-white/5 p-[13px] backdrop-blur-[12px]">
-            <h2 className="text-center text-[14px] font-semibold text-white">
-              Appointment Booking Confirmed
-            </h2>
-
+          <div className="flex w-full flex-col items-center gap-6 overflow-hidden rounded-xl border border-white/10 bg-white/5 p-[13px] backdrop-blur-[12px]">
             <div className="flex w-full flex-col items-center gap-1.5 px-1.5 text-center">
               <p className="text-[11px] leading-[15px] text-[#9a9a9a]">Booking ID</p>
               <p className="text-[24px] font-extrabold leading-8 tracking-[4px] text-[#90df9e]">
@@ -69,11 +54,26 @@ export function AppointmentJourneyCompleteStep({
 
             <div className="h-px w-[252px] bg-white/10" />
 
-            <SuperCoinsProgressRail
-              embedded
-              earnedCoins={TOTAL_SUPERCOINS}
-              totalCoins={TOTAL_SUPERCOINS}
-            />
+            <div className="flex w-full flex-col gap-1">
+              <div className="flex w-full items-center justify-between whitespace-nowrap">
+                <div className="flex flex-col items-start gap-1">
+                  <p className="text-[16px] font-semibold leading-[22px] tracking-[-0.96px] text-white">
+                    Step 1
+                  </p>
+                  <p className="text-[11px] leading-3 text-[#90df9e]">Completed</p>
+                </div>
+                <div className="flex flex-col items-start gap-1">
+                  <p className="text-[16px] font-semibold leading-[22px] tracking-[-0.96px] text-white">
+                    Step 2
+                  </p>
+                  <p className="text-[11px] leading-3 text-[#90df9e]">Completed</p>
+                </div>
+              </div>
+              <div className="relative mt-4 h-2 w-full rounded-full bg-white/10">
+                <div className="absolute inset-0 rounded-full bg-[#dac15a]" />
+                <div className="absolute right-0 top-1/2 size-4 -translate-y-1/2 translate-x-[15%] rounded-full border-[3px] border-[#dac15a] bg-white shadow-[0_0_15px_#dac15a]" />
+              </div>
+            </div>
 
             <p className="text-center text-[12px] font-light leading-normal text-white">
               Get the Supershyft app for complete details
@@ -82,10 +82,12 @@ export function AppointmentJourneyCompleteStep({
         </div>
       </div>
 
-      <div className={`mx-auto mt-6 flex w-full ${ASSESSMENT_CONTENT_MAX_CLASS} shrink-0 flex-col items-center gap-1.5 px-6`}>
+      <div
+        className={`mx-auto mt-6 flex w-full ${ASSESSMENT_CONTENT_MAX_CLASS} shrink-0 flex-col items-center gap-1.5 px-6`}
+      >
         <ContinueButton
           variant="mobileBar"
-          className="h-[52px] w-full shadow-[0_12px_10px_rgba(255,255,255,0.15)]"
+          className="!h-[52px] w-full border border-[#969696] shadow-[0_12px_20px_rgba(255,255,255,0.15)]"
           showChevron={false}
           onClick={handleDownloadApp}
         >
