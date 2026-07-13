@@ -78,12 +78,15 @@ export const FAMILY_HISTORY_HEALTH_INFO_ITEMS: FamilyHistoryInfoItem[] = [
   },
 ]
 
-/** Figma 5725:14703 — location definitions (Q1) */
+/** Figma — location definitions (Q1) */
 export const FAMILY_HISTORY_LOCATION_INFO_ITEMS: FamilyHistoryInfoItem[] = [
-  { term: 'Inland', description: 'Living in areas away from the sea or ocean' },
   {
     term: 'Coastal',
-    description: 'Living in areas near the sea or ocean coastline',
+    description: 'An area entirely or partially surrounded by sea',
+  },
+  {
+    term: 'Inland',
+    description: 'An area entirely surrounded by land or mountains',
   },
 ]
 
