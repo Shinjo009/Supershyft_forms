@@ -8,6 +8,7 @@ import {
   MCQ_SHELL_CLASS,
   MCQ_SHELL_FOOTER_INNER_CLASS,
   MCQ_SHELL_SCROLL_CLASS,
+  formatNextQuestionPreview,
 } from '../mcq/mcqLayout'
 
 const NEXT_BUTTON_GRADIENT =
@@ -31,7 +32,7 @@ export function FamilyHistoryMcqShell({
 
   return (
     <div className={MCQ_SHELL_CLASS}>
-      <header className="flex shrink-0 items-center px-4 pb-0 pt-10">
+      <header className="flex shrink-0 items-center px-4 pb-0 pt-6">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <button
             type="button"
@@ -47,7 +48,7 @@ export function FamilyHistoryMcqShell({
         </div>
       </header>
 
-      <div className="flex shrink-0 flex-col gap-[12px] px-4 py-2">
+      <div className="flex shrink-0 flex-col gap-2 px-4 py-1">
         <div className="flex w-full items-center justify-end">
           <p className="text-right text-[11px] font-normal uppercase tracking-[0.3px] text-[#8e8ca3] leading-[13.5px]">
             {clampedPercent}% COMPLETED
@@ -72,14 +73,13 @@ export function FamilyHistoryMcqShell({
 
       <footer className="fixed inset-x-0 bottom-0 z-10 bg-[rgba(255,255,255,0.05)] backdrop-blur-[25px]">
         <div className={MCQ_SHELL_FOOTER_INNER_CLASS}>
-          <div className="h-[60px] w-[180px] max-w-[180px] shrink-0">
+          <div className="min-w-0 max-w-[200px] flex-1">
             <p className="text-[11px] font-medium uppercase tracking-[1.1px] leading-[16.5px] text-[rgba(255,255,255,0.4)]">
               NEXT QUESTION
             </p>
-            <div className="mt-5 h-10 overflow-hidden text-[14px] font-medium leading-[19.25px] text-[rgba(255,255,255,0.6)]">
-              <p className="mb-0">{nextQuestionPreview.line1}</p>
-              <p>{nextQuestionPreview.line2}</p>
-            </div>
+            <p className="mt-1 overflow-hidden whitespace-nowrap text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.6)]">
+              {formatNextQuestionPreview(nextQuestionPreview.line1, nextQuestionPreview.line2)}
+            </p>
           </div>
           <button
             type="button"

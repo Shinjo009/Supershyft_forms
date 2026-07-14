@@ -597,7 +597,7 @@ export default function BookAppointment() {
               ? 'flex min-h-0 min-w-0 flex-1 flex-col justify-between px-6 pb-6 pt-4'
               : step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11 || step === 12 || step === 13
                 ? 'px-0 pb-0 pt-0'
-                : 'justify-between px-6 pb-6 pt-12'
+                : 'px-6 pb-4 pt-8'
           }`}
         >
           <div
@@ -693,7 +693,7 @@ export default function BookAppointment() {
               Continue
             </ContinueButton>
           ) : !hideGlobalContinue ? (
-            <div className="mt-6 shrink-0">
+            <div className="mt-3 shrink-0">
               <ContinueButton variant={continueVariant} onClick={handleStepContinue}>
                 Continue
               </ContinueButton>

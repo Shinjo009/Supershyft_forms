@@ -4,14 +4,14 @@ import {
 } from './nutritionCircularMeterConfig'
 import { useAnimatedMeterNumber } from './useAnimatedMeterNumber'
 
-const RADIUS = (NUTRITION_METER_RING_SIZE - NUTRITION_METER_STROKE) / 2
-const CENTER = NUTRITION_METER_RING_SIZE / 2
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS
-/** Extra canvas so SVG glow is not clipped by the container on mobile */
-const METER_FRAME = NUTRITION_METER_RING_SIZE + 48
-const FRAME_OFFSET = (METER_FRAME - NUTRITION_METER_RING_SIZE) / 2
+/** Half-stroke + AA so the thick ring is not clipped by the SVG box */
+const PAD = NUTRITION_METER_STROKE / 2 + 2
+const FRAME = NUTRITION_METER_RING_SIZE + PAD * 2
+const C = FRAME / 2
+const R = NUTRITION_METER_RING_SIZE / 2 - NUTRITION_METER_STROKE / 2
+const CIRC = 2 * Math.PI * R
 
-/** Shared cyan→blue circular meter — Figma 5646:36035, 5701:16098 */
+/** Figma 5646:36079 — thick cyan→blue circular meter */
 export function NutritionCircularMeter({
   meterId,
   value,
@@ -23,112 +23,54 @@ export function NutritionCircularMeter({
   fillRatio: number
   unitLabel: string
 }) {
-  const animatedValue = useAnimatedMeterNumber(value)
-  const animatedFill = useAnimatedMeterNumber(fillRatio)
-  const clampedFill = Math.min(1, Math.max(0, animatedFill))
-  const dashOffset = CIRCUMFERENCE * (1 - clampedFill)
-  const displayValue = Math.round(animatedValue)
-  const gradientId = `${meterId}-ring-gradient`
-  const glowFilterId = `${meterId}-ring-glow`
-  const haloOpacity = clampedFill > 0 ? 0.22 + clampedFill * 0.18 : 0
+  const fill = Math.min(1, Math.max(0, useAnimatedMeterNumber(fillRatio)))
+  const display = Math.round(useAnimatedMeterNumber(value))
+  const gradientId = `${meterId}-g`
 
   return (
     <div
       className="relative flex items-center justify-center overflow-visible"
-      style={{ width: METER_FRAME, height: METER_FRAME }}
+      style={{ width: FRAME, height: FRAME }}
     >
       <svg
-        width={METER_FRAME}
-        height={METER_FRAME}
-        viewBox={`0 0 ${METER_FRAME} ${METER_FRAME}`}
-        className="absolute overflow-visible"
+        width={FRAME}
+        height={FRAME}
+        viewBox={`0 0 ${FRAME} ${FRAME}`}
+        className="absolute inset-0 overflow-visible"
         aria-hidden
       >
         <defs>
-          <linearGradient
-            id={gradientId}
-            gradientUnits="userSpaceOnUse"
-            x1={FRAME_OFFSET + CENTER - RADIUS}
-            y1={FRAME_OFFSET + CENTER - RADIUS}
-            x2={FRAME_OFFSET + CENTER + RADIUS}
-            y2={FRAME_OFFSET + CENTER + RADIUS}
-          >
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#06B6D4" />
             <stop offset="100%" stopColor="#3B82F6" />
           </linearGradient>
-
-          <filter
-            id={glowFilterId}
-            x="-80%"
-            y="-80%"
-            width="260%"
-            height="260%"
-            filterUnits="objectBoundingBox"
-          >
-            <feGaussianBlur stdDeviation="6" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
         </defs>
-
-        <g transform={`translate(${FRAME_OFFSET} ${FRAME_OFFSET}) rotate(-90 ${CENTER} ${CENTER})`}>
+        <g transform={`rotate(-90 ${C} ${C})`}>
           <circle
-            cx={CENTER}
-            cy={CENTER}
-            r={RADIUS}
+            cx={C}
+            cy={C}
+            r={R}
             fill="none"
             stroke="rgba(255,255,255,0.05)"
             strokeWidth={NUTRITION_METER_STROKE}
           />
-
-          {clampedFill > 0 ? (
-            <circle
-              cx={CENTER}
-              cy={CENTER}
-              r={RADIUS}
-              fill="none"
-              stroke={`url(#${gradientId})`}
-              strokeWidth={NUTRITION_METER_STROKE + 10}
-              strokeLinecap="round"
-              strokeDasharray={CIRCUMFERENCE}
-              strokeDashoffset={dashOffset}
-              opacity={haloOpacity}
-              filter={`url(#${glowFilterId})`}
-            />
-          ) : null}
-
           <circle
-            cx={CENTER}
-            cy={CENTER}
-            r={RADIUS}
+            cx={C}
+            cy={C}
+            r={R}
             fill="none"
             stroke={`url(#${gradientId})`}
             strokeWidth={NUTRITION_METER_STROKE}
             strokeLinecap="round"
-            strokeDasharray={CIRCUMFERENCE}
-            strokeDashoffset={dashOffset}
-            filter={clampedFill > 0 ? `url(#${glowFilterId})` : undefined}
+            strokeDasharray={CIRC}
+            strokeDashoffset={CIRC * (1 - fill)}
           />
         </g>
       </svg>
 
-      <div
-        className="pointer-events-none absolute rounded-full"
-        style={{
-          width: RADIUS * 1.72,
-          height: RADIUS * 1.72,
-          background:
-            clampedFill > 0
-              ? 'radial-gradient(circle, rgba(6,182,212,0.1) 0%, rgba(59,130,246,0.05) 55%, transparent 100%)'
-              : 'radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 70%)',
-        }}
-      />
-
       <div className="relative flex flex-col items-center">
         <span className="text-[48px] font-extrabold leading-[48px] tracking-[-0.96px] text-white">
-          {displayValue}
+          {display}
         </span>
         <span className="pt-1 text-[12px] font-bold uppercase leading-4 tracking-[1.2px] text-[rgba(59,130,246,0.8)]">
           {unitLabel}

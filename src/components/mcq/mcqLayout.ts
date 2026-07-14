@@ -4,13 +4,21 @@ export const APP_COLUMN_CLASS =
   'mx-auto h-full w-full max-w-[360px] lg:max-w-[480px] xl:max-w-[520px]'
 
 export const MCQ_SHELL_CLASS =
-  'relative mx-auto flex h-full min-h-0 w-full max-w-[360px] lg:max-w-[480px] xl:max-w-[520px] flex-col pb-[108px]'
+  'relative mx-auto flex h-full min-h-0 w-full max-w-[360px] lg:max-w-[480px] xl:max-w-[520px] flex-col pb-[88px]'
 
 export const MCQ_SHELL_SCROLL_CLASS =
-  'mt-8 min-h-0 flex-1 overflow-y-auto px-[17px] lg:px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+  'mt-2 min-h-0 flex-1 overflow-y-auto px-[17px] lg:px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
 
 export const MCQ_SHELL_FOOTER_INNER_CLASS =
-  'mx-auto flex w-full max-w-[360px] lg:max-w-[480px] xl:max-w-[520px] items-center justify-between px-6 py-6 lg:px-8'
+  'mx-auto flex w-full max-w-[360px] lg:max-w-[480px] xl:max-w-[520px] items-center justify-between gap-3 px-6 py-3 lg:px-8'
+
+/** One-line next-question preview; truncates with ".." when too long. */
+export function formatNextQuestionPreview(line1: string, line2: string, maxChars = 28): string {
+  const text = [line1, line2].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
+  if (!text) return ''
+  if (text.length <= maxChars) return text
+  return `${text.slice(0, maxChars).trimEnd()}..`
+}
 
 export const MCQ_INFO_CARD_CLASS =
   'relative w-full max-w-[335px] overflow-hidden rounded-[24px] border border-[rgba(255,255,255,0.5)] bg-[rgba(0,0,0,0.5)] px-[21px] py-[31px] shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] backdrop-blur-[5px] lg:max-w-[420px] lg:px-7 lg:py-9'
