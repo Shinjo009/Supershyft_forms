@@ -105,7 +105,7 @@ export function HealthAssessmentStep({
           showChevron={false}
           onClick={onStartAssessment}
         >
-          Start Assessment
+          Start assessment
         </ContinueButton>
       </div>
     </div>

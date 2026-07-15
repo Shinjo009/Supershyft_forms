@@ -22,6 +22,7 @@ import { HealthWellnessPrioritiesOptions } from './lifestyle-habits/HealthWellne
 import { LifestyleCommitmentOptions } from './lifestyle-habits/LifestyleCommitmentOptions'
 import { LifestyleHabitsMcqShell } from './lifestyle-habits/LifestyleHabitsMcqShell'
 import { LifestyleHabitsQuestionHeader } from './lifestyle-habits/LifestyleHabitsQuestionHeader'
+import { MCQ_QUESTION_HINT_CLASS } from './mcq/mcqLayout'
 import { McqInfoOverlay } from './mcq/McqInfoOverlay'
 import { PhysicalActivityDial } from './lifestyle-habits/PhysicalActivityDial'
 import { SitDurationDial } from './lifestyle-habits/SitDurationDial'
@@ -210,9 +211,9 @@ function Question2PhysicalActivity({
         questionLabel={`Question 2 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
       >
         <p>How much time do you spend engaging in physical activity or exercise daily?</p>
-        <p className="mt-0 text-[12px] text-[#bbb]">
-          (Brisk Walking or Bicycling or Heavy Lifting or Games or Yoga or Meditation or
-          Cleaning)
+        <p className={MCQ_QUESTION_HINT_CLASS}>
+          (brisk walking or bicycling or heavy lifting or games or yoga or meditation or
+          cleaning)
         </p>
       </LifestyleHabitsQuestionHeader>
 
@@ -290,7 +291,7 @@ function Question5DailyWalking({
         questionLabel={`Question 5 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
       >
         <p>How much time do you spend actively walking each day?</p>
-        <p className="mt-0 text-[12px] text-[#bbb]">
+        <p className={MCQ_QUESTION_HINT_CLASS}>
           (Includes commuting to work, breaks at work and household chores)
         </p>
       </LifestyleHabitsQuestionHeader>
@@ -341,7 +342,7 @@ function Question7AlcoholConsumption({
         questionLabel={`Question 7 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
       >
         <p>What is your alcohol consumption?</p>
-        <p className="mt-0 text-[12px] text-[#bbb]">
+        <p className={MCQ_QUESTION_HINT_CLASS}>
           (1 serving = 125 ml wine or 330 ml of beer or 40 ml of hard liquor)
         </p>
       </LifestyleHabitsQuestionHeader>
@@ -392,7 +393,7 @@ function Question9HealthWellnessPriorities({
         questionLabel={`Question 9 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
       >
         <p>What are your primary health and wellness priorities?</p>
-        <p className="mt-0 text-[12px] text-[#bbb]">(Choose your top two priority)</p>
+        <p className={MCQ_QUESTION_HINT_CLASS}>(Choose your top two priorities)</p>
       </LifestyleHabitsQuestionHeader>
 
       <HealthWellnessPrioritiesOptions selected={selected} onToggle={onToggle} />

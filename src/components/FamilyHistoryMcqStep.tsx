@@ -13,7 +13,7 @@ import {
 } from '../data/familyHistoryQuestions'
 import { FamilyHistoryInfoOverlay } from './family-history/FamilyHistoryInfoOverlay'
 import { FamilyHistoryQuestionHeader } from './family-history/FamilyHistoryQuestionHeader'
-import { MCQ_PILL_CHIP_CLASS } from './mcq/mcqLayout'
+import { MCQ_PILL_CHIP_CLASS, MCQ_QUESTION_HINT_CLASS } from './mcq/mcqLayout'
 import { CHIP_SELECTED_GRADIENT, FamilyHistoryMcqShell } from './family-history/FamilyHistoryMcqShell'
 
 type LocationOption = 'inland' | 'coastal'
@@ -269,7 +269,7 @@ function MultiSelectChipQuestion({
         onInfoClick={onInfoClick}
       >
         {title}
-        <p className="mt-0 text-[12px] text-[#bbb]">(Select multiple or None that apply)</p>
+        <p className={MCQ_QUESTION_HINT_CLASS}>(Select multiple or none that apply)</p>
       </FamilyHistoryQuestionHeader>
 
       <div className="flex flex-wrap content-center gap-4">
@@ -311,10 +311,8 @@ function MultiSelectChipQuestion({
               type="button"
               onClick={() => onToggle(option.id)}
               className={[
-                `flex ${MCQ_PILL_CHIP_CLASS} items-center justify-center gap-2.5 rounded-[24px] border-[0.5px] border-solid px-2.5 py-1`,
-                isSelected
-                  ? 'border-[#d0d0d0] font-semibold'
-                  : 'border-[rgba(255,255,255,0.3)] font-normal',
+                `flex ${MCQ_PILL_CHIP_CLASS} items-center justify-center gap-2.5 rounded-[24px] border border-solid px-2.5 py-1`,
+                isSelected ? 'border-[#d0d0d0] font-semibold' : 'border-[#969696] font-normal',
               ].join(' ')}
               style={isSelected ? { backgroundImage: CHIP_SELECTED_GRADIENT } : undefined}
             >

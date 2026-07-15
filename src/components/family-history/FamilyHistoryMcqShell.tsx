@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react'
 import backIcon from '../../assets/family-history/back-icon.svg'
 import nextChevronIcon from '../../assets/family-history/next-chevron.svg'
-import progressFillImg from '../../assets/family-history/progress-fill.svg'
-import progressTrackImg from '../../assets/family-history/progress-track.svg'
 import type { FamilyHistoryQuestionPreview } from '../../data/familyHistoryQuestions'
 import {
   MCQ_SHELL_CLASS,
@@ -55,11 +53,7 @@ export function FamilyHistoryMcqShell({
             {clampedPercent}% COMPLETED
           </p>
         </div>
-        <McqProgressBar
-          percent={clampedPercent}
-          trackSrc={progressTrackImg}
-          fillSrc={progressFillImg}
-        />
+        <McqProgressBar percent={clampedPercent} color="#9D50BB" />
       </div>
 
       <div className={MCQ_SHELL_SCROLL_CLASS}>{children}</div>
@@ -67,21 +61,21 @@ export function FamilyHistoryMcqShell({
       <footer className="fixed inset-x-0 bottom-0 z-10 bg-[rgba(255,255,255,0.05)] backdrop-blur-[25px]">
         <div className={MCQ_SHELL_FOOTER_INNER_CLASS}>
           <div className="min-w-0 max-w-[200px] flex-1">
-            <p className="text-[11px] font-medium uppercase tracking-[1.1px] leading-[16.5px] text-[rgba(255,255,255,0.4)]">
+            <p className="text-[10px] font-medium uppercase tracking-[1.1px] leading-[14px] text-[rgba(255,255,255,0.4)]">
               NEXT QUESTION
             </p>
-            <p className="mt-1 overflow-hidden whitespace-nowrap text-[14px] font-medium leading-5 text-[rgba(255,255,255,0.6)]">
+            <p className="mt-0.5 overflow-hidden whitespace-nowrap text-[13px] font-medium leading-[18px] text-[rgba(255,255,255,0.6)]">
               {formatNextQuestionPreview(nextQuestionPreview.line1, nextQuestionPreview.line2)}
             </p>
           </div>
           <button
             type="button"
             onClick={onNext}
-            className="flex size-[50px] shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(164,86,234,0.25)]"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(164,86,234,0.25)]"
             style={{ backgroundImage: NEXT_BUTTON_GRADIENT }}
             aria-label="Next question"
           >
-            <img src={nextChevronIcon} alt="" className="size-6" aria-hidden />
+            <img src={nextChevronIcon} alt="" className="size-5" aria-hidden />
           </button>
         </div>
       </footer>

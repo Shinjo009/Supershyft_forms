@@ -160,15 +160,15 @@ export const DAILY_FOOD_GROUP_OPTIONS: {
   label: string
   fullWidth?: boolean
 }[] = [
-  { id: 'pulses-legumes', label: 'Pulses / Legumes' },
-  { id: 'fresh-fruits', label: 'Fresh Fruits' },
-  { id: 'fresh-vegetables', label: 'Fresh Vegetables' },
-  { id: 'nuts-seeds', label: 'Nuts / Seeds' },
-  { id: 'whole-grains', label: 'Whole Grains' },
+  { id: 'pulses-legumes', label: 'Pulses / legumes' },
+  { id: 'fresh-fruits', label: 'Fresh fruits' },
+  { id: 'fresh-vegetables', label: 'Fresh vegetables' },
+  { id: 'nuts-seeds', label: 'Nuts / seeds' },
+  { id: 'whole-grains', label: 'Whole grains' },
   { id: 'eggs', label: 'Eggs' },
-  { id: 'whole-milk-curd', label: 'Whole Milk / Curd' },
-  { id: 'chicken-fish', label: 'Chicken / Fish' },
-  { id: 'cruciferous', label: 'Cruciferous (Cauliflower, Cabbage)', fullWidth: true },
+  { id: 'whole-milk-curd', label: 'Whole milk / curd' },
+  { id: 'chicken-fish', label: 'Chicken / fish' },
+  { id: 'cruciferous', label: 'Cruciferous (cauliflower, cabbage)', fullWidth: true },
 ]
 
 export const BREAKFAST_FREQUENCY_OPTIONS: {
@@ -239,7 +239,7 @@ export const COFFEE_TEA_TYPE_OPTIONS: {
 }[] = [
   { id: 'tea-sugar-milk', label: 'Tea with sugar & milk' },
   { id: 'green-tea', label: 'Green tea' },
-  { id: 'black-coffee', label: 'Black Coffee' },
+  { id: 'black-coffee', label: 'Black coffee' },
   { id: 'black-tea', label: 'Black tea' },
   { id: 'milk-tea-no-sugar', label: 'Milk tea without sugar', fullWidth: true },
   { id: 'coffee-sugar-milk', label: 'Coffee with sugar & milk', fullWidth: true },
@@ -283,14 +283,14 @@ export const NUTRITION_DIET_TYPE_INFO: NutritionLogInfoItem[] = [
 ]
 
 const NUTRITION_DAILY_FOOD_GROUPS_INFO: NutritionLogInfoItem[] = [
-  { term: 'Pulses / Legumes', description: 'Lentils, beans, chickpeas, and similar plant proteins' },
-  { term: 'Fresh Fruits', description: 'Whole fruits eaten fresh, not juiced or dried' },
-  { term: 'Fresh Vegetables', description: 'Raw or cooked vegetables as part of daily meals' },
-  { term: 'Nuts / Seeds', description: 'Almonds, walnuts, flax, chia, and similar seeds or nuts' },
-  { term: 'Whole Grains', description: 'Brown rice, oats, millets, and unrefined grains' },
+  { term: 'Pulses / legumes', description: 'Lentils, beans, chickpeas, and similar plant proteins' },
+  { term: 'Fresh fruits', description: 'Whole fruits eaten fresh, not juiced or dried' },
+  { term: 'Fresh vegetables', description: 'Raw or cooked vegetables as part of daily meals' },
+  { term: 'Nuts / seeds', description: 'Almonds, walnuts, flax, chia, and similar seeds or nuts' },
+  { term: 'Whole grains', description: 'Brown rice, oats, millets, and unrefined grains' },
   { term: 'Eggs', description: 'Chicken or duck eggs as a protein source' },
-  { term: 'Whole Milk / Curd', description: 'Full-fat dairy milk, yogurt, or curd' },
-  { term: 'Chicken / Fish', description: 'Lean poultry or fish consumed regularly' },
+  { term: 'Whole milk / curd', description: 'Full-fat dairy milk, yogurt, or curd' },
+  { term: 'Chicken / fish', description: 'Lean poultry or fish consumed regularly' },
   {
     term: 'Cruciferous',
     description: 'Cauliflower, cabbage, broccoli, and related vegetables',
@@ -345,7 +345,7 @@ const NUTRITION_COFFEE_TEA_INTAKE_INFO: NutritionLogInfoItem[] = [
 const NUTRITION_COFFEE_TEA_TYPE_INFO: NutritionLogInfoItem[] = [
   { term: 'Tea with sugar & milk', description: 'Sweetened milk tea' },
   { term: 'Green tea', description: 'Unsweetened green tea' },
-  { term: 'Black Coffee', description: 'Coffee without milk or sugar' },
+  { term: 'Black coffee', description: 'Coffee without milk or sugar' },
   { term: 'Black tea', description: 'Tea without milk or sugar' },
   { term: 'Milk tea without sugar', description: 'Milk tea with no added sugar' },
   { term: 'Coffee with sugar & milk', description: 'Sweetened milk coffee' },

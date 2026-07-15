@@ -2,6 +2,7 @@ import {
   WATER_INTAKE_OPTIONS,
   type WaterIntakeOption,
 } from '../../data/nutritionLogQuestions'
+import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
 import { WaterIntakeBottle } from './WaterIntakeBottle'
 import { waterIntakeReadingForSelection, WATER_INTAKE_PILL_GRADIENT } from './waterIntakeConfig'
 
@@ -18,17 +19,17 @@ function WaterIntakePill({
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-[38px] w-[139px] items-center justify-center rounded-[24px] border-[0.5px] border-solid px-[10px] py-1 text-center text-[12px] leading-5 text-white lg:w-full ${
+      className={`flex h-[38px] w-[139px] items-center justify-center rounded-[24px] border border-solid px-[10px] py-1 text-center text-[12px] leading-5 text-white lg:w-full ${
         selected ? 'min-h-[40px] font-semibold' : 'font-normal'
       }`}
       style={
         selected
           ? {
               backgroundImage: WATER_INTAKE_PILL_GRADIENT,
-              borderColor: '#d0d0d0',
+              borderColor: MCQ_PILL_BORDER_SELECTED,
             }
           : {
-              borderColor: 'rgba(255, 255, 255, 0.3)',
+              borderColor: MCQ_PILL_BORDER_IDLE,
             }
       }
     >

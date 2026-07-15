@@ -1,30 +1,25 @@
 /** Centered MCQ completion track + fill (Family / Lifestyle / Nutrition). */
 export function McqProgressBar({
   percent,
-  trackSrc,
-  fillSrc,
+  color,
 }: {
   percent: number
-  trackSrc: string
-  fillSrc: string
+  /** Active fill color (matches each section’s progress SVG stroke). */
+  color: string
 }) {
   const width = `${Math.min(100, Math.max(0, percent))}%`
 
   return (
-    <div className="relative h-6 w-full">
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2">
-        <img src={trackSrc} alt="" className="block h-px w-full max-w-none" aria-hidden />
-      </div>
+    <div className="relative flex h-6 w-full items-center">
+      <div className="absolute inset-x-0 h-[2px] rounded-full bg-white/20" />
       <div
-        className="absolute left-px top-1/2 -translate-y-1/2 transition-[width] duration-300 ease-out"
-        style={{ width }}
-      >
-        <div className="relative h-0.5">
-          <div className="absolute inset-y-[-10px] -left-[6%] -right-[6%]">
-            <img src={fillSrc} alt="" className="block size-full max-w-none" aria-hidden />
-          </div>
-        </div>
-      </div>
+        className="absolute left-0 h-1 rounded-full transition-[width] duration-300 ease-out"
+        style={{
+          width,
+          backgroundColor: color,
+          boxShadow: `0 1px 10px ${color}66`,
+        }}
+      />
     </div>
   )
 }

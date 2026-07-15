@@ -1,3 +1,4 @@
+import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
 import { DIAL_PILL_GRADIENT } from './radialDialShared'
 
 export function RadialDialPill({
@@ -15,18 +16,16 @@ export function RadialDialPill({
     <button
       type="button"
       onClick={onClick}
-      className={`absolute flex h-[33px] items-center justify-center rounded-full px-3 text-[11px] font-medium text-white whitespace-nowrap ${className}`}
+      className={`absolute flex h-[33px] items-center justify-center rounded-full border border-solid px-3 text-[11px] font-medium text-white whitespace-nowrap ${className}`}
       style={
         selected
           ? {
               backgroundImage: DIAL_PILL_GRADIENT,
-              border: 'none',
-              boxShadow: 'inset 0 0 0 0.25px #D0D0D0',
+              borderColor: MCQ_PILL_BORDER_SELECTED,
             }
           : {
               backgroundColor: 'rgba(0, 0, 0, 0.2)',
-              border: 'none',
-              boxShadow: 'inset 0 0 0 0.25px rgba(255, 255, 255, 0.3)',
+              borderColor: MCQ_PILL_BORDER_IDLE,
             }
       }
     >

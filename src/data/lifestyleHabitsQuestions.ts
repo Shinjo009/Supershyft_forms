@@ -221,12 +221,12 @@ export const HEALTH_WELLNESS_PRIORITY_OPTIONS: {
   id: HealthWellnessPriorityOption
   label: string
 }[] = [
-  { id: 'weight-loss', label: 'Weight Loss' },
-  { id: 'building-muscle', label: 'Building Muscle Mass' },
-  { id: 'increase-energy', label: 'Increase Energy Levels' },
-  { id: 'improving-metabolic', label: 'Improving Metabolic Health' },
-  { id: 'improving-endurance', label: 'Improving Physical Endurance' },
-  { id: 'increasing-strength', label: 'Increasing Strength' },
+  { id: 'weight-loss', label: 'Weight loss' },
+  { id: 'building-muscle', label: 'Building muscle mass' },
+  { id: 'increase-energy', label: 'Increase energy levels' },
+  { id: 'improving-metabolic', label: 'Improving metabolic health' },
+  { id: 'improving-endurance', label: 'Improving physical endurance' },
+  { id: 'increasing-strength', label: 'Increasing strength' },
 ]
 
 /** Figma 5657:51041 — mixed half/full-width rows */
@@ -321,24 +321,24 @@ export const LIFESTYLE_HABITS_INFO_BY_QUESTION: LifestyleHabitsInfoItem[][] = [
     { term: 'More than 7 times a week', description: 'Smokes tobacco daily or more often' },
   ],
   [
-    { term: 'Weight Loss', description: 'Reducing body weight through diet and activity' },
+    { term: 'Weight loss', description: 'Reducing body weight through diet and activity' },
     {
-      term: 'Building Muscle Mass',
+      term: 'Building muscle mass',
       description: 'Increasing lean muscle through training and nutrition',
     },
     {
-      term: 'Increase Energy Levels',
+      term: 'Increase energy levels',
       description: 'Improving daily stamina and reducing fatigue',
     },
     {
-      term: 'Improving Metabolic Health',
+      term: 'Improving metabolic health',
       description: 'Supporting blood sugar, cholesterol, and metabolic balance',
     },
     {
-      term: 'Improving Physical Endurance',
+      term: 'Improving physical endurance',
       description: 'Building cardiovascular and muscular stamina',
     },
-    { term: 'Increasing Strength', description: 'Gaining functional and muscular strength' },
+    { term: 'Increasing strength', description: 'Gaining functional and muscular strength' },
   ],
   [
     {

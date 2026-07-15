@@ -91,11 +91,11 @@ export function AppointmentJourneyCompleteStep({
           showChevron={false}
           onClick={handleDownloadApp}
         >
-          Download the App
+          Download the app
         </ContinueButton>
         <p className="text-center text-[14px] font-medium leading-[22.5px] text-[#999]">OR</p>
         <p className="text-center text-[11px] font-medium leading-[22.5px] text-[#999]">
-          We will get in touch with you on Whatsapp/ Email
+          We will get in touch with you on WhatsApp/email
         </p>
       </div>
     </div>

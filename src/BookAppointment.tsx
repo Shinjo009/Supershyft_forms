@@ -214,7 +214,7 @@ function labelRow(
     errorType === 'missing'
       ? 'Field is required'
       : errorType === 'invalid'
-        ? 'Invalid Input'
+        ? 'Invalid input'
         : showRequired
           ? 'Field is required'
         : ''
@@ -280,19 +280,19 @@ export default function BookAppointment() {
     const trimmedLastName = form.lastName.trim()
     setAttemptedPersonalContinue(true)
     if (!trimmedFirstName) {
-      logClientError('First Name is required.')
+      logClientError('First name is required.')
       return
     }
     if (!NAME_REGEX.test(trimmedFirstName)) {
-      logClientError('Invalid Input for First Name.')
+      logClientError('Invalid input for first name.')
       return
     }
     if (!trimmedLastName) {
-      logClientError('Last Name is required.')
+      logClientError('Last name is required.')
       return
     }
     if (!NAME_REGEX.test(trimmedLastName)) {
-      logClientError('Invalid Input for Last Name.')
+      logClientError('Invalid input for last name.')
       return
     }
     if (!trimmedPhone) {
@@ -300,7 +300,7 @@ export default function BookAppointment() {
       return
     }
     if (!/^\d{10}$/.test(trimmedPhone)) {
-      logClientError('Invalid Input for Phone.')
+      logClientError('Invalid input for phone.')
       return
     }
     if (!trimmedEmail) {
@@ -374,11 +374,11 @@ export default function BookAppointment() {
     const trimmedState = form.state.trim()
 
     if (!trimmedHouseNumber) {
-      logClientError('House No./ Building is required.')
+      logClientError('House no./building is required.')
       return
     }
     if (!trimmedStreet) {
-      logClientError('Area/ Street is required.')
+      logClientError('Area/street is required.')
       return
     }
     if (!trimmedLandmark) {
@@ -427,11 +427,11 @@ export default function BookAppointment() {
     const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
 
     if (!form.firstName.trim()) {
-      logClientError('First Name is required.')
+      logClientError('First name is required.')
       return
     }
     if (!form.lastName.trim()) {
-      logClientError('Last Name is required.')
+      logClientError('Last name is required.')
       return
     }
     if (!normalizedEmployeeId) {
@@ -479,7 +479,7 @@ export default function BookAppointment() {
     const apiCity = form.city.trim()
     const apiState = form.state.trim()
     if (!apiAddress) {
-      logClientError('House No./ Building is required.')
+      logClientError('House no./building is required.')
       return
     }
     if (!apiPincode || !/^\d{6}$/.test(apiPincode)) {
@@ -690,7 +690,7 @@ export default function BookAppointment() {
               className="mt-6 !h-[52px] w-full shrink-0 border border-[#969696] shadow-[0_12px_20px_rgba(255,255,255,0.15)]"
               onClick={() => setStep(6)}
             >
-              Continue
+              Continue to Step 2
             </ContinueButton>
           ) : !hideGlobalContinue ? (
             <div className="mt-3 shrink-0">
@@ -766,7 +766,7 @@ function PersonalStep({
           />
           <input
             className={`${mobileFieldInputName} min-w-0 flex-1`}
-            placeholder="Last Name"
+            placeholder="Last name"
             autoComplete="family-name"
             value={form.lastName}
             onChange={(e) => update('lastName', sanitizeName(e.target.value))}
@@ -957,7 +957,7 @@ function AddressStep({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        {labelRow(House, 'House No./ Building', undefined, isMissing(form.houseNumber))}
+        {labelRow(House, 'House no./building', undefined, isMissing(form.houseNumber))}
         <input
           className={mobileFieldInput}
           placeholder="350 A, Avenue Street"
@@ -967,10 +967,10 @@ function AddressStep({
       </div>
 
       <div className="flex flex-col gap-1">
-        {labelRow(Signpost, 'Area/ Street', undefined, isMissing(form.street))}
+        {labelRow(Signpost, 'Area/street', undefined, isMissing(form.street))}
         <input
           className={mobileFieldInput}
-          placeholder="Area/ Street"
+          placeholder="Area/street"
           value={form.street}
           onChange={(e) => update('street', e.target.value)}
         />
@@ -1029,7 +1029,7 @@ function ConfirmStep({
   const timeRange = formatTimeSlotRange(form.appointmentTime)
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-[18px] font-semibold text-white">Confirm Details</h2>
+      <h2 className="text-[18px] font-semibold text-white">Confirm details</h2>
 
       <section className="rounded-[8px] bg-white/5 p-3">
         <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
@@ -1311,7 +1311,7 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
             Slot Confirmed!
           </h2>
           <p className="text-[12px] leading-4 text-[#9a9a9a]">
-            Complete the Health Assessment To confirm your booking.
+            Complete the health assessment to confirm your booking.
           </p>
         </div>
       </div>
@@ -1344,15 +1344,8 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
           label="Package"
           value={packageLabel}
         />
-        <SuccessDetailRow icon={<UserIcon />} label="Member Name" value={memberName} />
+        <SuccessDetailRow icon={<UserIcon />} label="Member name" value={memberName} />
         <SuccessDetailRow icon={<LocationIcon />} label="Location" value={locationLabel} />
-      </div>
-
-      <div className="mt-auto flex w-full flex-col items-start gap-1 pt-4">
-        <p className="text-[12px] tracking-[-0.06em] text-[#9a9a9a]">Step 2</p>
-        <p className="text-[16px] leading-[18px] tracking-[-0.06em] text-white">
-          Health Assessment
-        </p>
       </div>
     </div>
   )

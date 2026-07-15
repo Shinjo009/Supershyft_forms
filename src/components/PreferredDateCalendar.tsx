@@ -211,7 +211,7 @@ export function PreferredDateCalendar({ open, value, onClose, onConfirm }: Props
           }}
           className="flex h-[52px] w-full items-center justify-center rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41ab99] text-base font-bold text-white shadow-[0_12px_10px_rgba(255,255,255,0.15)] transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Confirm Date
+          Confirm date
         </button>
         </div>
       </div>

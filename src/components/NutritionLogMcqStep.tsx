@@ -33,6 +33,7 @@ import { DietTypeOptions } from './nutrition-log/DietTypeOptions'
 import { FreshFruitsFrequencySelector } from './nutrition-log/FreshFruitsFrequencySelector'
 import { FreshVegetablesFrequencySelector } from './nutrition-log/FreshVegetablesFrequencySelector'
 import { McqQuestionHeader } from './mcq/McqQuestionHeader'
+import { MCQ_QUESTION_HINT_CLASS } from './mcq/mcqLayout'
 import { McqInfoOverlay } from './mcq/McqInfoOverlay'
 import { NutritionLogMcqShell } from './nutrition-log/NutritionLogMcqShell'
 
@@ -281,7 +282,7 @@ function Question2DailyFoodGroups({
         onInfoClick={onInfoClick}
       >
         <p>Which of the following food groups do you consume every day?</p>
-        <p className="text-[12px] text-[#bbb]">(Select all that apply)</p>
+        <p className={MCQ_QUESTION_HINT_CLASS}>(Select all that apply)</p>
       </McqQuestionHeader>
 
       <DailyFoodGroupsOptions selected={selected} onToggle={onToggle} />
@@ -407,8 +408,8 @@ function Question7SugaryDrinksFrequency({
         onInfoClick={onInfoClick}
       >
         <p>How frequently do you consume sugary drinks and desserts?</p>
-        <p className="text-[12px] text-[#bbb]">
-          (Soft Drinks, Ice Cream, Chocolate, Cakes, Pastries, Candies or Sweets)
+        <p className={MCQ_QUESTION_HINT_CLASS}>
+          (soft drinks, ice cream, chocolate, cakes or sweets)
         </p>
       </McqQuestionHeader>
 
@@ -508,7 +509,7 @@ function Question11CoffeeTeaType({
         onInfoClick={onInfoClick}
       >
         <p>What type of coffee or tea do you drink?</p>
-        <p className="text-[12px] text-[#bbb]">(Select all that apply)</p>
+        <p className={MCQ_QUESTION_HINT_CLASS}>(Select all that apply)</p>
       </McqQuestionHeader>
 
       <CoffeeTeaTypeOptions selected={selected} onToggle={onToggle} />
@@ -584,7 +585,7 @@ function Question14WaterIntake({
         onInfoClick={onInfoClick}
       >
         <p>How many glasses of water do you drink in a day?</p>
-        <p className="text-[12px] text-[#bbb]">(1 glass of water is ~250 ml)</p>
+        <p className={MCQ_QUESTION_HINT_CLASS}>(1 glass of water is ~250 ml)</p>
       </McqQuestionHeader>
 
       <WaterIntakeSelector selected={selected} onSelect={onSelect} />
@@ -610,7 +611,7 @@ function Question15IllnessFrequency({
         onInfoClick={onInfoClick}
       >
         <p>How often do you fall sick in a year?</p>
-        <p className="text-[12px] text-[#bbb]">(Required at least a day of bed rest)</p>
+        <p className={MCQ_QUESTION_HINT_CLASS}>(Required at least a day of bed rest)</p>
       </McqQuestionHeader>
 
       <IllnessFrequencySelector selected={selected} onSelect={onSelect} />

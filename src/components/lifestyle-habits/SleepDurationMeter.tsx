@@ -3,6 +3,7 @@ import {
   SLEEP_DURATION_OPTIONS,
   type SleepDurationOption,
 } from '../../data/lifestyleHabitsQuestions'
+import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
 import { SLEEP_MOON_FILL, SLEEP_PILL_GRADIENT } from './sleepDurationConfig'
 
 const MOON_SIZE = 148
@@ -182,15 +183,15 @@ function SleepPill({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-center rounded-[24px] border-[0.5px] border-solid px-[10px] py-2 text-[14px] leading-5 text-white"
+      className="flex w-full items-center justify-center rounded-[24px] border border-solid px-[10px] py-2 text-[14px] leading-5 text-white"
       style={
         selected
           ? {
               backgroundImage: SLEEP_PILL_GRADIENT,
-              borderColor: '#d0d0d0',
+              borderColor: MCQ_PILL_BORDER_SELECTED,
             }
           : {
-              borderColor: 'rgba(255, 255, 255, 0.3)',
+              borderColor: MCQ_PILL_BORDER_IDLE,
             }
       }
     >

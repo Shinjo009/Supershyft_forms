@@ -3,6 +3,7 @@ import {
   ACTIVITY_INTENSITY_OPTIONS,
   type ActivityIntensityOption,
 } from '../../data/lifestyleHabitsQuestions'
+import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
 import {
   ACTIVITY_INTENSITY_BAR_HEIGHTS,
   INTENSITY_PILL_GRADIENT,
@@ -64,17 +65,17 @@ function IntensityPill({
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-w-0 flex-1 items-center justify-center rounded-[24px] border-[0.5px] border-solid px-[10px] py-1 text-[12px] leading-6 text-white ${
+      className={`flex min-w-0 flex-1 items-center justify-center rounded-[24px] border border-solid px-[10px] py-1 text-[12px] leading-6 text-white ${
         selected ? 'font-semibold' : 'font-normal'
       }`}
       style={
         selected
           ? {
               backgroundImage: INTENSITY_PILL_GRADIENT,
-              borderColor: '#d0d0d0',
+              borderColor: MCQ_PILL_BORDER_SELECTED,
             }
           : {
-              borderColor: 'rgba(255, 255, 255, 0.3)',
+              borderColor: MCQ_PILL_BORDER_IDLE,
             }
       }
     >

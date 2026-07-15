@@ -3,6 +3,7 @@ import {
   ALCOHOL_CONSUMPTION_OPTIONS,
   type AlcoholConsumptionOption,
 } from '../../data/lifestyleHabitsQuestions'
+import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
 import {
   ALCOHOL_PILL_GRADIENT_FULL,
   ALCOHOL_PILL_GRADIENT_HALF,
@@ -27,7 +28,7 @@ function AlcoholPill({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center rounded-[24px] border-[0.5px] border-solid px-[10px] py-1 text-[12px] leading-6 text-white ${
+      className={`flex items-center justify-center rounded-[24px] border border-solid px-[10px] py-1 text-[12px] leading-6 text-white ${
         fullWidth ? 'w-full' : 'min-w-0 flex-1'
       } ${selected ? 'font-semibold' : 'font-normal'}`}
       style={
@@ -36,10 +37,10 @@ function AlcoholPill({
               backgroundImage: fullWidth
                 ? ALCOHOL_PILL_GRADIENT_FULL
                 : ALCOHOL_PILL_GRADIENT_HALF,
-              borderColor: '#d0d0d0',
+              borderColor: MCQ_PILL_BORDER_SELECTED,
             }
           : {
-              borderColor: 'rgba(255, 255, 255, 0.3)',
+              borderColor: MCQ_PILL_BORDER_IDLE,
             }
       }
     >

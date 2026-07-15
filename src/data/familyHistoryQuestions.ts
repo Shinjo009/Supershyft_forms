@@ -24,15 +24,15 @@ export const FAMILY_HISTORY_HEALTH_CONDITIONS: {
   id: FamilyHistoryHealthCondition
   label: string
 }[] = [
-  { id: 'type-2-diabetes', label: 'Type 2 Diabetes' },
+  { id: 'type-2-diabetes', label: 'Type 2 diabetes' },
   { id: 'hypertension', label: 'Hypertension' },
-  { id: 'fatty-liver', label: 'Fatty Liver' },
-  { id: 'lipid-disorders', label: 'Lipid Disorders' },
-  { id: 'heart-ailments', label: 'Heart Ailments' },
-  { id: 'thyroid-disorders', label: 'Thyroid Disorders' },
+  { id: 'fatty-liver', label: 'Fatty liver' },
+  { id: 'lipid-disorders', label: 'Lipid disorders' },
+  { id: 'heart-ailments', label: 'Heart ailments' },
+  { id: 'thyroid-disorders', label: 'Thyroid disorders' },
   { id: 'pcos', label: 'PCOS' },
   { id: 'stroke', label: 'Stroke' },
-  { id: 'mental-health', label: 'Mental Health' },
+  { id: 'mental-health', label: 'Mental health' },
   { id: 'none', label: 'None' },
   { id: 'other', label: 'Other' },
 ]
@@ -41,8 +41,8 @@ export const FAMILY_HISTORY_MEDICATION_OPTIONS: {
   id: FamilyHistoryHealthCondition
   label: string
 }[] = [
-  { id: 'type-2-diabetes', label: 'Type 2 Diabetes' },
-  { id: 'fatty-liver', label: 'Fatty Liver' },
+  { id: 'type-2-diabetes', label: 'Type 2 diabetes' },
+  { id: 'fatty-liver', label: 'Fatty liver' },
   { id: 'none', label: 'None' },
   { id: 'other', label: 'Other' },
 ]
@@ -62,7 +62,7 @@ export const FAMILY_HISTORY_NEXT_PREVIEWS: FamilyHistoryQuestionPreview[] = [
 
 /** Figma 5725:14796 — health condition glossary (Q2–Q4) */
 export const FAMILY_HISTORY_HEALTH_INFO_ITEMS: FamilyHistoryInfoItem[] = [
-  { term: 'Fatty Liver', description: 'Non alcoholic fatty liver disorder' },
+  { term: 'Fatty liver', description: 'Non-alcoholic fatty liver disorder' },
   { term: 'Heart ailments', description: 'Heart disease, heart attack, stroke' },
   { term: 'PCOS', description: 'Polycystic ovary syndrome' },
   {
@@ -71,7 +71,7 @@ export const FAMILY_HISTORY_HEALTH_INFO_ITEMS: FamilyHistoryInfoItem[] = [
   },
   { term: 'Hypertension', description: 'High blood pressure' },
   { term: 'Lipid disorders', description: 'High cholesterol, triglycerides' },
-  { term: 'Thyroid disorders', description: 'Hyopthyroidism' },
+  { term: 'Thyroid disorders', description: 'Hypothyroidism' },
   {
     term: 'Stroke',
     description: 'Interruption of blood flow to the brain (ischemic or hemorrhagic).',

@@ -1,3 +1,4 @@
+import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
 import { NUTRITION_PILL_GRADIENT, NUTRITION_PILL_GRADIENT_FULL } from './nutritionLogConfig'
 import { NUTRITION_PILL_GRADIENT_NARROW } from './breakfastFrequencyConfig'
 
@@ -23,7 +24,7 @@ export function NutritionFrequencyPill({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center rounded-[24px] border-[0.5px] border-solid px-[10px] text-center text-[12px] leading-6 text-white ${heightClass} ${widthClass} ${className} ${
+      className={`flex items-center justify-center rounded-[24px] border border-solid px-[10px] text-center text-[12px] leading-6 text-white ${heightClass} ${widthClass} ${className} ${
         selected ? 'font-semibold' : 'font-normal'
       }`}
       style={
@@ -34,10 +35,10 @@ export function NutritionFrequencyPill({
                 : compact
                   ? NUTRITION_PILL_GRADIENT
                   : NUTRITION_PILL_GRADIENT_NARROW,
-              borderColor: '#d0d0d0',
+              borderColor: MCQ_PILL_BORDER_SELECTED,
             }
           : {
-              borderColor: 'rgba(255, 255, 255, 0.3)',
+              borderColor: MCQ_PILL_BORDER_IDLE,
             }
       }
     >
