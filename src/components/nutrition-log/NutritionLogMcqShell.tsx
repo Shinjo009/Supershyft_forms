@@ -10,6 +10,7 @@ import {
   MCQ_SHELL_SCROLL_CLASS,
   formatNextQuestionPreview,
 } from '../mcq/mcqLayout'
+import { McqProgressBar } from '../mcq/McqProgressBar'
 import { NUTRITION_NEXT_BUTTON_GRADIENT } from './nutritionLogConfig'
 
 /** Shared Nutrition Log MCQ chrome — Figma 5627:12757 */
@@ -52,19 +53,11 @@ export function NutritionLogMcqShell({
             {clampedPercent}% COMPLETED
           </p>
         </div>
-        <div className="relative h-6 w-full">
-          <div className="absolute inset-x-0 top-0">
-            <img src={progressTrackImg} alt="" className="block h-px w-full max-w-none" aria-hidden />
-          </div>
-          <div
-            className="absolute left-px top-[-1px] transition-[width] duration-300 ease-out"
-            style={{ width: `${clampedPercent}%` }}
-          >
-            <div className="absolute inset-[-11px_-6.22%_-13px_-6.22%]">
-              <img src={progressFillImg} alt="" className="block size-full max-w-none" aria-hidden />
-            </div>
-          </div>
-        </div>
+        <McqProgressBar
+          percent={clampedPercent}
+          trackSrc={progressTrackImg}
+          fillSrc={progressFillImg}
+        />
       </div>
 
       <div className={MCQ_SHELL_SCROLL_CLASS}>{children}</div>

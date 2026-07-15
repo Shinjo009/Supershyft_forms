@@ -38,6 +38,20 @@ function toggleChipSelection(
   return [...withoutNone, id]
 }
 
+function handleChipToggle(
+  current: FamilyHistoryHealthCondition[],
+  id: FamilyHistoryHealthCondition,
+  clearOtherText: () => void,
+): FamilyHistoryHealthCondition[] {
+  const next = toggleChipSelection(current, id)
+  if (id === 'other' && !next.includes('other')) clearOtherText()
+  if (id === 'none' && next.includes('none')) clearOtherText()
+  return next
+}
+
+const OTHER_EXPANDED_GRADIENT =
+  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 296 64' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.35'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(14.8 0 0 3.2 148 32)'><stop stop-color='rgba(164,86,234,1)' offset='0'/><stop stop-color='rgba(134,69,194,1)' offset='0.25'/><stop stop-color='rgba(103,52,153,1)' offset='0.5'/><stop stop-color='rgba(73,35,113,1)' offset='0.75'/><stop stop-color='rgba(42,18,72,1)' offset='1'/></radialGradient></defs></svg>\")"
+
 /** Family History MCQ flow — shared layout, per-question content */
 export function FamilyHistoryMcqStep({
   onBack,
@@ -55,6 +69,9 @@ export function FamilyHistoryMcqStep({
   const [medicationSelections, setMedicationSelections] = useState<FamilyHistoryHealthCondition[]>(
     [],
   )
+  const [relativeOtherText, setRelativeOtherText] = useState('')
+  const [personalOtherText, setPersonalOtherText] = useState('')
+  const [medicationOtherText, setMedicationOtherText] = useState('')
   const [infoOpen, setInfoOpen] = useState(false)
 
   useEffect(() => {
@@ -106,7 +123,13 @@ export function FamilyHistoryMcqStep({
             </>
           }
           selected={relativeHealthConditions}
-          onToggle={(id) => setRelativeHealthConditions((current) => toggleChipSelection(current, id))}
+          otherText={relativeOtherText}
+          onOtherTextChange={setRelativeOtherText}
+          onToggle={(id) =>
+            setRelativeHealthConditions((current) =>
+              handleChipToggle(current, id, () => setRelativeOtherText('')),
+            )
+          }
           onInfoClick={() => setInfoOpen(true)}
         />
       ) : questionIndex === 2 ? (
@@ -114,7 +137,13 @@ export function FamilyHistoryMcqStep({
           questionNumber={3}
           title={<p>Are you diagnosed with the following diseases?</p>}
           selected={personalDiagnoses}
-          onToggle={(id) => setPersonalDiagnoses((current) => toggleChipSelection(current, id))}
+          otherText={personalOtherText}
+          onOtherTextChange={setPersonalOtherText}
+          onToggle={(id) =>
+            setPersonalDiagnoses((current) =>
+              handleChipToggle(current, id, () => setPersonalOtherText('')),
+            )
+          }
           onInfoClick={() => setInfoOpen(true)}
         />
       ) : (
@@ -123,7 +152,13 @@ export function FamilyHistoryMcqStep({
           title={<p>Are you taking medications for the following diseases?</p>}
           options={FAMILY_HISTORY_MEDICATION_OPTIONS}
           selected={medicationSelections}
-          onToggle={(id) => setMedicationSelections((current) => toggleChipSelection(current, id))}
+          otherText={medicationOtherText}
+          onOtherTextChange={setMedicationOtherText}
+          onToggle={(id) =>
+            setMedicationSelections((current) =>
+              handleChipToggle(current, id, () => setMedicationOtherText('')),
+            )
+          }
           onInfoClick={() => setInfoOpen(true)}
         />
       )}
@@ -207,12 +242,14 @@ function Question1Location({
   )
 }
 
-/** Shared chip multi-select — Figma 5629:15433, 5657:51170, 5657:51263 */
+/** Shared chip multi-select — Figma 5629:15433, 5657:51170, 5657:51263; Other expand 4775:40135 */
 function MultiSelectChipQuestion({
   questionNumber,
   title,
   options = FAMILY_HISTORY_HEALTH_CONDITIONS,
   selected,
+  otherText,
+  onOtherTextChange,
   onToggle,
   onInfoClick,
 }: {
@@ -220,6 +257,8 @@ function MultiSelectChipQuestion({
   title: ReactNode
   options?: { id: FamilyHistoryHealthCondition; label: string }[]
   selected: FamilyHistoryHealthCondition[]
+  otherText: string
+  onOtherTextChange: (value: string) => void
   onToggle: (id: FamilyHistoryHealthCondition) => void
   onInfoClick: () => void
 }) {
@@ -236,6 +275,35 @@ function MultiSelectChipQuestion({
       <div className="flex flex-wrap content-center gap-4">
         {options.map((option) => {
           const isSelected = selected.includes(option.id)
+          const isOtherExpanded = option.id === 'other' && isSelected
+
+          if (isOtherExpanded) {
+            return (
+              <div
+                key={option.id}
+                className="flex w-full basis-full flex-col rounded-[24px] border-[0.5px] border-solid border-[#d0d0d0] px-6 pb-3 pt-1"
+                style={{ backgroundImage: OTHER_EXPANDED_GRADIENT }}
+              >
+                <button
+                  type="button"
+                  onClick={() => onToggle('other')}
+                  className="flex items-center gap-2.5 py-0.5 text-left"
+                  aria-pressed
+                >
+                  <img src={tickCircleIcon} alt="" className="size-3 shrink-0" aria-hidden />
+                  <span className="text-[12px] font-semibold leading-6 text-white">Other</span>
+                </button>
+                <input
+                  type="text"
+                  value={otherText}
+                  onChange={(event) => onOtherTextChange(event.target.value)}
+                  placeholder="Please specify"
+                  className="ml-[22px] w-[calc(100%-22px)] border-0 border-b border-[rgba(255,255,255,0.35)] bg-transparent py-0.5 text-[11px] font-light leading-6 text-white outline-none placeholder:text-[#9a9a9a]"
+                  aria-label="Please specify other condition"
+                />
+              </div>
+            )
+          }
 
           return (
             <button

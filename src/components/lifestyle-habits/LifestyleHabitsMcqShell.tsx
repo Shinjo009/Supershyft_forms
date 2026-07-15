@@ -10,6 +10,7 @@ import {
   MCQ_SHELL_SCROLL_CLASS,
   formatNextQuestionPreview,
 } from '../mcq/mcqLayout'
+import { McqProgressBar } from '../mcq/McqProgressBar'
 
 const NEXT_BUTTON_GRADIENT =
   "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 50 50' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.3'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(2.5 0 0 2.5 25 25)'><stop stop-color='rgba(255,136,0,1)' offset='0'/><stop stop-color='rgba(233,93,92,1)' offset='1'/></radialGradient></defs></svg>\")"
@@ -54,19 +55,11 @@ export function LifestyleHabitsMcqShell({
             {clampedPercent}% COMPLETED
           </p>
         </div>
-        <div className="relative h-6 w-full">
-          <div className="absolute inset-x-0 top-0">
-            <img src={progressTrackImg} alt="" className="block h-px w-full max-w-none" aria-hidden />
-          </div>
-          <div
-            className="absolute left-px top-[-1px] transition-[width] duration-300 ease-out"
-            style={{ width: `${clampedPercent}%` }}
-          >
-            <div className="absolute inset-[-11px_-6.22%_-13px_-6.22%]">
-              <img src={progressFillImg} alt="" className="block size-full max-w-none" aria-hidden />
-            </div>
-          </div>
-        </div>
+        <McqProgressBar
+          percent={clampedPercent}
+          trackSrc={progressTrackImg}
+          fillSrc={progressFillImg}
+        />
       </div>
 
       <div className={MCQ_SHELL_SCROLL_CLASS}>{children}</div>

@@ -1316,19 +1316,19 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
         </div>
       </div>
 
-      <div className="w-full overflow-hidden rounded-xl border border-white/10 bg-white/5 px-[17px] py-[25px] backdrop-blur-[12px]">
-        <div className="flex w-full items-center justify-between whitespace-nowrap">
+      <div className="w-full rounded-xl border border-white/10 bg-white/5 px-[17px] py-5 backdrop-blur-[12px]">
+        <div className="flex w-full items-start justify-between">
           <div className="flex flex-col items-start gap-1">
-            <p className="text-[16px] font-semibold leading-[18px] tracking-[-0.96px] text-white">
+            <p className="text-[16px] font-semibold leading-5 tracking-[-0.96px] text-white">
               Step 1
             </p>
-            <p className="text-[11px] leading-3 text-[#90df9e]">Completed</p>
+            <p className="text-[11px] leading-[14px] text-[#90df9e]">Completed</p>
           </div>
           <div className="flex flex-col items-start gap-1">
-            <p className="text-[16px] font-semibold leading-[18px] tracking-[-0.96px] text-white">
+            <p className="text-[16px] font-semibold leading-5 tracking-[-0.96px] text-white">
               Step 2
             </p>
-            <p className="text-[11px] font-light leading-3 text-[#9a9a9a]">Pending</p>
+            <p className="text-[11px] font-light leading-[14px] text-[#9a9a9a]">Pending</p>
           </div>
         </div>
         <div className="relative mt-4 h-2 w-full rounded-full bg-white/10">
