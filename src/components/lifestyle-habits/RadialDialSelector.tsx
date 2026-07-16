@@ -1,6 +1,7 @@
 import { RadialDialPill } from './RadialDialPill'
-import { arcPointerTouch } from './arcPathGeometry'
+import { arcPointerTouch, computeRadialPillAnchor } from './arcPathGeometry'
 import type { RadialDialArcLayout, RadialDialConfig } from './radialDialShared'
+import { getSlotArcLayout } from './radialDialShared'
 import { MCQ_DIAL_DESKTOP_CLASS } from '../mcq/mcqLayout'
 import { useAnimatedDialRotation } from './useAnimatedDialRotation'
 
@@ -192,21 +193,6 @@ function RotatedArcGlow({
   return (
     <g transform={`rotate(${rotation} ${pivotX} ${pivotY})`}>{glow}</g>
   )
-}
-
-function getSlotArcLayout(
-  slotSelection: NonNullable<RadialDialConfig<string>['slotSelection']>,
-  slotId: string,
-): { layout: RadialDialArcLayout; rotation: number } {
-  const fixed = slotSelection.slotArcs?.[slotId]
-  if (fixed) {
-    return { layout: fixed, rotation: 0 }
-  }
-
-  return {
-    layout: slotSelection.baseArc!,
-    rotation: slotSelection.slotRotations?.[slotId] ?? 0,
-  }
 }
 
 function pointerLineFromTouch(
@@ -617,15 +603,23 @@ export function RadialDialSelector<T extends string>({
         )}
       </svg>
 
-      {config.pills.map((pill) => (
-        <RadialDialPill
-          key={pill.id}
-          label={pill.label}
-          selected={selected === pill.id}
-          className={pill.className}
-          onClick={() => onSelect(pill.id as T)}
-        />
-      ))}
+      {config.pills.map((pill) => {
+        const anchor = pill.className
+          ? null
+          : computeRadialPillAnchor(config, pill.id as T)
+
+        return (
+          <RadialDialPill
+            key={pill.id}
+            label={pill.label}
+            labelLines={pill.labelLines}
+            selected={selected === pill.id}
+            className={pill.className}
+            anchor={anchor}
+            onClick={() => onSelect(pill.id as T)}
+          />
+        )
+      })}
     </div>
   )
 }

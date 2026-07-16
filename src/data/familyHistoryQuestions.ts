@@ -49,8 +49,12 @@ export const FAMILY_HISTORY_MEDICATION_OPTIONS: {
 
 export const FAMILY_HISTORY_TOTAL_QUESTIONS = 4
 
-export function familyHistoryProgressPercent(questionIndex: number): number {
-  return Math.round(((questionIndex + 1) / FAMILY_HISTORY_TOTAL_QUESTIONS) * 100)
+export function familyHistoryProgressPercent(
+  questionIndex: number,
+  isCurrentQuestionAnswered = false,
+): number {
+  const completed = questionIndex + (isCurrentQuestionAnswered ? 1 : 0)
+  return Math.round((completed / FAMILY_HISTORY_TOTAL_QUESTIONS) * 100)
 }
 
 export const FAMILY_HISTORY_NEXT_PREVIEWS: FamilyHistoryQuestionPreview[] = [

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   LIFESTYLE_HABITS_INFO_BY_QUESTION,
   LIFESTYLE_HABITS_NEXT_PREVIEWS,
@@ -49,7 +49,9 @@ export function LifestyleHabitsMcqStep({
     null,
   )
   const [smokingFrequency, setSmokingFrequency] = useState<SmokingFrequencyOption | null>(null)
-  const [wellnessPriorities, setWellnessPriorities] = useState<HealthWellnessPriorityOption[]>([])
+  const [wellnessPriority, setWellnessPriority] = useState<HealthWellnessPriorityOption | null>(
+    null,
+  )
   const [lifestyleCommitment, setLifestyleCommitment] = useState<LifestyleCommitmentOption | null>(
     null,
   )
@@ -58,16 +60,6 @@ export function LifestyleHabitsMcqStep({
   useEffect(() => {
     setInfoOpen(false)
   }, [questionIndex])
-
-  const toggleWellnessPriority = (value: HealthWellnessPriorityOption) => {
-    setWellnessPriorities((current) =>
-      current.includes(value)
-        ? current.filter((item) => item !== value)
-        : current.length < 2
-          ? [...current, value]
-          : current,
-    )
-  }
 
   const handleBack = () => {
     if (infoOpen) {
@@ -89,11 +81,44 @@ export function LifestyleHabitsMcqStep({
     onComplete?.()
   }
 
+  const lifestyleAnswers = useMemo(
+    () => [
+      sitDuration,
+      physicalActivity,
+      weeklyLeisure,
+      activityIntensity,
+      dailyWalking,
+      sleepDuration,
+      alcoholConsumption,
+      smokingFrequency,
+      wellnessPriority,
+      lifestyleCommitment,
+    ],
+    [
+      sitDuration,
+      physicalActivity,
+      weeklyLeisure,
+      activityIntensity,
+      dailyWalking,
+      sleepDuration,
+      alcoholConsumption,
+      smokingFrequency,
+      wellnessPriority,
+      lifestyleCommitment,
+    ],
+  )
+
+  const isCurrentQuestionAnswered = lifestyleAnswers[questionIndex] !== null
+
   return (
     <LifestyleHabitsMcqShell
       onBack={handleBack}
       onNext={handleNext}
-      progressPercent={lifestyleHabitsProgressPercent(questionIndex)}
+      progressPercent={lifestyleHabitsProgressPercent(
+        questionIndex,
+        isCurrentQuestionAnswered,
+      )}
+      isLastQuestion={questionIndex === LIFESTYLE_HABITS_TOTAL_QUESTIONS - 1}
       nextQuestionPreview={
         LIFESTYLE_HABITS_NEXT_PREVIEWS[questionIndex] ?? { line1: '', line2: '' }
       }
@@ -148,8 +173,8 @@ export function LifestyleHabitsMcqStep({
         />
       ) : questionIndex === 8 ? (
         <Question9HealthWellnessPriorities
-          selected={wellnessPriorities}
-          onToggle={toggleWellnessPriority}
+          selected={wellnessPriority}
+          onSelect={setWellnessPriority}
           onInfoClick={() => setInfoOpen(true)}
         />
       ) : questionIndex === 9 ? (
@@ -376,14 +401,14 @@ function Question8SmokingFrequency({
   )
 }
 
-/** Figma 5657:51001 — health & wellness priorities (multi-select, max 2) */
+/** Figma 5657:51001 — health & wellness priorities (single-select) */
 function Question9HealthWellnessPriorities({
   selected,
-  onToggle,
+  onSelect,
   onInfoClick,
 }: {
-  selected: HealthWellnessPriorityOption[]
-  onToggle: (value: HealthWellnessPriorityOption) => void
+  selected: HealthWellnessPriorityOption | null
+  onSelect: (value: HealthWellnessPriorityOption) => void
   onInfoClick: () => void
 }) {
   return (
@@ -393,10 +418,9 @@ function Question9HealthWellnessPriorities({
         questionLabel={`Question 9 of ${LIFESTYLE_HABITS_TOTAL_QUESTIONS}`}
       >
         <p>What are your primary health and wellness priorities?</p>
-        <p className={MCQ_QUESTION_HINT_CLASS}>(Choose your top two priorities)</p>
       </LifestyleHabitsQuestionHeader>
 
-      <HealthWellnessPrioritiesOptions selected={selected} onToggle={onToggle} />
+      <HealthWellnessPrioritiesOptions selected={selected} onSelect={onSelect} />
     </div>
   )
 }

@@ -54,10 +54,10 @@ export const PHYSICAL_ACTIVITY_DIAL_CONFIG: RadialDialConfig<PhysicalActivityOpt
     rare: 270,
   },
   pills: [
-    { id: 'rare', label: 'Rare', className: 'left-0 top-[88px]' },
-    { id: 'under-30-min', label: '< 30 min', className: 'left-[173px] top-0' },
-    { id: '30-60m', label: '30-60 m', className: 'left-[225px] top-[135px]' },
-    { id: '60-plus', label: '60+ mins', className: 'left-[55px] top-[208px]' },
+    { id: 'rare', label: 'Rare' },
+    { id: 'under-30-min', label: '< 30 min' },
+    { id: '30-60m', label: '30-60 m' },
+    { id: '60-plus', label: '60+ mins' },
   ],
 }
 

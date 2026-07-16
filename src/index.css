@@ -43,8 +43,8 @@ textarea:-webkit-autofill:focus,
 select:-webkit-autofill,
 select:-webkit-autofill:hover,
 select:-webkit-autofill:focus {
-  -webkit-text-fill-color: #ffffff !important;
-  caret-color: #ffffff;
+  -webkit-text-fill-color: #cccccc !important;
+  caret-color: #cccccc;
   -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.05) inset !important;
   box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.05) inset !important;
   transition: background-color 9999s ease-in-out 0s;
@@ -53,6 +53,27 @@ select:-webkit-autofill:focus {
 input:autofill,
 textarea:autofill,
 select:autofill {
-  color: #ffffff;
+  color: #cccccc;
   background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Booking form — placeholder examples must stay muted grey (not inherit input text color). */
+.booking-field-input {
+  color: #cccccc;
+}
+
+.booking-field-input::placeholder {
+  color: #9a9a9a;
+  opacity: 1;
+}
+
+.booking-field-input::-webkit-input-placeholder {
+  color: #9a9a9a;
+  -webkit-text-fill-color: #9a9a9a;
+  opacity: 1;
+}
+
+.booking-field-input::-moz-placeholder {
+  color: #9a9a9a;
+  opacity: 1;
 }

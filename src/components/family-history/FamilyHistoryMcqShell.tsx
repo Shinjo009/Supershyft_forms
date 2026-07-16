@@ -20,12 +20,14 @@ export function FamilyHistoryMcqShell({
   onNext,
   nextQuestionPreview,
   progressPercent = 25,
+  isLastQuestion = false,
 }: {
   children: ReactNode
   onBack?: () => void
   onNext?: () => void
   nextQuestionPreview: FamilyHistoryQuestionPreview
   progressPercent?: number
+  isLastQuestion?: boolean
 }) {
   const clampedPercent = Math.min(100, Math.max(0, progressPercent))
 
@@ -59,15 +61,17 @@ export function FamilyHistoryMcqShell({
       <div className={MCQ_SHELL_SCROLL_CLASS}>{children}</div>
 
       <footer className="fixed inset-x-0 bottom-0 z-10 bg-[rgba(255,255,255,0.05)] backdrop-blur-[25px]">
-        <div className={MCQ_SHELL_FOOTER_INNER_CLASS}>
-          <div className="min-w-0 max-w-[200px] flex-1">
-            <p className="text-[10px] font-medium uppercase tracking-[1.1px] leading-[14px] text-[rgba(255,255,255,0.4)]">
-              NEXT QUESTION
-            </p>
-            <p className="mt-0.5 overflow-hidden whitespace-nowrap text-[13px] font-medium leading-[18px] text-[rgba(255,255,255,0.6)]">
-              {formatNextQuestionPreview(nextQuestionPreview.line1, nextQuestionPreview.line2)}
-            </p>
-          </div>
+        <div className={`${MCQ_SHELL_FOOTER_INNER_CLASS}${isLastQuestion ? ' justify-end' : ''}`}>
+          {!isLastQuestion ? (
+            <div className="min-w-0 max-w-[200px] flex-1">
+              <p className="text-[10px] font-medium uppercase tracking-[1.1px] leading-[14px] text-[rgba(255,255,255,0.4)]">
+                NEXT QUESTION
+              </p>
+              <p className="mt-0.5 overflow-hidden whitespace-nowrap text-[13px] font-medium leading-[18px] text-[rgba(255,255,255,0.6)]">
+                {formatNextQuestionPreview(nextQuestionPreview.line1, nextQuestionPreview.line2)}
+              </p>
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={onNext}

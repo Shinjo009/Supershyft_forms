@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   NUTRITION_LOG_INFO_BY_QUESTION,
   NUTRITION_LOG_LAST_STEP_INDEX,
@@ -118,11 +118,64 @@ export function NutritionLogMcqStep({
     )
   }
 
+  const isCurrentQuestionAnswered = useMemo(() => {
+    switch (questionIndex) {
+      case 0:
+        return dietType !== null
+      case 1:
+        return dailyFoodGroups.length > 0
+      case 2:
+        return breakfastFrequency !== null
+      case 3:
+        return freshFruitsFrequency !== null
+      case 4:
+        return freshVegetablesFrequency !== null
+      case 5:
+        return bakedGoodsFrequency !== null
+      case 6:
+        return sugaryDrinksFrequency !== null
+      case 7:
+        return iodizedSalt !== null || extraSaltFrequency !== null
+      case 8:
+        return coffeeTeaIntake !== null
+      case 9:
+        return coffeeTeaTypes.length > 0
+      case 10:
+        return marketButterFrequency !== null
+      case 11:
+        return redMeatFrequency !== null
+      case 12:
+        return waterIntake !== null
+      case 13:
+        return illnessFrequency !== null
+      default:
+        return false
+    }
+  }, [
+    questionIndex,
+    dietType,
+    dailyFoodGroups,
+    breakfastFrequency,
+    freshFruitsFrequency,
+    freshVegetablesFrequency,
+    bakedGoodsFrequency,
+    sugaryDrinksFrequency,
+    iodizedSalt,
+    extraSaltFrequency,
+    coffeeTeaIntake,
+    coffeeTeaTypes,
+    marketButterFrequency,
+    redMeatFrequency,
+    waterIntake,
+    illnessFrequency,
+  ])
+
   return (
     <NutritionLogMcqShell
       onBack={handleBack}
       onNext={handleNext}
-      progressPercent={nutritionLogProgressPercent(questionIndex)}
+      progressPercent={nutritionLogProgressPercent(questionIndex, isCurrentQuestionAnswered)}
+      isLastQuestion={questionIndex === NUTRITION_LOG_LAST_STEP_INDEX}
       nextQuestionPreview={
         NUTRITION_LOG_NEXT_PREVIEWS[questionIndex] ?? { line1: '', line2: '' }
       }

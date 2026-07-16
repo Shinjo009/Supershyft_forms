@@ -57,27 +57,14 @@ function WellnessPill({
   )
 }
 
-/** Figma 5657:51001 — health & wellness priorities (pick up to 2) */
+/** Figma 5657:51001 — health & wellness priorities (single-select) */
 export function HealthWellnessPrioritiesOptions({
   selected,
-  onToggle,
-  maxSelections = 2,
+  onSelect,
 }: {
-  selected: HealthWellnessPriorityOption[]
-  onToggle: (value: HealthWellnessPriorityOption) => void
-  maxSelections?: number
+  selected: HealthWellnessPriorityOption | null
+  onSelect: (value: HealthWellnessPriorityOption) => void
 }) {
-  const handleToggle = (optionId: HealthWellnessPriorityOption) => {
-    if (selected.includes(optionId)) {
-      onToggle(optionId)
-      return
-    }
-    if (selected.length >= maxSelections) {
-      return
-    }
-    onToggle(optionId)
-  }
-
   return (
     <div className="flex w-full flex-col gap-4">
       {HEALTH_WELLNESS_PRIORITY_ROWS.map((row, rowIndex) => (
@@ -89,7 +76,7 @@ export function HealthWellnessPrioritiesOptions({
             <WellnessPill
               key={optionId}
               label={OPTION_LABELS[optionId]}
-              selected={selected.includes(optionId)}
+              selected={selected === optionId}
               widthClass={
                 row.options.length > 1
                   ? 'min-w-0 flex-1'
@@ -97,7 +84,7 @@ export function HealthWellnessPrioritiesOptions({
                     ? 'w-full'
                     : MCQ_PILL_CHIP_CLASS
               }
-              onClick={() => handleToggle(optionId)}
+              onClick={() => onSelect(optionId)}
             />
           ))}
         </div>

@@ -706,9 +706,7 @@ export default function BookAppointment() {
 }
 
 const mobileFieldInput =
-  'h-10 w-full rounded-[8px] border-0 bg-white/5 px-4 text-[12px] text-white outline-none placeholder:text-[12px] placeholder:text-white/60 focus:ring-1 focus:ring-[#4b8d83]'
-const mobileFieldInputName =
-  'h-10 w-full rounded-[8px] border-0 bg-white/5 px-4 text-[14px] text-white outline-none placeholder:text-[14px] placeholder:text-white/60 focus:ring-1 focus:ring-[#4b8d83]'
+  'booking-field-input h-10 w-full rounded-[8px] border-0 bg-white/5 px-4 text-[14px] font-normal outline-none focus:ring-1 focus:ring-[#4b8d83]'
 
 function PersonalStep({
   form,
@@ -758,14 +756,14 @@ function PersonalStep({
         {labelRow(User, 'Full Name', undefined, Boolean(fullNameError), fullNameError)}
         <div className="flex gap-2">
           <input
-            className={`${mobileFieldInputName} min-w-0 flex-1`}
+            className={`${mobileFieldInput} min-w-0 flex-1`}
             placeholder="First name"
             autoComplete="given-name"
             value={form.firstName}
             onChange={(e) => update('firstName', sanitizeName(e.target.value))}
           />
           <input
-            className={`${mobileFieldInputName} min-w-0 flex-1`}
+            className={`${mobileFieldInput} min-w-0 flex-1`}
             placeholder="Last name"
             autoComplete="family-name"
             value={form.lastName}
@@ -824,7 +822,7 @@ function PersonalStep({
                 : 'bg-white/5 text-[#999]',
             ].join(' ')}
           >
-            <Mars className="size-3 shrink-0" strokeWidth={2} />
+            <Mars className="size-4 shrink-0" strokeWidth={2} />
             Male
           </button>
           <button
@@ -837,7 +835,7 @@ function PersonalStep({
                 : 'bg-white/5 text-[#999]',
             ].join(' ')}
           >
-            <Venus className="size-2.5 shrink-0" strokeWidth={2} />
+            <Venus className="size-4 shrink-0" strokeWidth={2} />
             Female
           </button>
         </div>
@@ -846,7 +844,7 @@ function PersonalStep({
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <span className="flex size-6 shrink-0 items-center justify-center text-[#999]">
-            <EmployeeIdIcon className="size-6" />
+            <EmployeeIdIcon className="size-5" />
           </span>
           <span className="text-[14px] font-medium text-[#999]">
             Employee ID
@@ -1246,7 +1244,7 @@ function ScheduleStep({
                 <span className="text-[#ff6b6b]"> * Field is required</span>
               ) : null}
             </h2>
-            <p className="pl-7 text-[10px] font-light text-[#ccc]">Collection window is of 1 hour</p>
+            <p className="text-[10px] font-light text-[#ccc]">Collection window is of 1 hour</p>
           </div>
         </div>
         <div className="grid w-full grid-cols-3 gap-2 px-1">

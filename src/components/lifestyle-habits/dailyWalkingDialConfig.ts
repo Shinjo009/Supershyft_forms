@@ -117,7 +117,7 @@ export const DAILY_WALKING_DIAL_CONFIG: RadialDialConfig<DailyWalkingOption> = {
     { id: '15-30m', label: '15-30 m', className: 'left-[229px] top-[87px]' },
     { id: '30-60m', label: '30-60 m', className: 'left-[191px] top-[186px]' },
     { id: '1-2h', label: '1-2 h', className: 'left-[31px] top-[179px]' },
-    { id: '2h-plus', label: '2h+', className: 'left-[10px] top-[62px]' },
+    { id: '2h-plus', label: '2h+', className: 'left-[-6px] top-[62px]' },
   ],
 }
 

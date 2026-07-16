@@ -63,8 +63,12 @@ export type WellnessPriorityRow = {
 
 export const LIFESTYLE_HABITS_TOTAL_QUESTIONS = 10
 
-export function lifestyleHabitsProgressPercent(questionIndex: number): number {
-  return Math.round(((questionIndex + 1) / LIFESTYLE_HABITS_TOTAL_QUESTIONS) * 100)
+export function lifestyleHabitsProgressPercent(
+  questionIndex: number,
+  isCurrentQuestionAnswered = false,
+): number {
+  const completed = questionIndex + (isCurrentQuestionAnswered ? 1 : 0)
+  return Math.round((completed / LIFESTYLE_HABITS_TOTAL_QUESTIONS) * 100)
 }
 
 export const LIFESTYLE_HABITS_NEXT_PREVIEWS: LifestyleQuestionPreview[] = [

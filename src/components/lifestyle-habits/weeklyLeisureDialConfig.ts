@@ -54,10 +54,10 @@ export const WEEKLY_LEISURE_DIAL_CONFIG: RadialDialConfig<WeeklyLeisureOption> =
     'rarely-never': 270,
   },
   pills: [
-    { id: 'rarely-never', label: 'Rarely or never', className: 'left-[-41px] top-[60px]' },
-    { id: 'under-1h', label: 'Less than 1 hour', className: 'left-[173px] top-0' },
-    { id: '1-3h', label: '1-3 hours', className: 'left-[225px] top-[135px]' },
-    { id: '4-8h', label: '4-8 hours', className: 'left-[55px] top-[208px]' },
+    { id: 'rarely-never', label: 'Rarely or never', labelLines: ['Rarely or', 'never'] },
+    { id: 'under-1h', label: 'Less than 1 hour' },
+    { id: '1-3h', label: '1-3 hours' },
+    { id: '4-8h', label: '4-8 hours' },
   ],
 }
 

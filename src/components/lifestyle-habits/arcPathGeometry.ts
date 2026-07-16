@@ -1,4 +1,5 @@
-import type { RadialDialArcLayout } from './radialDialShared'
+import type { RadialDialArcLayout, RadialDialConfig, RadialDialPillConfig } from './radialDialShared'
+import { RADIAL_PILL_ARC_GAP, getSlotArcLayout } from './radialDialShared'
 
 export function rotatePointAround(
   x: number,
@@ -181,5 +182,79 @@ export function arcPointerTouch(
   return {
     x: dialCenter + dirX * fallbackT,
     y: dialCenter + dirY * fallbackT,
+  }
+}
+
+/** Outermost point on the arc — farthest sampled point from dial center. */
+export function arcOuterEdgePoint(
+  arc: RadialDialArcLayout,
+  dialCenter: number,
+  _hubRadius: number,
+  rotation = 0,
+): { x: number; y: number; dirX: number; dirY: number } {
+  const points = sampleArcPathPoints(arc, dialCenter, rotation)
+  let farthest = points[0] ?? { x: dialCenter, y: dialCenter }
+  let maxDist = 0
+
+  for (const point of points) {
+    const dist = Math.hypot(point.x - dialCenter, point.y - dialCenter)
+    if (dist > maxDist) {
+      maxDist = dist
+      farthest = point
+    }
+  }
+
+  const dx = farthest.x - dialCenter
+  const dy = farthest.y - dialCenter
+  const dist = Math.hypot(dx, dy) || 1
+
+  return {
+    x: farthest.x,
+    y: farthest.y,
+    dirX: dx / dist,
+    dirY: dy / dist,
+  }
+}
+
+function estimatePillHalfWidth(pill: RadialDialPillConfig): number {
+  const label = pill.labelLines?.length
+    ? pill.labelLines.reduce((longest, line) => (line.length > longest.length ? line : longest), '')
+    : pill.label
+
+  return Math.max(28, label.length * 3.25 + 12)
+}
+
+function estimatePillHalfHeight(pill: RadialDialPillConfig): number {
+  return pill.labelLines?.length ? 20 : 16.5
+}
+
+/** Anchor point for a pill — consistent gap from arc outer edge in dial-local space. */
+export function computeRadialPillAnchor<T extends string>(
+  config: RadialDialConfig<T>,
+  optionId: T,
+): { left: number; top: number } | null {
+  const { slotSelection } = config
+  if (!slotSelection) {
+    return null
+  }
+
+  const slotId = slotSelection.optionSlots[optionId]
+  if (!slotId) {
+    return null
+  }
+
+  const pill = config.pills.find((entry) => entry.id === optionId)
+  const dialCenter = config.dialSize / 2
+  const { layout, rotation } = getSlotArcLayout(slotSelection, slotId)
+  const outer = arcOuterEdgePoint(layout, dialCenter, config.hubRadius, rotation)
+  const pillHalfWidth = pill ? estimatePillHalfWidth(pill) : 28
+  const pillHalfHeight = pill ? estimatePillHalfHeight(pill) : 16.5
+  const radialExtent =
+    Math.abs(outer.dirX) * pillHalfWidth + Math.abs(outer.dirY) * pillHalfHeight
+  const totalOffset = RADIAL_PILL_ARC_GAP + radialExtent
+
+  return {
+    left: config.dialOffsetX + outer.x + outer.dirX * totalOffset,
+    top: config.dialOffsetY + outer.y + outer.dirY * totalOffset,
   }
 }

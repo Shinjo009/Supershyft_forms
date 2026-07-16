@@ -76,8 +76,12 @@ export const NUTRITION_LOG_TOTAL_QUESTIONS = 15
 /** Last navigator step (Q8+Q9 share one step). */
 export const NUTRITION_LOG_LAST_STEP_INDEX = 13
 
-export function nutritionLogProgressPercent(questionIndex: number): number {
-  return Math.round(((questionIndex + 1) / NUTRITION_LOG_TOTAL_QUESTIONS) * 100)
+export function nutritionLogProgressPercent(
+  questionIndex: number,
+  isCurrentQuestionAnswered = false,
+): number {
+  const completed = questionIndex + (isCurrentQuestionAnswered ? 1 : 0)
+  return Math.round((completed / NUTRITION_LOG_TOTAL_QUESTIONS) * 100)
 }
 
 export const NUTRITION_LOG_NEXT_PREVIEWS: NutritionQuestionPreview[] = [

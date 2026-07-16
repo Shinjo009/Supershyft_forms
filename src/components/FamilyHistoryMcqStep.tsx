@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import coastalImg from '../assets/family-history/coastal.jpg'
 import inlandImg from '../assets/family-history/inland.jpg'
 import tickCircleIcon from '../assets/family-history/tick-circle-outline.svg'
@@ -98,11 +98,33 @@ export function FamilyHistoryMcqStep({
     onComplete?.()
   }
 
+  const isCurrentQuestionAnswered = useMemo(() => {
+    switch (questionIndex) {
+      case 0:
+        return locationAnswer !== null
+      case 1:
+        return relativeHealthConditions.length > 0
+      case 2:
+        return personalDiagnoses.length > 0
+      case 3:
+        return medicationSelections.length > 0
+      default:
+        return false
+    }
+  }, [
+    questionIndex,
+    locationAnswer,
+    relativeHealthConditions,
+    personalDiagnoses,
+    medicationSelections,
+  ])
+
   return (
     <FamilyHistoryMcqShell
       onBack={handleBack}
       onNext={handleNext}
-      progressPercent={familyHistoryProgressPercent(questionIndex)}
+      progressPercent={familyHistoryProgressPercent(questionIndex, isCurrentQuestionAnswered)}
+      isLastQuestion={questionIndex === FAMILY_HISTORY_TOTAL_QUESTIONS - 1}
       nextQuestionPreview={
         FAMILY_HISTORY_NEXT_PREVIEWS[questionIndex] ?? { line1: '', line2: '' }
       }
