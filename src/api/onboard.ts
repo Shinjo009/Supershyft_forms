@@ -1,3 +1,6 @@
+import { saveAuthTokens } from '../lib/authStorage'
+import { getBackendBaseUrl } from './http'
+
 export type OnboardUserForEngagementPayload = {
   age: number
   first_name: string
@@ -17,11 +20,17 @@ export type OnboardUserForEngagementPayload = {
   want_doctor_consultation: boolean
 }
 
+export type OnboardTokens = {
+  accessToken: string
+  refreshToken: string
+  tokenType?: string
+}
+
 export type OnboardResult = {
   message: string
   engagementCode: string
-  engagementId?: number
-  engagementParticipantId?: number
+  userId?: number
+  tokens: OnboardTokens
 }
 
 type ValidationErrorDetail = {
@@ -39,20 +48,15 @@ type ValidationErrorResponse = {
 type OnboardSuccessResponse = {
   data?: {
     user_id?: number
-    created?: boolean
-    engagement_id?: number
-    engagement_code?: string
-    engagement_participant_id?: number
+    tokens?: {
+      access_token?: string
+      refresh_token?: string
+      token_type?: string
+    }
   }
 }
 
-/** Legacy CBTW engagement — must never be used from the Celebal form. */
-const LEGACY_CBTW_ENGAGEMENT_CODES = new Set(['CBMU0626'])
-
-const DEFAULT_CELEBAL_ENGAGEMENT_CODE = {
-  male: 'CBJP0626',
-  female: 'CBJF0626',
-} as const
+const DEFAULT_ENGAGEMENT_CODE = 'SUMU0226'
 
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '')
@@ -65,73 +69,15 @@ function firstNonEmpty(...values: Array<string | undefined>): string {
   return ''
 }
 
-function assertCelebalEngagementCode(code: string, source: string): string {
-  const normalized = code.trim().toUpperCase()
-  if (LEGACY_CBTW_ENGAGEMENT_CODES.has(normalized)) {
-    throw new Error(
-      `${source} uses legacy CBTW engagement "${code}". Remove VITE_ENGAGEMENT_CODE / VITE_CBTW_ENGAGEMENT_CODE from .env and hosting, then restart the dev server.`,
-    )
-  }
-  return code.trim()
-}
-
-function warnIfLegacyEngagementEnvConfigured(): void {
-  const legacyEnvValues = [
-    ['VITE_ENGAGEMENT_CODE', import.meta.env.VITE_ENGAGEMENT_CODE],
-    ['VITE_CELEBAL_ENGAGEMENT_CODE', import.meta.env.VITE_CELEBAL_ENGAGEMENT_CODE],
-    ['VITE_CBTW_ENGAGEMENT_CODE', import.meta.env.VITE_CBTW_ENGAGEMENT_CODE],
-    ['ENGAGEMENT_CODE', import.meta.env.ENGAGEMENT_CODE],
-  ] as const
-
-  for (const [name, value] of legacyEnvValues) {
-    const trimmed = typeof value === 'string' ? value.trim() : ''
-    if (!trimmed) continue
-    const upper = trimmed.toUpperCase()
-    if (LEGACY_CBTW_ENGAGEMENT_CODES.has(upper)) {
-      console.warn(`[onboard] ${name}=${trimmed} points at legacy CBTW engagement and is ignored.`)
-    } else {
-      console.warn(
-        `[onboard] ${name} is set but ignored on Celebal form. Use VITE_CELEBAL_ENGAGEMENT_CODE_MALE / VITE_CELEBAL_ENGAGEMENT_CODE_FEMALE instead.`,
-      )
-    }
-  }
+function resolveEngagementCode(): string {
+  return firstNonEmpty(import.meta.env.VITE_ENGAGEMENT_CODE, DEFAULT_ENGAGEMENT_CODE)
 }
 
 function parseBookingGender(gender: string): 'male' | 'female' {
   const normalized = gender.trim().toLowerCase()
   if (normalized === 'male' || normalized === 'm') return 'male'
   if (normalized === 'female' || normalized === 'f') return 'female'
-  throw new Error('Celebal engagement code requires gender to be male or female.')
-}
-
-function resolveCelebalEngagementCodes(): { male: string; female: string } {
-  const male = assertCelebalEngagementCode(
-    firstNonEmpty(
-      import.meta.env.VITE_CELEBAL_ENGAGEMENT_CODE_MALE,
-      DEFAULT_CELEBAL_ENGAGEMENT_CODE.male,
-    ),
-    'Male engagement code',
-  )
-  const female = assertCelebalEngagementCode(
-    firstNonEmpty(
-      import.meta.env.VITE_CELEBAL_ENGAGEMENT_CODE_FEMALE,
-      DEFAULT_CELEBAL_ENGAGEMENT_CODE.female,
-    ),
-    'Female engagement code',
-  )
-
-  if (male.toUpperCase() === female.toUpperCase()) {
-    throw new Error(
-      `Male and female Celebal engagement codes must differ (both set to "${male}"). Fix VITE_CELEBAL_ENGAGEMENT_CODE_MALE and VITE_CELEBAL_ENGAGEMENT_CODE_FEMALE on hosting.`,
-    )
-  }
-
-  return { male, female }
-}
-
-function resolveCelebalEngagementCode(gender: 'male' | 'female'): string {
-  const codes = resolveCelebalEngagementCodes()
-  return gender === 'male' ? codes.male : codes.female
+  throw new Error('Gender is required and must be male or female.')
 }
 
 function parseValidationMessage(data: unknown): string | null {
@@ -146,61 +92,44 @@ function parseValidationMessage(data: unknown): string | null {
   return messages.length > 0 ? messages.join(', ') : null
 }
 
-function isTestParticipantEmployeeId(employeeId: string): boolean {
-  const normalized = employeeId.trim().toUpperCase()
-  return normalized === 'HRM000' || normalized.startsWith('HRM000-T-')
-}
-
-function parseOnboardSuccess(
-  data: unknown,
-  expectedEngagementCode: string,
-  participantsEmployeeId: string,
-): OnboardResult {
-  const expected = expectedEngagementCode.trim().toUpperCase()
-
+function parseOnboardSuccess(data: unknown, engagementCode: string): OnboardResult {
   if (!data || typeof data !== 'object') {
-    return { message: 'Booking confirmed', engagementCode: expectedEngagementCode }
+    throw new Error('Booking succeeded but response did not include auth tokens.')
   }
 
   const response = data as OnboardSuccessResponse
   const row = response.data
-  const apiCode = row?.engagement_code?.trim().toUpperCase()
+  const tokens = row?.tokens
+  const accessToken = tokens?.access_token?.trim() || ''
+  const refreshToken = tokens?.refresh_token?.trim() || ''
 
-  if (apiCode && apiCode !== expected) {
-    throw new Error(
-      `Booking was saved under engagement ${row?.engagement_code} instead of ${expectedEngagementCode}. Check VITE_CELEBAL_ENGAGEMENT_CODE_FEMALE / MALE on hosting.`,
-    )
-  }
-
-  if (row?.created === false && !isTestParticipantEmployeeId(participantsEmployeeId)) {
-    throw new Error(
-      `Booking was not created for engagement ${expectedEngagementCode}. The employee may already exist in this engagement.`,
-    )
+  if (!accessToken || !refreshToken) {
+    throw new Error('Booking succeeded but access_token / refresh_token were missing in the response.')
   }
 
   return {
     message: 'Booking confirmed',
-    engagementCode: row?.engagement_code?.trim() || expectedEngagementCode,
-    engagementId: row?.engagement_id,
-    engagementParticipantId: row?.engagement_participant_id,
+    engagementCode,
+    userId: row?.user_id,
+    tokens: {
+      accessToken,
+      refreshToken,
+      tokenType: tokens?.token_type?.trim() || 'bearer',
+    },
   }
+}
+
+export function saveOnboardTokens(tokens: OnboardTokens): void {
+  saveAuthTokens(tokens.accessToken, tokens.refreshToken)
 }
 
 export async function onboardUserForEngagement(
   payload: OnboardUserForEngagementPayload,
 ): Promise<OnboardResult> {
-  warnIfLegacyEngagementEnvConfigured()
-
-  const baseUrl = firstNonEmpty(
-    import.meta.env.VITE_BACKEND_BASE_URL,
-    import.meta.env.VITE_API_BASE_URL,
-    import.meta.env.VITE_BASE_URL,
-    import.meta.env.BACKEND_BASE_URL,
-    import.meta.env.API_BASE_URL,
-  )
+  const baseUrl = getBackendBaseUrl()
 
   const bookingGender = parseBookingGender(payload.gender)
-  const engagementCode = resolveCelebalEngagementCode(bookingGender)
+  const engagementCode = resolveEngagementCode()
   const apiPayload: OnboardUserForEngagementPayload = {
     ...payload,
     gender: bookingGender,
@@ -212,9 +141,9 @@ export async function onboardUserForEngagement(
     )
   }
 
-  const url = `${trimTrailingSlash(baseUrl)}/users/code/${encodeURIComponent(engagementCode)}/onboard`
+  const url = `${trimTrailingSlash(baseUrl)}/users/code/${encodeURIComponent(engagementCode)}/onboard/me`
 
-  console.info('[onboard] Celebal booking', {
+  console.info('[onboard] booking', {
     engagementCode,
     gender: apiPayload.gender,
     employeeId: apiPayload.participants_employee_id,
@@ -258,14 +187,16 @@ export async function onboardUserForEngagement(
       throw new Error(`${statusPrefix}: ${data}${traceSuffix}${endpointHint}`)
     }
 
-    throw new Error(`${statusPrefix}. Please check engagement code and request payload.${traceSuffix}${endpointHint}`)
+    throw new Error(
+      `${statusPrefix}. Please check engagement code and request payload.${traceSuffix}${endpointHint}`,
+    )
   }
 
-  if (typeof data === 'string') {
-    return { message: data.trim() || 'Booking confirmed', engagementCode }
-  }
-
-  const result = parseOnboardSuccess(data, engagementCode, apiPayload.participants_employee_id)
-  console.info('[onboard] Celebal booking saved', result)
+  const result = parseOnboardSuccess(data, engagementCode)
+  saveOnboardTokens(result.tokens)
+  console.info('[onboard] booking saved', {
+    engagementCode: result.engagementCode,
+    userId: result.userId,
+  })
   return result
 }

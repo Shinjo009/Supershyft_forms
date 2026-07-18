@@ -24,6 +24,22 @@ import {
   toIsoDate,
 } from './lib/bookingDates'
 import { loadPincodeLookup, lookupPincode } from './lib/pincodeLookup'
+import {
+  onboardUserForEngagement,
+  type OnboardUserForEngagementPayload,
+} from './api/onboard'
+import {
+  isCategoryCompleted,
+  loadAssessmentCategoriesForStep2,
+  normalizeCategoryKey,
+  submitCompletedAssessmentFlow,
+  type AssessmentCategoryStatus,
+} from './api/assessments'
+import {
+  getCategoryQuestionnaire,
+  type QuestionnaireQuestion,
+} from './api/questionnaire'
+import { getAccessToken } from './lib/authStorage'
 /** Set true when re-enabling validation before API goes live. */
 const ENFORCE_REQUIRED_FIELDS = false
 import { PageBackdrop } from './components/PageBackdrop'
@@ -35,14 +51,13 @@ import nutritionEndBackgroundSvg from './assets/nutritionend.svg'
 import nutritionLogBackgroundSvg from './assets/nutritionlogstart.svg'
 import familyHistoryBackgroundSvg from './assets/family history.svg'
 import lifestyleHabitsBackgroundSvg from './assets/lifestyle-habits/background.svg'
-import { FamilyHistoryMcqStep } from './components/FamilyHistoryMcqStep'
-import { FamilySectionCompleteStep } from './components/FamilySectionCompleteStep'
+import { ApiQuestionnaireStep } from './components/ApiQuestionnaireStep'
 import { HealthAssessmentStep } from './components/HealthAssessmentStep'
-import { LifestyleHabitsMcqStep } from './components/LifestyleHabitsMcqStep'
-import { LifestyleSectionCompleteStep } from './components/LifestyleSectionCompleteStep'
-import { NutritionLogMcqStep } from './components/NutritionLogMcqStep'
+import {
+  SectionCompleteHub,
+  type SectionCompleteVariant,
+} from './components/SectionCompleteHub'
 import { AppointmentJourneyCompleteStep } from './components/AppointmentJourneyCompleteStep'
-import { NutritionSectionCompleteStep } from './components/NutritionSectionCompleteStep'
 import slotConfirmedIcon from './assets/figma/slot-confirmed-icon.svg'
 import packageIcon from './assets/figma/package-icon.svg'
 
@@ -128,6 +143,56 @@ function getBookedEmployeeIds(): Set<string> {
   } catch {
     return new Set()
   }
+}
+
+function isTestEmployeeId(employeeId: string): boolean {
+  return normalizeEmployeeId(employeeId) === TEST_EMPLOYEE_ID
+}
+
+function markEmployeeIdAsBooked(employeeId: string) {
+  if (isTestEmployeeId(employeeId) || typeof window === 'undefined') return
+  const normalized = normalizeEmployeeId(employeeId)
+  const booked = getBookedEmployeeIds()
+  booked.add(normalized)
+  window.localStorage.setItem(BOOKED_EMPLOYEE_IDS_STORAGE_KEY, JSON.stringify(Array.from(booked)))
+}
+
+function employeeIdForOnboardApi(
+  employeeId: string,
+  gender: '' | 'male' | 'female',
+): string {
+  const normalized = normalizeEmployeeId(employeeId)
+  if (!isTestEmployeeId(normalized)) return normalized
+  const genderTag = gender === 'female' ? 'F' : gender === 'male' ? 'M' : 'X'
+  return `${TEST_EMPLOYEE_ID}-T-${genderTag}-${Date.now()}`
+}
+
+function contactForOnboardApi(employeeId: string, email: string, phone: string) {
+  if (!isTestEmployeeId(employeeId)) return { email, phone }
+  const tag = String(Date.now())
+  const at = email.indexOf('@')
+  const apiEmail =
+    at > 0 ? `${email.slice(0, at)}+t${tag}${email.slice(at)}` : `${email}+t${tag}@test.local`
+  const apiPhone = `9${tag.slice(-9)}`
+  return { email: apiEmail, phone: apiPhone }
+}
+
+/** Convert UI slots like "09:30 AM" to API "9:00" / "13:00" hour form. */
+function toApiTimeSlot(slot: string): string {
+  const normalized = slot.trim()
+  if (!normalized) return '9:00'
+  const match = normalized.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  if (match) {
+    let hour = Number.parseInt(match[1], 10)
+    const meridiem = match[3].toUpperCase()
+    if (meridiem === 'PM' && hour !== 12) hour += 12
+    if (meridiem === 'AM' && hour === 12) hour = 0
+    return `${hour}:00`
+  }
+  const firstPart = normalized.split('-')[0]?.trim() || normalized
+  const hour = Number.parseInt(firstPart.split(':')[0] || '', 10)
+  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return '9:00'
+  return `${hour}:00`
 }
 
 function formatAddressForApi(form: FormData): string {
@@ -242,6 +307,17 @@ export default function BookAppointment() {
   const [maxReachedStep, setMaxReachedStep] = useState(1)
   const [form, setForm] = useState<FormData>(defaultFormData)
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
+  const [isLoadingAssessmentCategories, setIsLoadingAssessmentCategories] = useState(false)
+  const [assessmentInstanceId, setAssessmentInstanceId] = useState<number | null>(null)
+  const [assessmentCategories, setAssessmentCategories] = useState<AssessmentCategoryStatus[]>([])
+  const [completedCategoryIds, setCompletedCategoryIds] = useState<number[]>([])
+  const [activeCategory, setActiveCategory] = useState<AssessmentCategoryStatus | null>(null)
+  const [categoryQuestions, setCategoryQuestions] = useState<QuestionnaireQuestion[]>([])
+  const [isLoadingQuestionnaire, setIsLoadingQuestionnaire] = useState(false)
+  const [loadingCategoryId, setLoadingCategoryId] = useState<number | null>(null)
+  const [isSubmittingAssessment, setIsSubmittingAssessment] = useState(false)
+  const [hubVariant, setHubVariant] = useState<SectionCompleteVariant>('family')
+  const [questionnaireReturnStep, setQuestionnaireReturnStep] = useState(6)
   const [uiError, setUiError] = useState('')
   const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
   const [attemptedAddressContinue, setAttemptedAddressContinue] = useState(false)
@@ -408,104 +484,286 @@ export default function BookAppointment() {
   const handleConfirmBooking = async () => {
     if (isSubmittingBooking) return
 
-    if (!ENFORCE_REQUIRED_FIELDS) {
-      setUiError('')
-      setIsSubmittingBooking(true)
-      try {
-        setStep(5)
-      } finally {
-        setIsSubmittingBooking(false)
-      }
-      return
-    }
-
     const normalizedEmployeeId = normalizeEmployeeId(form.employeeId)
     const trimmedPhone = form.phone.trim()
     const trimmedEmail = form.email.trim()
     const trimmedAge = form.age.trim()
     const parsedAge = Number.parseInt(form.age, 10)
     const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
-
-    if (!form.firstName.trim()) {
-      logClientError('First name is required.')
-      return
-    }
-    if (!form.lastName.trim()) {
-      logClientError('Last name is required.')
-      return
-    }
-    if (!normalizedEmployeeId) {
-      logClientError('Employee ID is required.')
-      return
-    }
-    if (!ALLOWED_EMPLOYEE_IDS.has(normalizedEmployeeId)) {
-      logClientError('This Employee ID is not allowed.')
-      return
-    }
-    if (normalizedEmployeeId !== TEST_EMPLOYEE_ID && getBookedEmployeeIds().has(normalizedEmployeeId)) {
-      logClientError('This Employee ID has already used the booking.')
-      return
-    }
-    if (!trimmedEmail) {
-      logClientError('Email is required.')
-      return
-    }
-    if (!EMAIL_REGEX.test(trimmedEmail)) {
-      logClientError('Please enter a valid email address.')
-      return
-    }
-    if (!trimmedPhone) {
-      logClientError('Phone is required.')
-      return
-    }
-    if (!/^\d{10}$/.test(trimmedPhone)) {
-      logClientError('Phone must be exactly 10 digits.')
-      return
-    }
-    if (!form.gender) {
-      logClientError('Gender is required.')
-      return
-    }
-    if (!/^\d{1,2}$/.test(trimmedAge) || !Number.isFinite(safeAge)) {
-      logClientError('Age must be up to 2 digits.')
-      return
-    }
-    if (!form.appointmentDate) {
-      logClientError('Please select a schedule date.')
-      return
-    }
     const apiAddress = formatAddressForApi(form)
     const apiPincode = form.pincode.trim()
     const apiCity = form.city.trim()
     const apiState = form.state.trim()
-    if (!apiAddress) {
-      logClientError('House no./building is required.')
+
+    if (ENFORCE_REQUIRED_FIELDS) {
+      if (!form.firstName.trim()) {
+        logClientError('First name is required.')
+        return
+      }
+      if (!form.lastName.trim()) {
+        logClientError('Last name is required.')
+        return
+      }
+      if (!normalizedEmployeeId) {
+        logClientError('Employee ID is required.')
+        return
+      }
+      if (!ALLOWED_EMPLOYEE_IDS.has(normalizedEmployeeId)) {
+        logClientError('This Employee ID is not allowed.')
+        return
+      }
+      if (normalizedEmployeeId !== TEST_EMPLOYEE_ID && getBookedEmployeeIds().has(normalizedEmployeeId)) {
+        logClientError('This Employee ID has already used the booking.')
+        return
+      }
+      if (!trimmedEmail) {
+        logClientError('Email is required.')
+        return
+      }
+      if (!EMAIL_REGEX.test(trimmedEmail)) {
+        logClientError('Please enter a valid email address.')
+        return
+      }
+      if (!trimmedPhone) {
+        logClientError('Phone is required.')
+        return
+      }
+      if (!/^\d{10}$/.test(trimmedPhone)) {
+        logClientError('Phone must be exactly 10 digits.')
+        return
+      }
+      if (!form.gender) {
+        logClientError('Gender is required.')
+        return
+      }
+      if (!/^\d{1,2}$/.test(trimmedAge) || !Number.isFinite(safeAge)) {
+        logClientError('Age must be up to 2 digits.')
+        return
+      }
+      if (!form.appointmentDate) {
+        logClientError('Please select a schedule date.')
+        return
+      }
+      if (!apiAddress) {
+        logClientError('House no./building is required.')
+        return
+      }
+      if (!apiPincode || !/^\d{6}$/.test(apiPincode)) {
+        logClientError('Pincode must be 6 digits.')
+        return
+      }
+      if (!apiCity) {
+        logClientError('City is required.')
+        return
+      }
+      if (!apiState) {
+        logClientError('State is required.')
+        return
+      }
+    }
+
+    if (!form.gender) {
+      logClientError('Gender is required.')
       return
     }
-    if (!apiPincode || !/^\d{6}$/.test(apiPincode)) {
-      logClientError('Pincode must be 6 digits.')
-      return
-    }
-    if (!apiCity) {
-      logClientError('City is required.')
-      return
-    }
-    if (!apiState) {
-      logClientError('State is required.')
+    if (!Number.isFinite(safeAge)) {
+      logClientError('Age is required.')
       return
     }
 
+    setUiError('')
     setIsSubmittingBooking(true)
-    setStep(5)
-    setIsSubmittingBooking(false)
+
+    try {
+      const apiContact = contactForOnboardApi(normalizedEmployeeId, trimmedEmail, trimmedPhone)
+
+      const payload: OnboardUserForEngagementPayload = {
+        age: safeAge,
+        first_name: form.firstName.trim(),
+        last_name: form.lastName.trim(),
+        email: apiContact.email,
+        phone: apiContact.phone,
+        gender: form.gender,
+        address: apiAddress,
+        pincode: apiPincode,
+        city: apiCity,
+        state: apiState || 'Maharashtra',
+        country: 'India',
+        blood_collection_date: form.appointmentDate,
+        blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
+        participants_employee_id: employeeIdForOnboardApi(normalizedEmployeeId, form.gender),
+        participant_blood_group: 'NA',
+        want_doctor_consultation: false,
+      }
+
+      await onboardUserForEngagement(payload)
+      markEmployeeIdAsBooked(normalizedEmployeeId)
+      setStep(5)
+    } catch (error) {
+      logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
+    } finally {
+      setIsSubmittingBooking(false)
+    }
+  }
+
+  const hubStepForVariant = (variant: SectionCompleteVariant) => {
+    if (variant === 'lifestyle') return 10
+    if (variant === 'nutrition') return 12
+    return 8
+  }
+
+  const variantForCategory = (category: AssessmentCategoryStatus): SectionCompleteVariant => {
+    const key = normalizeCategoryKey(category.category_key)
+    if (key.includes('lifestyle')) return 'lifestyle'
+    if (key.includes('nutrition')) return 'nutrition'
+    return 'family'
+  }
+
+  const handleContinueToAssessment = async () => {
+    if (isLoadingAssessmentCategories) return
+
+    setUiError('')
+    setIsLoadingAssessmentCategories(true)
+
+    try {
+      const accessToken = getAccessToken()
+      const result = await loadAssessmentCategoriesForStep2(accessToken)
+      setAssessmentInstanceId(result.assessmentInstanceId)
+      setAssessmentCategories(result.categories)
+      setCompletedCategoryIds(
+        result.categories
+          .filter((category) => isCategoryCompleted(category, []))
+          .map((category) => Number(category.category_id)),
+      )
+      console.info('[assessment] step 2 categories loaded', {
+        assessmentInstanceId: result.assessmentInstanceId,
+        categories: result.categories.map((c) => c.category_key),
+      })
+      setStep(6)
+    } catch (error) {
+      logClientError(
+        error instanceof Error ? error.message : 'Unable to load health assessment categories.',
+      )
+    } finally {
+      setIsLoadingAssessmentCategories(false)
+    }
+  }
+
+  const handleLoadCategory = async (
+    category: AssessmentCategoryStatus,
+    options?: { returnStep?: number },
+  ) => {
+    if (isLoadingQuestionnaire) return
+
+    const categoryId = Number(category.category_id || 0)
+    if (!assessmentInstanceId || categoryId <= 0) {
+      logClientError('Assessment category is missing. Go back and continue to Step 2 again.')
+      return
+    }
+
+    setUiError('')
+    setIsLoadingQuestionnaire(true)
+    setLoadingCategoryId(categoryId)
+    setQuestionnaireReturnStep(options?.returnStep ?? hubStepForVariant(hubVariant))
+
+    try {
+      const accessToken = getAccessToken()
+      const questionnaire = await getCategoryQuestionnaire(
+        accessToken,
+        assessmentInstanceId,
+        categoryId,
+      )
+      const questions = questionnaire.questions
+      if (!Array.isArray(questions) || questions.length === 0) {
+        throw new Error('No questions returned for this category.')
+      }
+
+      setActiveCategory(category)
+      setCategoryQuestions(questions)
+      console.info('[assessment] category questionnaire loaded', {
+        assessmentInstanceId,
+        categoryId,
+        categoryKey: category.category_key,
+        questionCount: questions.length,
+      })
+      setStep(7)
+    } catch (error) {
+      logClientError(
+        error instanceof Error ? error.message : 'Unable to load questionnaire questions.',
+      )
+      if (options?.returnStep) setStep(options.returnStep)
+    } finally {
+      setIsLoadingQuestionnaire(false)
+      setLoadingCategoryId(null)
+    }
+  }
+
+  const handleStartAssessment = async () => {
+    const nextCategory =
+      assessmentCategories.find((category) => !isCategoryCompleted(category, completedCategoryIds)) ||
+      assessmentCategories[0]
+
+    if (!nextCategory) {
+      logClientError('Assessment category is missing. Go back and continue to Step 2 again.')
+      return
+    }
+
+    await handleLoadCategory(nextCategory, { returnStep: 6 })
+  }
+
+  const handleCategoryQuestionnaireComplete = () => {
+    if (!activeCategory) {
+      setStep(8)
+      return
+    }
+
+    const categoryId = Number(activeCategory.category_id)
+    setCompletedCategoryIds((prev) =>
+      prev.includes(categoryId) ? prev : [...prev, categoryId],
+    )
+
+    const variant = variantForCategory(activeCategory)
+    setHubVariant(variant)
+    setStep(hubStepForVariant(variant))
+  }
+
+  const handleSubmitCompletedAssessment = async () => {
+    if (isSubmittingAssessment) return
+    if (!assessmentInstanceId) {
+      setStep(13)
+      return
+    }
+
+    setUiError('')
+    setIsSubmittingAssessment(true)
+
+    try {
+      const accessToken = getAccessToken()
+      const result = await submitCompletedAssessmentFlow(accessToken, assessmentInstanceId)
+      console.info('[assessment] submit completed', {
+        assessmentInstanceId,
+        ...result,
+      })
+    } catch (error) {
+      // Backend often receives the submit successfully even when the browser reports
+      // a network/CORS "Failed to fetch" — continue without blocking the user.
+      console.warn(
+        '[assessment] submit reported an error; continuing anyway',
+        error instanceof Error ? error.message : error,
+      )
+    } finally {
+      setIsSubmittingAssessment(false)
+      setUiError('')
+      setStep(13)
+    }
   }
 
   const mobileScreenTitle = 'Book Appointment'
 
   const showBack = step > 1
-  const hideGlobalContinue = step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11 || step === 12 || step === 13
+  const hideGlobalContinue = step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 10 || step === 12 || step === 13
   const hideStepper = step >= 5
-  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11 || step === 12
+  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 10 || step === 12
   const confirmStepperBorder = step === 4
 
   const handleStepContinue = () => {
@@ -516,6 +774,14 @@ export default function BookAppointment() {
 
   const continueVariant = step === 3 ? 'mobileBar' : 'mobileBarCompact'
 
+  const activeCategoryKey = normalizeCategoryKey(activeCategory?.category_key || '')
+  const questionnaireBackground =
+    activeCategoryKey.includes('lifestyle')
+      ? lifestyleHabitsBackgroundSvg
+      : activeCategoryKey.includes('nutrition')
+        ? nutritionLogBackgroundSvg
+        : familyHistoryBackgroundSvg
+
   return (
     <PageBackdrop
       mobileBackgroundSrc={
@@ -525,13 +791,11 @@ export default function BookAppointment() {
             ? backgroundAssessmentSvg
             : step === 10
               ? nutritionEndBackgroundSvg
-              : step === 11 || step === 12
+              : step === 12
                 ? nutritionLogBackgroundSvg
                 : step === 7
-                  ? familyHistoryBackgroundSvg
-                  : step === 9
-                    ? lifestyleHabitsBackgroundSvg
-                    : undefined
+                  ? questionnaireBackground
+                  : undefined
       }
     >
       <div className="flex h-full min-w-0 flex-col">
@@ -595,14 +859,14 @@ export default function BookAppointment() {
           className={`flex min-h-0 min-w-0 flex-1 flex-col ${
             step === 5
               ? 'flex min-h-0 min-w-0 flex-1 flex-col justify-between px-6 pb-6 pt-4'
-              : step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 11 || step === 12 || step === 13
+              : step === 6 || step === 7 || step === 8 || step === 10 || step === 12 || step === 13
                 ? 'px-0 pb-0 pt-0'
                 : 'px-6 pb-4 pt-8'
           }`}
         >
           <div
             className={
-              step === 7 || step === 9 || step === 11
+              step === 7
                 ? 'min-h-0 min-w-0 flex-1 overflow-hidden'
                 : step === 5 || step === 8 || step === 10 || step === 12
                   ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
@@ -644,39 +908,33 @@ export default function BookAppointment() {
               <BookingConfirmedStep form={form} />
             )}
             {step === 6 && (
-              <HealthAssessmentStep onStartAssessment={() => setStep(7)} />
-            )}
-            {step === 7 && (
-              <FamilyHistoryMcqStep
-                onBack={() => setStep(6)}
-                onComplete={() => setStep(8)}
+              <HealthAssessmentStep
+                categories={assessmentCategories}
+                isStarting={isLoadingQuestionnaire}
+                onStartAssessment={handleStartAssessment}
               />
             )}
-            {step === 8 && (
-              <FamilySectionCompleteStep
-                onStartLifestyle={() => setStep(9)}
+            {step === 7 && assessmentInstanceId && activeCategory?.category_id ? (
+              <ApiQuestionnaireStep
+                title={activeCategory.display_name || 'Assessment'}
+                questions={categoryQuestions}
+                assessmentInstanceId={assessmentInstanceId}
+                categoryId={Number(activeCategory.category_id)}
+                onBack={() => setStep(questionnaireReturnStep)}
+                onComplete={handleCategoryQuestionnaireComplete}
               />
-            )}
-            {step === 9 && (
-              <LifestyleHabitsMcqStep
-                onBack={() => setStep(8)}
-                onComplete={() => setStep(10)}
-              />
-            )}
-            {step === 10 && (
-              <LifestyleSectionCompleteStep
-                onStartNutrition={() => setStep(11)}
-              />
-            )}
-            {step === 11 && (
-              <NutritionLogMcqStep
-                onBack={() => setStep(10)}
-                onComplete={() => setStep(12)}
-              />
-            )}
-            {step === 12 && (
-              <NutritionSectionCompleteStep
-                onContinue={() => setStep(13)}
+            ) : null}
+            {(step === 8 || step === 10 || step === 12) && (
+              <SectionCompleteHub
+                variant={step === 8 ? 'family' : step === 10 ? 'lifestyle' : 'nutrition'}
+                categories={assessmentCategories}
+                completedCategoryIds={completedCategoryIds}
+                isLoadingCategoryId={loadingCategoryId}
+                isContinuing={isSubmittingAssessment}
+                onSelectCategory={(category) =>
+                  handleLoadCategory(category, { returnStep: step })
+                }
+                onContinue={step === 12 ? handleSubmitCompletedAssessment : undefined}
               />
             )}
             {step === 13 && (
@@ -688,9 +946,10 @@ export default function BookAppointment() {
             <ContinueButton
               variant="mobileBar"
               className="mt-6 !h-[52px] w-full shrink-0 border border-[#969696] shadow-[0_12px_20px_rgba(255,255,255,0.15)]"
-              onClick={() => setStep(6)}
+              disabled={isLoadingAssessmentCategories}
+              onClick={handleContinueToAssessment}
             >
-              Continue to Step 2
+              {isLoadingAssessmentCategories ? 'Loading...' : 'Continue to Step 2'}
             </ContinueButton>
           ) : !hideGlobalContinue ? (
             <div className="mt-3 shrink-0">

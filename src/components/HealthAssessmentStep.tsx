@@ -3,26 +3,10 @@ import { ASSESSMENT_CARD_STACK_CLASS, ASSESSMENT_SUBTITLE_CLASS } from './mcq/mc
 import assessmentRadioImg from '../assets/Ellipse 13077.svg'
 import hourglassIcon from '../assets/Group.svg'
 import heartRateIcon from '../assets/figma/heart-rate-assessment.svg'
-
-const ASSESSMENT_SECTIONS = [
-  {
-    id: 'family',
-    title: 'Family History',
-    description:
-      "Knowing your family's health patterns helps us predict risks more accurately.",
-    featured: true,
-  },
-  {
-    id: 'lifestyle',
-    title: 'Lifestyle & Habits',
-    featured: false,
-  },
-  {
-    id: 'nutrition',
-    title: 'Nutrition Log',
-    featured: false,
-  },
-] as const
+import {
+  categoryDescriptionForKey,
+  type AssessmentCategoryStatus,
+} from '../api/assessments'
 
 function AssessmentCard({
   title,
@@ -59,10 +43,24 @@ function AssessmentCard({
 
 /** Figma node 6120:15078 — Health Assessment intro (without coins) */
 export function HealthAssessmentStep({
+  categories,
   onStartAssessment,
+  isStarting = false,
 }: {
+  categories: AssessmentCategoryStatus[]
   onStartAssessment?: () => void
+  isStarting?: boolean
 }) {
+  const sections = categories.map((category, index) => {
+    const key = String(category.category_key || '').trim().toLowerCase()
+    return {
+      id: String(category.id || category.category_id || key || index),
+      title: category.display_name || category.category_key || 'Assessment',
+      description: categoryDescriptionForKey(key),
+      featured: index === 0,
+    }
+  })
+
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col">
       <div className="h-[74px] shrink-0" aria-hidden />
@@ -89,11 +87,11 @@ export function HealthAssessmentStep({
         </div>
 
         <div className={ASSESSMENT_CARD_STACK_CLASS}>
-          {ASSESSMENT_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <AssessmentCard
               key={section.id}
               title={section.title}
-              description={'description' in section ? section.description : undefined}
+              description={section.featured ? section.description : undefined}
               featured={section.featured}
             />
           ))}
@@ -103,9 +101,10 @@ export function HealthAssessmentStep({
           variant="mobileBar"
           className="mt-auto !h-[52px] w-full border border-[#969696] shadow-[0_12px_20px_rgba(255,255,255,0.15)] lg:mx-auto lg:max-w-[400px]"
           showChevron={false}
+          disabled={isStarting || categories.length === 0}
           onClick={onStartAssessment}
         >
-          Start assessment
+          {isStarting ? 'Loading...' : 'Start assessment'}
         </ContinueButton>
       </div>
     </div>
