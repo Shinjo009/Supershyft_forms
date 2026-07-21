@@ -1,3 +1,4 @@
+import { isFrontendOnly } from '../lib/frontendOnly'
 import { authorizedGet, authorizedPut } from './http'
 
 export type QuestionnaireOption = {
@@ -191,6 +192,15 @@ export async function submitQuestionnaireResponses(
   responses: QuestionnaireResponseItem[],
 ): Promise<unknown> {
   if (!Array.isArray(responses) || responses.length === 0) {
+    return null
+  }
+
+  if (isFrontendOnly()) {
+    console.info('[frontend-only] skipped questionnaire submit', {
+      assessmentInstanceId,
+      categoryId,
+      responseCount: responses.length,
+    })
     return null
   }
 

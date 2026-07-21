@@ -40,6 +40,8 @@ import {
   type QuestionnaireQuestion,
 } from './api/questionnaire'
 import { getAccessToken } from './lib/authStorage'
+import { isFrontendOnly } from './lib/frontendOnly'
+import { getMockQuestionnaireQuestions } from './data/mockApiQuestionnaires'
 /** Set true when re-enabling validation before API goes live. */
 const ENFORCE_REQUIRED_FIELDS = false
 import { PageBackdrop } from './components/PageBackdrop'
@@ -562,13 +564,15 @@ export default function BookAppointment() {
       }
     }
 
-    if (!form.gender) {
-      logClientError('Gender is required.')
-      return
-    }
-    if (!Number.isFinite(safeAge)) {
-      logClientError('Age is required.')
-      return
+    if (!isFrontendOnly()) {
+      if (!form.gender) {
+        logClientError('Gender is required.')
+        return
+      }
+      if (!Number.isFinite(safeAge)) {
+        logClientError('Age is required.')
+        return
+      }
     }
 
     setUiError('')
@@ -576,14 +580,16 @@ export default function BookAppointment() {
 
     try {
       const apiContact = contactForOnboardApi(normalizedEmployeeId, trimmedEmail, trimmedPhone)
+      const confirmGender = form.gender || 'male'
+      const confirmAge = Number.isFinite(safeAge) ? safeAge : 25
 
       const payload: OnboardUserForEngagementPayload = {
-        age: safeAge,
+        age: confirmAge,
         first_name: form.firstName.trim(),
         last_name: form.lastName.trim(),
         email: apiContact.email,
         phone: apiContact.phone,
-        gender: form.gender,
+        gender: confirmGender,
         address: apiAddress,
         pincode: apiPincode,
         city: apiCity,
@@ -591,7 +597,7 @@ export default function BookAppointment() {
         country: 'India',
         blood_collection_date: form.appointmentDate,
         blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
-        participants_employee_id: employeeIdForOnboardApi(normalizedEmployeeId, form.gender),
+        participants_employee_id: employeeIdForOnboardApi(normalizedEmployeeId, confirmGender),
         participant_blood_group: 'NA',
         want_doctor_consultation: false,
       }
@@ -667,6 +673,23 @@ export default function BookAppointment() {
     setQuestionnaireReturnStep(options?.returnStep ?? hubStepForVariant(hubVariant))
 
     try {
+      // Frontend-only: use API-shaped mock questions so we can redesign layouts one-by-one.
+      if (isFrontendOnly()) {
+        const questions = getMockQuestionnaireQuestions(category.category_key)
+        if (questions.length === 0) {
+          throw new Error('No mock questions available for this category yet.')
+        }
+        setActiveCategory(category)
+        setCategoryQuestions(questions)
+        console.info('[frontend-only] opening API-shaped questionnaire', {
+          categoryId,
+          categoryKey: category.category_key,
+          questionCount: questions.length,
+        })
+        setStep(7)
+        return
+      }
+
       const accessToken = getAccessToken()
       const questionnaire = await getCategoryQuestionnaire(
         accessToken,
@@ -914,12 +937,19 @@ export default function BookAppointment() {
                 onStartAssessment={handleStartAssessment}
               />
             )}
-            {step === 7 && assessmentInstanceId && activeCategory?.category_id ? (
+            {step === 7 && activeCategory && categoryQuestions.length > 0 ? (
               <ApiQuestionnaireStep
                 title={activeCategory.display_name || 'Assessment'}
                 questions={categoryQuestions}
-                assessmentInstanceId={assessmentInstanceId}
+                assessmentInstanceId={assessmentInstanceId ?? 1}
                 categoryId={Number(activeCategory.category_id)}
+                theme={
+                  normalizeCategoryKey(activeCategory.category_key).includes('lifestyle')
+                    ? 'lifestyle'
+                    : normalizeCategoryKey(activeCategory.category_key).includes('nutrition')
+                      ? 'nutrition'
+                      : 'family'
+                }
                 onBack={() => setStep(questionnaireReturnStep)}
                 onComplete={handleCategoryQuestionnaireComplete}
               />
@@ -965,7 +995,7 @@ export default function BookAppointment() {
 }
 
 const mobileFieldInput =
-  'booking-field-input h-10 w-full rounded-[8px] border-0 bg-white/5 px-4 text-[14px] font-normal outline-none focus:ring-1 focus:ring-[#4b8d83]'
+  'booking-field-input h-10 w-full rounded-[8px] border border-transparent bg-white/5 px-4 text-[14px] font-normal outline-none focus:border-[#4b8d83]'
 
 function PersonalStep({
   form,

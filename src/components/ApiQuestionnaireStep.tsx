@@ -13,10 +13,19 @@ import {
 } from '../api/questionnaire'
 import { getAccessToken } from '../lib/authStorage'
 import {
+  isFamilyHistoryLocationQuestion,
+  isLifestyleSitDurationQuestion,
+  isNutritionDietTypeQuestion,
+} from '../lib/apiQuestionLayouts'
+import {
   filterVisibleQuestions,
   seedAnswersFromQuestions,
   type AnswerValue,
 } from '../lib/questionnaireVisibility'
+import { FamilyHistoryLocationOptions } from './family-history/FamilyHistoryLocationOptions'
+import { LifestyleSitDurationQuestion } from './lifestyle-habits/LifestyleSitDurationQuestion'
+import { NutritionDietTypeQuestion } from './nutrition-log/NutritionDietTypeQuestion'
+import { NUTRITION_NEXT_BUTTON_GRADIENT, NUTRITION_PILL_GRADIENT } from './nutrition-log/nutritionLogConfig'
 import {
   formatNextQuestionPreview,
   MCQ_PILL_BORDER_IDLE,
@@ -29,11 +38,43 @@ import {
 } from './mcq/mcqLayout'
 import { McqProgressBar } from './mcq/McqProgressBar'
 
-const NEXT_BUTTON_GRADIENT =
+const FAMILY_NEXT_BUTTON_GRADIENT =
   "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 50 50' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.3'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(2.5 0 0 2.5 25 25)'><stop stop-color='rgba(164,86,234,1)' offset='0'/><stop stop-color='rgba(134,69,194,1)' offset='0.25'/><stop stop-color='rgba(103,52,153,1)' offset='0.5'/><stop stop-color='rgba(73,35,113,1)' offset='0.75'/><stop stop-color='rgba(42,18,72,1)' offset='1'/></radialGradient></defs></svg>\")"
 
-const CHIP_SELECTED_GRADIENT =
+const LIFESTYLE_NEXT_BUTTON_GRADIENT =
+  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 50 50' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.3'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(2.5 0 0 2.5 25 25)'><stop stop-color='rgba(255,136,0,1)' offset='0'/><stop stop-color='rgba(233,93,92,1)' offset='1'/></radialGradient></defs></svg>\")"
+
+const FAMILY_CHIP_SELECTED_GRADIENT =
   "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 155 36' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.35'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(7.75 0 0 1.8 77.5 18)'><stop stop-color='rgba(164,86,234,1)' offset='0'/><stop stop-color='rgba(134,69,194,1)' offset='0.25'/><stop stop-color='rgba(103,52,153,1)' offset='0.5'/><stop stop-color='rgba(73,35,113,1)' offset='0.75'/><stop stop-color='rgba(42,18,72,1)' offset='1'/></radialGradient></defs></svg>\")"
+
+const LIFESTYLE_CHIP_SELECTED_GRADIENT =
+  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 155 36' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.35'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(7.75 0 0 1.8 77.5 18)'><stop stop-color='rgba(255,136,0,1)' offset='0.46635'/><stop stop-color='rgba(233,93,92,0.5)' offset='1'/></radialGradient></defs></svg>\")"
+
+type QuestionnaireTheme = 'family' | 'lifestyle' | 'nutrition'
+
+const THEME_PROGRESS_COLOR: Record<QuestionnaireTheme, string> = {
+  family: '#9D50BB',
+  lifestyle: '#FF8800',
+  nutrition: '#3F9CFF',
+}
+
+const THEME_NEXT_GRADIENT: Record<QuestionnaireTheme, string> = {
+  family: FAMILY_NEXT_BUTTON_GRADIENT,
+  lifestyle: LIFESTYLE_NEXT_BUTTON_GRADIENT,
+  nutrition: NUTRITION_NEXT_BUTTON_GRADIENT,
+}
+
+const THEME_CHIP_GRADIENT: Record<QuestionnaireTheme, string> = {
+  family: FAMILY_CHIP_SELECTED_GRADIENT,
+  lifestyle: LIFESTYLE_CHIP_SELECTED_GRADIENT,
+  nutrition: NUTRITION_PILL_GRADIENT,
+}
+
+const THEME_NEXT_SHADOW: Record<QuestionnaireTheme, string> = {
+  family: 'shadow-[0_8px_32px_0_rgba(164,86,234,0.25)]',
+  lifestyle: 'shadow-[0_8px_32px_0_rgba(255,136,0,0.25)]',
+  nutrition: 'shadow-[0_8px_32px_0_rgba(79,172,254,0.2)]',
+}
 
 function progressPercent(index: number, total: number, answered: boolean): number {
   if (total <= 0) return 0
@@ -72,6 +113,7 @@ export function ApiQuestionnaireStep({
   questions,
   assessmentInstanceId,
   categoryId,
+  theme = 'family',
   onBack,
   onComplete,
 }: {
@@ -79,6 +121,7 @@ export function ApiQuestionnaireStep({
   questions: QuestionnaireQuestion[]
   assessmentInstanceId: number
   categoryId: number
+  theme?: QuestionnaireTheme
   onBack?: () => void
   onComplete?: (answers: Record<number, AnswerValue>) => void
 }) {
@@ -199,6 +242,13 @@ export function ApiQuestionnaireStep({
     isSingleChoiceType(question.question_type) ||
     (options.length > 0 && !multi && !isTextType(question.question_type))
   const text = isTextType(question.question_type) || (!single && !multi && options.length === 0)
+  const useLocationLayout = isFamilyHistoryLocationQuestion(question)
+  const useSitDurationLayout = isLifestyleSitDurationQuestion(question)
+  const useDietTypeLayout = isNutritionDietTypeQuestion(question)
+  const progressColor = THEME_PROGRESS_COLOR[theme]
+  const nextGradient = THEME_NEXT_GRADIENT[theme]
+  const chipGradient = THEME_CHIP_GRADIENT[theme]
+  const nextShadow = THEME_NEXT_SHADOW[theme]
 
   const selectedValues = Array.isArray(answer)
     ? answer.map(String)
@@ -229,83 +279,138 @@ export function ApiQuestionnaireStep({
             {percent}% COMPLETED
           </p>
         </div>
-        <McqProgressBar percent={percent} color="#9D50BB" />
+        <McqProgressBar percent={percent} color={progressColor} />
       </div>
 
       <div className={MCQ_SHELL_SCROLL_CLASS}>
         <div className="flex flex-col gap-5 pb-4 pt-2">
-          <div>
-            <h2 className="text-[16px] font-semibold leading-6 tracking-[0.2px] text-white">
-              {question.question_text}
-            </h2>
-            {question.help_text ? <p className={MCQ_QUESTION_HINT_CLASS}>{question.help_text}</p> : null}
-            {question.is_required === false ? (
-              <p className={MCQ_QUESTION_HINT_CLASS}>Optional</p>
-            ) : null}
-          </div>
-
           {saveError ? (
             <div className="rounded-lg border border-[#ff6b6b]/40 bg-[#ff6b6b]/10 px-3 py-2 text-sm text-[#ffd1d1]">
               {saveError}
             </div>
           ) : null}
 
-          {single || multi ? (
-            <div className="flex flex-wrap gap-2.5">
-              {options.map((option) => {
-                const value = getOptionValue(option)
-                const label = getOptionLabel(option) || value
-                if (!value && !label) return null
-                const selected = selectedValues.includes(value)
-                return (
-                  <button
-                    key={`${question.question_id}-${value}`}
-                    type="button"
-                    disabled={question.is_read_only || isSaving}
-                    onClick={() => {
-                      setSaveError('')
-                      if (multi) {
-                        setAnswers((prev) => ({
-                          ...prev,
-                          [question.question_id]: toggleMulti(selectedValues, value),
-                        }))
-                        return
-                      }
-                      setAnswers((prev) => ({
-                        ...prev,
-                        [question.question_id]: value,
-                      }))
-                    }}
-                    className={`${MCQ_PILL_CHIP_CLASS} rounded-full border px-3 py-2 text-left text-[12px] font-medium leading-4 text-white transition disabled:opacity-60`}
-                    style={{
-                      borderColor: selected ? MCQ_PILL_BORDER_SELECTED : MCQ_PILL_BORDER_IDLE,
-                      backgroundImage: selected ? CHIP_SELECTED_GRADIENT : undefined,
-                      backgroundColor: selected ? undefined : 'rgba(255,255,255,0.05)',
-                    }}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
-            </div>
-          ) : null}
-
-          {text ? (
-            <textarea
-              value={typeof answer === 'string' || typeof answer === 'number' ? String(answer) : ''}
-              disabled={question.is_read_only || isSaving}
-              onChange={(event) => {
+          {useLocationLayout ? (
+            <FamilyHistoryLocationOptions
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              disabled={Boolean(question.is_read_only) || isSaving}
+              onInfoClick={() => undefined}
+              onSelect={(value) => {
                 setSaveError('')
                 setAnswers((prev) => ({
                   ...prev,
-                  [question.question_id]: event.target.value,
+                  [question.question_id]: value,
                 }))
               }}
-              rows={4}
-              placeholder="Type your answer"
-              className="w-full resize-none rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-[14px] text-white outline-none placeholder:text-white/35 focus:ring-1 focus:ring-[#9D50BB] disabled:opacity-60"
             />
-          ) : null}
+          ) : useSitDurationLayout ? (
+            <LifestyleSitDurationQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              onInfoClick={() => undefined}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useDietTypeLayout ? (
+            <NutritionDietTypeQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              disabled={Boolean(question.is_read_only) || isSaving}
+              onInfoClick={() => undefined}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : (
+            <>
+              <div>
+                <h2 className="text-[16px] font-semibold leading-6 tracking-[0.2px] text-white">
+                  {question.question_text}
+                </h2>
+                {question.help_text ? (
+                  <p className={MCQ_QUESTION_HINT_CLASS}>{question.help_text}</p>
+                ) : null}
+                {question.is_required === false ? (
+                  <p className={MCQ_QUESTION_HINT_CLASS}>Optional</p>
+                ) : null}
+              </div>
+
+              {single || multi ? (
+                <div className="flex flex-wrap gap-2.5">
+                  {options.map((option) => {
+                    const value = getOptionValue(option)
+                    const label = getOptionLabel(option) || value
+                    if (!value && !label) return null
+                    const selected = selectedValues.includes(value)
+                    return (
+                      <button
+                        key={`${question.question_id}-${value}`}
+                        type="button"
+                        disabled={question.is_read_only || isSaving}
+                        onClick={() => {
+                          setSaveError('')
+                          if (multi) {
+                            setAnswers((prev) => ({
+                              ...prev,
+                              [question.question_id]: toggleMulti(selectedValues, value),
+                            }))
+                            return
+                          }
+                          setAnswers((prev) => ({
+                            ...prev,
+                            [question.question_id]: value,
+                          }))
+                        }}
+                        className={`${MCQ_PILL_CHIP_CLASS} rounded-full border px-3 py-2 text-left text-[12px] font-medium leading-4 text-white transition disabled:opacity-60`}
+                        style={{
+                          borderColor: selected ? MCQ_PILL_BORDER_SELECTED : MCQ_PILL_BORDER_IDLE,
+                          backgroundImage: selected ? chipGradient : undefined,
+                          backgroundColor: selected ? undefined : 'rgba(255,255,255,0.05)',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : null}
+
+              {text ? (
+                <textarea
+                  value={
+                    typeof answer === 'string' || typeof answer === 'number' ? String(answer) : ''
+                  }
+                  disabled={question.is_read_only || isSaving}
+                  onChange={(event) => {
+                    setSaveError('')
+                    setAnswers((prev) => ({
+                      ...prev,
+                      [question.question_id]: event.target.value,
+                    }))
+                  }}
+                  rows={4}
+                  placeholder="Type your answer"
+                  className="w-full resize-none rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-[14px] text-white outline-none placeholder:text-white/35 focus:ring-1 focus:ring-[#9D50BB] disabled:opacity-60"
+                />
+              ) : null}
+            </>
+          )}
         </div>
       </div>
 
@@ -325,8 +430,8 @@ export function ApiQuestionnaireStep({
             type="button"
             onClick={handleNext}
             disabled={isSaving}
-            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(164,86,234,0.25)] disabled:opacity-60"
-            style={{ backgroundImage: NEXT_BUTTON_GRADIENT }}
+            className={`flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px ${nextShadow} disabled:opacity-60`}
+            style={{ backgroundImage: nextGradient }}
             aria-label={isSaving ? 'Saving answer' : 'Next question'}
           >
             <img src={nextChevronIcon} alt="" className="size-4" aria-hidden />

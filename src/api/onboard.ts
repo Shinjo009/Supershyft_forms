@@ -1,4 +1,5 @@
 import { saveAuthTokens } from '../lib/authStorage'
+import { isFrontendOnly } from '../lib/frontendOnly'
 import { getBackendBaseUrl } from './http'
 
 export type OnboardUserForEngagementPayload = {
@@ -126,10 +127,33 @@ export function saveOnboardTokens(tokens: OnboardTokens): void {
 export async function onboardUserForEngagement(
   payload: OnboardUserForEngagementPayload,
 ): Promise<OnboardResult> {
+  const engagementCode = resolveEngagementCode()
+
+  if (isFrontendOnly()) {
+    const bookingGender = parseBookingGender(payload.gender)
+    console.info('[frontend-only] skipped onboard POST', {
+      engagementCode,
+      gender: bookingGender,
+      employeeId: payload.participants_employee_id,
+    })
+
+    const result: OnboardResult = {
+      message: 'Booking confirmed (frontend-only)',
+      engagementCode,
+      userId: 0,
+      tokens: {
+        accessToken: 'frontend-only-access-token',
+        refreshToken: 'frontend-only-refresh-token',
+        tokenType: 'bearer',
+      },
+    }
+    saveOnboardTokens(result.tokens)
+    return result
+  }
+
   const baseUrl = getBackendBaseUrl()
 
   const bookingGender = parseBookingGender(payload.gender)
-  const engagementCode = resolveEngagementCode()
   const apiPayload: OnboardUserForEngagementPayload = {
     ...payload,
     gender: bookingGender,

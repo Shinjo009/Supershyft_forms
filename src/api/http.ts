@@ -1,3 +1,5 @@
+import { isFrontendOnly } from '../lib/frontendOnly'
+
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '')
 }
@@ -69,11 +71,18 @@ async function authorizedRequest<T = unknown>(
     body?: unknown
   } = {},
 ): Promise<T> {
+  const method = options.method || 'GET'
+
+  // No-send mode: block every write so redesign never hits the backend.
+  if (isFrontendOnly() && method !== 'GET') {
+    console.info('[frontend-only] blocked write', { method, path })
+    return null as T
+  }
+
   if (!accessToken.trim()) {
     throw new Error('You are not logged in. Please confirm your booking again.')
   }
 
-  const method = options.method || 'GET'
   const url = buildUrl(path, options.query)
   const headers: Record<string, string> = {
     Accept: 'application/json',

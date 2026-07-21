@@ -1,3 +1,4 @@
+import { isFrontendOnly } from '../lib/frontendOnly'
 import { authorizedGet, authorizedPost } from './http'
 
 export type AssessmentRow = {
@@ -163,6 +164,14 @@ export async function submitAssessmentCategory(
     throw new Error('Invalid assessment instance id.')
   }
 
+  if (isFrontendOnly()) {
+    console.info('[frontend-only] skipped assessment category submit', {
+      assessmentInstanceId: id,
+      category,
+    })
+    return null
+  }
+
   return authorizedPost(`/assessments/${id}/submit`, accessToken, { category })
 }
 
@@ -173,6 +182,13 @@ export async function submitCompletedAssessmentFlow(
   accessToken: string,
   metsightsAssessmentInstanceId: number,
 ): Promise<{ metsightsSubmitted: boolean; fitprintSubmitted: boolean }> {
+  if (isFrontendOnly()) {
+    console.info('[frontend-only] skipped completed assessment submit', {
+      metsightsAssessmentInstanceId,
+    })
+    return { metsightsSubmitted: true, fitprintSubmitted: false }
+  }
+
   const rows = await listMyAssessments(accessToken)
   const metsightsId = Number(metsightsAssessmentInstanceId)
   if (!Number.isFinite(metsightsId) || metsightsId <= 0) {
@@ -232,6 +248,36 @@ export type AssessmentBootstrapResult = {
 export async function loadAssessmentCategoriesForStep2(
   accessToken: string,
 ): Promise<AssessmentBootstrapResult> {
+  if (isFrontendOnly()) {
+    console.info('[frontend-only] using local mock assessment categories')
+    return {
+      assessmentInstanceId: 1,
+      categories: [
+        {
+          id: 1,
+          category_id: 1,
+          category_key: 'family_history',
+          display_name: 'Family History',
+          status: 'pending',
+        },
+        {
+          id: 2,
+          category_id: 2,
+          category_key: 'lifestyle_habits',
+          display_name: 'Lifestyle & Habits',
+          status: 'pending',
+        },
+        {
+          id: 3,
+          category_id: 3,
+          category_key: 'nutrition_log',
+          display_name: 'Nutrition Log',
+          status: 'pending',
+        },
+      ],
+    }
+  }
+
   const rows = await listMyAssessments(accessToken)
   const assessmentInstanceId = pickLatestMetsightsProOrBasicId(rows)
 
