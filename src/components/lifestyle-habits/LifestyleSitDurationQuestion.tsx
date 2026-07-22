@@ -65,7 +65,7 @@ export function LifestyleSitDurationQuestion({
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
-  onInfoClick: () => void
+  onInfoClick?: () => void
 }) {
   const selected = resolveSitDurationFromAnswer(selectedValue)
 

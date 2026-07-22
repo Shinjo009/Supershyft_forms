@@ -61,7 +61,7 @@ export function NutritionDietTypeQuestion({
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
-  onInfoClick: () => void
+  onInfoClick?: () => void
   disabled?: boolean
 }) {
   return (

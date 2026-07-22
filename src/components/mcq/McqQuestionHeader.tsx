@@ -34,14 +34,7 @@ export function McqQuestionHeader({
         >
           <img src={infoIcon} alt="" className="size-full" aria-hidden />
         </button>
-      ) : (
-        <img
-          src={infoIcon}
-          alt=""
-          className="absolute right-0 top-[3px] size-[14px]"
-          aria-hidden
-        />
-      )}
+      ) : null}
     </div>
   )
 }

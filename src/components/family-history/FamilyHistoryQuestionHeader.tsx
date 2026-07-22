@@ -9,7 +9,7 @@ export function FamilyHistoryQuestionHeader({
   titleClassName = 'mt-2 text-[16px] leading-normal tracking-[0.08px] text-white',
 }: {
   questionLabel: string
-  onInfoClick: () => void
+  onInfoClick?: () => void
   children: ReactNode
   titleClassName?: string
 }) {
@@ -19,14 +19,16 @@ export function FamilyHistoryQuestionHeader({
         {questionLabel}
       </p>
       <div className={titleClassName}>{children}</div>
-      <button
-        type="button"
-        onClick={onInfoClick}
-        className="absolute right-0 top-[3px] size-[14px]"
-        aria-label="Show question information"
-      >
-        <img src={infoIcon} alt="" className="size-full" aria-hidden />
-      </button>
+      {onInfoClick ? (
+        <button
+          type="button"
+          onClick={onInfoClick}
+          className="absolute right-0 top-[3px] size-[14px]"
+          aria-label="Show question information"
+        >
+          <img src={infoIcon} alt="" className="size-full" aria-hidden />
+        </button>
+      ) : null}
     </div>
   )
 }

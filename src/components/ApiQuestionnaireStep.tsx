@@ -17,6 +17,7 @@ import {
   isLifestyleSitDurationQuestion,
   isNutritionDietTypeQuestion,
 } from '../lib/apiQuestionLayouts'
+import { parseHelpTextToInfoItems } from '../lib/parseHelpTextToInfoItems'
 import {
   filterVisibleQuestions,
   seedAnswersFromQuestions,
@@ -36,7 +37,9 @@ import {
   MCQ_SHELL_FOOTER_INNER_CLASS,
   MCQ_SHELL_SCROLL_CLASS,
 } from './mcq/mcqLayout'
+import { McqInfoOverlay } from './mcq/McqInfoOverlay'
 import { McqProgressBar } from './mcq/McqProgressBar'
+import { McqQuestionHeader } from './mcq/McqQuestionHeader'
 
 const FAMILY_NEXT_BUTTON_GRADIENT =
   "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 50 50' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.3'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(2.5 0 0 2.5 25 25)'><stop stop-color='rgba(164,86,234,1)' offset='0'/><stop stop-color='rgba(134,69,194,1)' offset='0.25'/><stop stop-color='rgba(103,52,153,1)' offset='0.5'/><stop stop-color='rgba(73,35,113,1)' offset='0.75'/><stop stop-color='rgba(42,18,72,1)' offset='1'/></radialGradient></defs></svg>\")"
@@ -131,11 +134,13 @@ export function ApiQuestionnaireStep({
   )
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [infoOpen, setInfoOpen] = useState(false)
 
   useEffect(() => {
     setAnswers(seedAnswersFromQuestions(questions))
     setVisibleIndex(0)
     setSaveError('')
+    setInfoOpen(false)
   }, [questions])
 
   const visibleQuestions = useMemo(
@@ -151,6 +156,10 @@ export function ApiQuestionnaireStep({
     setVisibleIndex((current) => Math.min(current, visibleQuestions.length - 1))
   }, [visibleQuestions])
 
+  useEffect(() => {
+    setInfoOpen(false)
+  }, [visibleIndex])
+
   const total = visibleQuestions.length
   const question = visibleQuestions[visibleIndex]
   const nextQuestion = visibleQuestions[visibleIndex + 1]
@@ -162,6 +171,11 @@ export function ApiQuestionnaireStep({
     () => splitPreview(nextQuestion?.question_text || ''),
     [nextQuestion?.question_text],
   )
+  const infoItems = useMemo(
+    () => parseHelpTextToInfoItems(question?.help_text),
+    [question?.help_text],
+  )
+  const openInfo = infoItems.length > 0 ? () => setInfoOpen(true) : undefined
 
   const saveCurrentProgress = async () => {
     const answeredThroughIndex = Math.min(visibleIndex, visibleQuestions.length - 1)
@@ -183,6 +197,10 @@ export function ApiQuestionnaireStep({
 
   const handleBack = () => {
     if (isSaving) return
+    if (infoOpen) {
+      setInfoOpen(false)
+      return
+    }
     setSaveError('')
     if (visibleIndex > 0) {
       setVisibleIndex((index) => index - 1)
@@ -297,7 +315,7 @@ export function ApiQuestionnaireStep({
               options={options}
               selectedValue={selectedValues[0] ?? null}
               disabled={Boolean(question.is_read_only) || isSaving}
-              onInfoClick={() => undefined}
+              onInfoClick={openInfo}
               onSelect={(value) => {
                 setSaveError('')
                 setAnswers((prev) => ({
@@ -312,7 +330,7 @@ export function ApiQuestionnaireStep({
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
-              onInfoClick={() => undefined}
+              onInfoClick={openInfo}
               onSelect={(value) => {
                 setSaveError('')
                 setAnswers((prev) => ({
@@ -328,7 +346,7 @@ export function ApiQuestionnaireStep({
               options={options}
               selectedValue={selectedValues[0] ?? null}
               disabled={Boolean(question.is_read_only) || isSaving}
-              onInfoClick={() => undefined}
+              onInfoClick={openInfo}
               onSelect={(value) => {
                 setSaveError('')
                 setAnswers((prev) => ({
@@ -339,17 +357,17 @@ export function ApiQuestionnaireStep({
             />
           ) : (
             <>
-              <div>
-                <h2 className="text-[16px] font-semibold leading-6 tracking-[0.2px] text-white">
-                  {question.question_text}
-                </h2>
-                {question.help_text ? (
-                  <p className={MCQ_QUESTION_HINT_CLASS}>{question.help_text}</p>
-                ) : null}
+              <McqQuestionHeader
+                theme={theme}
+                questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+                onInfoClick={openInfo}
+                titleClassName="mt-2 text-[16px] font-semibold leading-6 tracking-[0.2px] text-white"
+              >
+                <p>{question.question_text}</p>
                 {question.is_required === false ? (
                   <p className={MCQ_QUESTION_HINT_CLASS}>Optional</p>
                 ) : null}
-              </div>
+              </McqQuestionHeader>
 
               {single || multi ? (
                 <div className="flex flex-wrap gap-2.5">
@@ -413,6 +431,13 @@ export function ApiQuestionnaireStep({
           )}
         </div>
       </div>
+
+      <McqInfoOverlay
+        open={infoOpen}
+        items={infoItems}
+        theme={theme}
+        onClose={() => setInfoOpen(false)}
+      />
 
       <footer className="fixed inset-x-0 bottom-0 z-10 bg-[rgba(255,255,255,0.05)] backdrop-blur-[25px]">
         <div className={`${MCQ_SHELL_FOOTER_INNER_CLASS}${isLast ? ' justify-end' : ''}`}>
