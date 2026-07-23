@@ -70,6 +70,63 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
       { option_id: 34, option_value: 'other', display_name: 'Other' },
     ],
   },
+  {
+    question_id: 105,
+    question_key: 'relative_conditions_other',
+    question_text: 'Family health history (other)',
+    question_type: 'text',
+    is_required: false,
+    help_text: null,
+    visibility_rules: {
+      match: 'all',
+      conditions: [
+        {
+          type: 'question_answer',
+          operator: 'contains',
+          question_key: 'relative_conditions',
+          value: 'other',
+        },
+      ],
+    },
+  },
+  {
+    question_id: 106,
+    question_key: 'personal_diagnoses_other',
+    question_text: 'Diagnosed diseases (other)',
+    question_type: 'text',
+    is_required: false,
+    help_text: null,
+    visibility_rules: {
+      match: 'all',
+      conditions: [
+        {
+          type: 'question_answer',
+          operator: 'contains',
+          question_key: 'personal_diagnoses',
+          value: 'other',
+        },
+      ],
+    },
+  },
+  {
+    question_id: 107,
+    question_key: 'medications_other',
+    question_text: 'Medications (other)',
+    question_type: 'text',
+    is_required: false,
+    help_text: null,
+    visibility_rules: {
+      match: 'all',
+      conditions: [
+        {
+          type: 'question_answer',
+          operator: 'contains',
+          question_key: 'medications',
+          value: 'other',
+        },
+      ],
+    },
+  },
 ]
 
 export const MOCK_LIFESTYLE_HABITS_QUESTIONS: QuestionnaireQuestion[] = [

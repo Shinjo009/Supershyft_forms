@@ -336,14 +336,44 @@ function SlotPointerLine({
   )
 }
 
+/** Pointer tip on a circle at `rotation` degrees (0 = top, clockwise). */
+function pointerFromRotation(
+  config: RadialDialConfig<string>,
+  rotationDeg: number,
+  reach: number,
+): { x1: number; y1: number; x2: number; y2: number } {
+  const dialCx = config.dialOffsetX + config.dialSize / 2
+  const dialCy = config.dialOffsetY + config.dialSize / 2
+  const rad = ((rotationDeg - 90) * Math.PI) / 180
+  const dx = Math.cos(rad)
+  const dy = Math.sin(rad)
+
+  return {
+    x1: dialCx + dx * config.hubRadius,
+    y1: dialCy + dy * config.hubRadius,
+    x2: dialCx + dx * reach,
+    y2: dialCy + dy * reach,
+  }
+}
+
 function SlotSelectedDial<T extends string>({
   config,
   selected,
+  animatedRotation,
 }: {
   config: RadialDialConfig<T>
   selected: T
+  animatedRotation: number
 }) {
-  const pointer = computeSlotPointerLine(config, selected)
+  const targetPointer = computeSlotPointerLine(config, selected)
+  const dialCx = config.dialOffsetX + config.dialSize / 2
+  const dialCy = config.dialOffsetY + config.dialSize / 2
+  const reach = Math.hypot(targetPointer.x2 - dialCx, targetPointer.y2 - dialCy)
+  const pointer = pointerFromRotation(
+    config as RadialDialConfig<string>,
+    animatedRotation,
+    reach,
+  )
 
   return (
     <>
@@ -591,7 +621,11 @@ export function RadialDialSelector<T extends string>({
             </g>
           )
         ) : config.slotSelection ? (
-          <SlotSelectedDial config={config} selected={selected} />
+          <SlotSelectedDial
+            config={config}
+            selected={selected}
+            animatedRotation={rotation}
+          />
         ) : (
           <SelectedDial config={config} rotation={rotation} />
         )}

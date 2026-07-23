@@ -23,7 +23,7 @@ export function RadialDialPill({
     <button
       type="button"
       onClick={onClick}
-      className={`absolute flex items-center justify-center rounded-full border border-solid px-3 text-[11px] font-medium text-white ${
+      className={`absolute z-10 flex items-center justify-center rounded-full border border-solid px-3 text-[11px] font-medium text-white ${
         isMultiline ? 'h-auto min-h-[40px] py-1 leading-[12px]' : 'h-[33px] whitespace-nowrap'
       } ${positionedByAnchor ? '-translate-x-1/2 -translate-y-1/2' : ''} ${className}`}
       style={{

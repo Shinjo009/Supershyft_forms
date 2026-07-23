@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import backIcon from '../assets/family-history/back-icon.svg'
 import nextChevronIcon from '../assets/family-history/next-chevron.svg'
+import tickCircleIcon from '../assets/family-history/tick-circle-outline.svg'
 import {
   buildQuestionnaireResponses,
   getOptionLabel,
@@ -12,6 +13,12 @@ import {
   type QuestionnaireQuestion,
 } from '../api/questionnaire'
 import { getAccessToken } from '../lib/authStorage'
+import {
+  filterOutInlinedOtherQuestions,
+  findOtherFollowUpForParent,
+  isOtherOption,
+  selectedIncludesOther,
+} from '../lib/apiOtherFollowUps'
 import {
   isFamilyHistoryLocationQuestion,
   isLifestyleSitDurationQuestion,
@@ -53,7 +60,22 @@ const FAMILY_CHIP_SELECTED_GRADIENT =
 const LIFESTYLE_CHIP_SELECTED_GRADIENT =
   "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 155 36' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.35'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(7.75 0 0 1.8 77.5 18)'><stop stop-color='rgba(255,136,0,1)' offset='0.46635'/><stop stop-color='rgba(233,93,92,0.5)' offset='1'/></radialGradient></defs></svg>\")"
 
+const FAMILY_OTHER_EXPANDED_GRADIENT =
+  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 296 64' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.35'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(14.8 0 0 3.2 148 32)'><stop stop-color='rgba(164,86,234,1)' offset='0'/><stop stop-color='rgba(134,69,194,1)' offset='0.25'/><stop stop-color='rgba(103,52,153,1)' offset='0.5'/><stop stop-color='rgba(73,35,113,1)' offset='0.75'/><stop stop-color='rgba(42,18,72,1)' offset='1'/></radialGradient></defs></svg>\")"
+
+const LIFESTYLE_OTHER_EXPANDED_GRADIENT =
+  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 296 64' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.35'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(14.8 0 0 3.2 148 32)'><stop stop-color='rgba(255,136,0,1)' offset='0'/><stop stop-color='rgba(233,93,92,0.5)' offset='1'/></radialGradient></defs></svg>\")"
+
+const NUTRITION_OTHER_EXPANDED_GRADIENT =
+  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 296 64' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.35'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(14.8 0 0 3.2 148 32)'><stop stop-color='rgba(222,245,255,1)' offset='0'/><stop stop-color='rgba(143,200,255,1)' offset='0.5'/><stop stop-color='rgba(63,156,255,1)' offset='1'/></radialGradient></defs></svg>\")"
+
 type QuestionnaireTheme = 'family' | 'lifestyle' | 'nutrition'
+
+const THEME_OTHER_EXPANDED_GRADIENT: Record<QuestionnaireTheme, string> = {
+  family: FAMILY_OTHER_EXPANDED_GRADIENT,
+  lifestyle: LIFESTYLE_OTHER_EXPANDED_GRADIENT,
+  nutrition: NUTRITION_OTHER_EXPANDED_GRADIENT,
+}
 
 const THEME_PROGRESS_COLOR: Record<QuestionnaireTheme, string> = {
   family: '#9D50BB',
@@ -144,7 +166,7 @@ export function ApiQuestionnaireStep({
   }, [questions])
 
   const visibleQuestions = useMemo(
-    () => filterVisibleQuestions(questions, answers),
+    () => filterOutInlinedOtherQuestions(filterVisibleQuestions(questions, answers), questions),
     [questions, answers],
   )
 
@@ -177,11 +199,36 @@ export function ApiQuestionnaireStep({
   )
   const openInfo = infoItems.length > 0 ? () => setInfoOpen(true) : undefined
 
+  const otherFollowUp = useMemo(
+    () => (question ? findOtherFollowUpForParent(question, questions) : null),
+    [question, questions],
+  )
+  const otherAnswer = otherFollowUp ? answers[otherFollowUp.question_id] : undefined
+  const otherText =
+    typeof otherAnswer === 'string' || typeof otherAnswer === 'number' ? String(otherAnswer) : ''
+
+  const collectSaveIds = (throughIndex: number): number[] => {
+    const ids: number[] = []
+    for (const item of visibleQuestions.slice(0, throughIndex + 1)) {
+      ids.push(item.question_id)
+      const followUp = findOtherFollowUpForParent(item, questions)
+      if (!followUp) continue
+      const parentAnswer = answers[item.question_id]
+      const selected = Array.isArray(parentAnswer)
+        ? parentAnswer.map(String)
+        : typeof parentAnswer === 'string' || typeof parentAnswer === 'number'
+          ? [String(parentAnswer)]
+          : []
+      if (selectedIncludesOther(selected, Array.isArray(item.options) ? item.options : [])) {
+        ids.push(followUp.question_id)
+      }
+    }
+    return ids
+  }
+
   const saveCurrentProgress = async () => {
     const answeredThroughIndex = Math.min(visibleIndex, visibleQuestions.length - 1)
-    const idsToSave = visibleQuestions
-      .slice(0, answeredThroughIndex + 1)
-      .map((item) => item.question_id)
+    const idsToSave = collectSaveIds(answeredThroughIndex)
     const responses = buildQuestionnaireResponses(answers, idsToSave)
 
     if (responses.length === 0) return
@@ -223,7 +270,7 @@ export function ApiQuestionnaireStep({
         return
       }
 
-      const visibleIds = new Set(visibleQuestions.map((item) => item.question_id))
+      const visibleIds = new Set(collectSaveIds(visibleQuestions.length - 1))
       const pruned: Record<number, AnswerValue> = {}
       for (const [id, value] of Object.entries(answers)) {
         const questionId = Number(id)
@@ -266,6 +313,7 @@ export function ApiQuestionnaireStep({
   const progressColor = THEME_PROGRESS_COLOR[theme]
   const nextGradient = THEME_NEXT_GRADIENT[theme]
   const chipGradient = THEME_CHIP_GRADIENT[theme]
+  const otherExpandedGradient = THEME_OTHER_EXPANDED_GRADIENT[theme]
   const nextShadow = THEME_NEXT_SHADOW[theme]
 
   const selectedValues = Array.isArray(answer)
@@ -273,6 +321,23 @@ export function ApiQuestionnaireStep({
     : typeof answer === 'string' || typeof answer === 'number'
       ? [String(answer)]
       : []
+
+  const applyChoiceSelection = (nextSelected: string[]) => {
+    setSaveError('')
+    setAnswers((prev) => {
+      const next: Record<number, AnswerValue> = {
+        ...prev,
+        [question.question_id]: multi ? nextSelected : (nextSelected[0] ?? ''),
+      }
+
+      // Keep typed Other text while Other stays selected; clear only when Other is off.
+      if (otherFollowUp && !selectedIncludesOther(nextSelected, options)) {
+        delete next[otherFollowUp.question_id]
+      }
+
+      return next
+    })
+  }
 
   return (
     <div className={MCQ_SHELL_CLASS}>
@@ -376,33 +441,76 @@ export function ApiQuestionnaireStep({
                     const label = getOptionLabel(option) || value
                     if (!value && !label) return null
                     const selected = selectedValues.includes(value)
+                    const isOther = isOtherOption(option)
+                    const isOtherExpanded = Boolean(isOther && selected && otherFollowUp)
+
+                    if (isOtherExpanded && otherFollowUp) {
+                      return (
+                        <div
+                          key={`${question.question_id}-${value}`}
+                          className="flex w-full basis-full flex-col rounded-[24px] border border-solid border-[#d0d0d0] px-6 pb-3 pt-1"
+                          style={{ backgroundImage: otherExpandedGradient }}
+                        >
+                          <button
+                            type="button"
+                            disabled={question.is_read_only || isSaving}
+                            onClick={() => {
+                              if (multi) {
+                                applyChoiceSelection(toggleMulti(selectedValues, value))
+                                return
+                              }
+                              applyChoiceSelection([])
+                            }}
+                            className="flex items-center gap-2.5 py-0.5 text-left disabled:opacity-60"
+                            aria-pressed
+                          >
+                            <img src={tickCircleIcon} alt="" className="size-3 shrink-0" aria-hidden />
+                            <span className="text-[12px] font-semibold leading-6 text-white">
+                              {label || 'Other'}
+                            </span>
+                          </button>
+                          <input
+                            type="text"
+                            value={otherText}
+                            disabled={question.is_read_only || isSaving}
+                            onChange={(event) => {
+                              setSaveError('')
+                              setAnswers((prev) => ({
+                                ...prev,
+                                [otherFollowUp.question_id]: event.target.value,
+                              }))
+                            }}
+                            placeholder="Please specify"
+                            className="ml-[22px] w-[calc(100%-22px)] border-0 border-b border-[rgba(255,255,255,0.35)] bg-transparent py-0.5 text-[11px] font-light leading-6 text-white outline-none placeholder:text-[#9a9a9a] disabled:opacity-60"
+                            aria-label={`Please specify for ${otherFollowUp.question_text}`}
+                          />
+                        </div>
+                      )
+                    }
+
                     return (
                       <button
                         key={`${question.question_id}-${value}`}
                         type="button"
                         disabled={question.is_read_only || isSaving}
                         onClick={() => {
-                          setSaveError('')
                           if (multi) {
-                            setAnswers((prev) => ({
-                              ...prev,
-                              [question.question_id]: toggleMulti(selectedValues, value),
-                            }))
+                            applyChoiceSelection(toggleMulti(selectedValues, value))
                             return
                           }
-                          setAnswers((prev) => ({
-                            ...prev,
-                            [question.question_id]: value,
-                          }))
+                          applyChoiceSelection([value])
                         }}
-                        className={`${MCQ_PILL_CHIP_CLASS} rounded-full border px-3 py-2 text-left text-[12px] font-medium leading-4 text-white transition disabled:opacity-60`}
+                        className={`${MCQ_PILL_CHIP_CLASS} flex items-center justify-center gap-2.5 rounded-full border px-3 py-2 text-left text-[12px] font-medium leading-4 text-white transition disabled:opacity-60`}
                         style={{
                           borderColor: selected ? MCQ_PILL_BORDER_SELECTED : MCQ_PILL_BORDER_IDLE,
                           backgroundImage: selected ? chipGradient : undefined,
                           backgroundColor: selected ? undefined : 'rgba(255,255,255,0.05)',
                         }}
                       >
-                        {label}
+                        {selected ? (
+                          <img src={tickCircleIcon} alt="" className="size-3 shrink-0" aria-hidden />
+                        ) : null}
+                        <span>{label}</span>
                       </button>
                     )
                   })}
