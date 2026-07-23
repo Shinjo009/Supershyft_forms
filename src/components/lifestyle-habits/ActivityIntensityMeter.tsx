@@ -88,11 +88,27 @@ function IntensityPill({
 export function ActivityIntensityMeter({
   selected,
   onSelect,
+  items,
 }: {
-  selected: ActivityIntensityOption | null
-  onSelect: (value: ActivityIntensityOption) => void
+  selected: string | null
+  onSelect: (value: string) => void
+  /** When provided, these pills drive labels + bar counts. */
+  items?: { id: string; label: string; activeBars?: number }[]
 }) {
-  const targetBars = activeBarCount(selected)
+  const pills =
+    items && items.length > 0
+      ? items
+      : ACTIVITY_INTENSITY_OPTIONS.map((option) => ({
+          id: option.id,
+          label: option.label,
+          activeBars: option.activeBars,
+        }))
+
+  const targetBars =
+    selected === null
+      ? 0
+      : (pills.find((option) => option.id === selected)?.activeBars ??
+        activeBarCount(selected as ActivityIntensityOption))
   const animatedBars = useAnimatedBarCount(targetBars)
 
   return (
@@ -119,7 +135,7 @@ export function ActivityIntensityMeter({
       </div>
 
       <div className="mt-6 flex w-full gap-3">
-        {ACTIVITY_INTENSITY_OPTIONS.map((option) => (
+        {pills.map((option) => (
           <IntensityPill
             key={option.id}
             label={option.label}

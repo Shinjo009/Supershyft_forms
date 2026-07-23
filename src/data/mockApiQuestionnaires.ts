@@ -138,9 +138,9 @@ export const MOCK_LIFESTYLE_HABITS_QUESTIONS: QuestionnaireQuestion[] = [
     is_required: true,
     help_text: null,
     options: [
-      { option_id: 2011, option_value: 'under-1h', display_name: '< 1 h', sort_order: 1 },
-      { option_id: 2012, option_value: '4h-plus', display_name: '4h+', sort_order: 2 },
-      { option_id: 2013, option_value: '1-4h', display_name: '1-4 h', sort_order: 3 },
+      { option_id: 2011, option_value: 'under-1h', display_name: 'Less than 1 hour', sort_order: 1 },
+      { option_id: 2012, option_value: '4h-plus', display_name: 'More than 4 hours', sort_order: 2 },
+      { option_id: 2013, option_value: '1-4h', display_name: '1-4 hours', sort_order: 3 },
     ],
   },
   {
@@ -152,10 +152,18 @@ export const MOCK_LIFESTYLE_HABITS_QUESTIONS: QuestionnaireQuestion[] = [
     help_text:
       '(brisk walking or bicycling or heavy lifting or games or yoga or meditation or cleaning)',
     options: [
-      { option_id: 2021, option_value: 'rare', display_name: 'Rare' },
-      { option_id: 2022, option_value: 'under-30-min', display_name: '< 30 min' },
-      { option_id: 2023, option_value: '30-60m', display_name: '30-60 m' },
-      { option_id: 2024, option_value: '60-plus', display_name: '60+ mins' },
+      { option_id: 2021, option_value: 'rare', display_name: 'Rarely or never' },
+      {
+        option_id: 2022,
+        option_value: 'under-30-min',
+        display_name: 'Less than 30 minutes a day',
+      },
+      { option_id: 2023, option_value: '30-60m', display_name: '30-60 minutes a day' },
+      {
+        option_id: 2024,
+        option_value: '60-plus',
+        display_name: 'More than 60 minutes a day',
+      },
     ],
   },
   {
@@ -168,8 +176,9 @@ export const MOCK_LIFESTYLE_HABITS_QUESTIONS: QuestionnaireQuestion[] = [
     options: [
       { option_id: 2031, option_value: 'rarely-never', display_name: 'Rarely or never' },
       { option_id: 2032, option_value: 'under-1h', display_name: 'Less than 1 hour' },
-      { option_id: 2033, option_value: '1-3h', display_name: '1-3 hours' },
-      { option_id: 2034, option_value: '4-8h', display_name: '4-8 hours' },
+      { option_id: 2033, option_value: '1-3h', display_name: '1 to 3 hours' },
+      { option_id: 2034, option_value: '4-8h', display_name: '4 to 8 hours' },
+      { option_id: 2035, option_value: '8h-plus', display_name: 'More than 8 hours' },
     ],
   },
   {
@@ -192,11 +201,11 @@ export const MOCK_LIFESTYLE_HABITS_QUESTIONS: QuestionnaireQuestion[] = [
     question_type: 'single_choice',
     is_required: true,
     options: [
-      { option_id: 2051, option_value: 'under-15m', display_name: '< 15 m' },
-      { option_id: 2052, option_value: '15-30m', display_name: '15-30 m' },
-      { option_id: 2053, option_value: '30-60m', display_name: '30-60 m' },
-      { option_id: 2054, option_value: '1-2h', display_name: '1-2 h' },
-      { option_id: 2055, option_value: '2h-plus', display_name: '2h+' },
+      { option_id: 2051, option_value: 'under-15m', display_name: 'Less than 15 mins' },
+      { option_id: 2052, option_value: '15-30m', display_name: 'Between 15-30 mins' },
+      { option_id: 2053, option_value: '30-60m', display_name: 'Between 30-60 mins' },
+      { option_id: 2054, option_value: '1-2h', display_name: 'Between 1-2 hours' },
+      { option_id: 2055, option_value: '2h-plus', display_name: 'More than 2 hours' },
     ],
   },
   {
@@ -206,12 +215,10 @@ export const MOCK_LIFESTYLE_HABITS_QUESTIONS: QuestionnaireQuestion[] = [
     question_type: 'single_choice',
     is_required: true,
     options: [
-      { option_id: 2061, option_value: 'under-5', display_name: '<5 hrs' },
-      { option_id: 2062, option_value: '5', display_name: '5 hrs' },
-      { option_id: 2063, option_value: '6', display_name: '6 hrs' },
-      { option_id: 2064, option_value: '7', display_name: '7 hrs' },
-      { option_id: 2065, option_value: '8', display_name: '8 hrs' },
-      { option_id: 2066, option_value: '9-plus', display_name: '9+ hrs' },
+      { option_id: 2061, option_value: 'under-5', display_name: 'Less than 5 hours' },
+      { option_id: 2062, option_value: '5-7', display_name: 'Between 5 to 7 hours' },
+      { option_id: 2063, option_value: '7-9', display_name: 'Between 7 to 9 hours' },
+      { option_id: 2064, option_value: '9-plus', display_name: 'More than 9 hours' },
     ],
   },
   {
@@ -221,9 +228,16 @@ export const MOCK_LIFESTYLE_HABITS_QUESTIONS: QuestionnaireQuestion[] = [
     question_type: 'single_choice',
     is_required: true,
     options: [
-      { option_id: 2071, option_value: 'never', display_name: 'I do not drink' },
-      { option_id: 2072, option_value: '3-or-less', display_name: '3 servings per week or less' },
-      { option_id: 2073, option_value: 'more-than-3', display_name: 'More than 3 servings per week' },
+      { option_id: 2071, option_value: '3-or-less', display_name: '3 servings per week or less' },
+      { option_id: 2072, option_value: 'quit', display_name: 'I quit alcohol' },
+      { option_id: 2073, option_value: '1-2-per-3-months', display_name: '1-2 times in 3 months' },
+      { option_id: 2074, option_value: 'never', display_name: 'I do not drink alcohol' },
+      { option_id: 2075, option_value: '1-2-per-6-months', display_name: '1-2 times in 6 months' },
+      {
+        option_id: 2076,
+        option_value: 'more-than-3',
+        display_name: 'More than 3 servings per week',
+      },
     ],
   },
   {
@@ -236,6 +250,14 @@ export const MOCK_LIFESTYLE_HABITS_QUESTIONS: QuestionnaireQuestion[] = [
       { option_id: 2081, option_value: 'never', display_name: 'I do not smoke' },
       { option_id: 2082, option_value: 'quit', display_name: 'I quit smoking' },
       { option_id: 2083, option_value: '1-3-weekly', display_name: '1-3 times a week' },
+      { option_id: 2084, option_value: '1-2-monthly', display_name: '1-2 times a month' },
+      { option_id: 2085, option_value: '4-5-monthly', display_name: '4-5 times a month' },
+      { option_id: 2086, option_value: '5-7-weekly', display_name: '5-7 times a week' },
+      {
+        option_id: 2087,
+        option_value: 'more-than-7-weekly',
+        display_name: 'More than 7 times a week',
+      },
     ],
   },
   {
@@ -248,6 +270,17 @@ export const MOCK_LIFESTYLE_HABITS_QUESTIONS: QuestionnaireQuestion[] = [
       { option_id: 2091, option_value: 'weight-loss', display_name: 'Weight loss' },
       { option_id: 2092, option_value: 'building-muscle', display_name: 'Building muscle mass' },
       { option_id: 2093, option_value: 'increase-energy', display_name: 'Increase energy levels' },
+      {
+        option_id: 2094,
+        option_value: 'improving-metabolic',
+        display_name: 'Improving metabolic health',
+      },
+      {
+        option_id: 2095,
+        option_value: 'improving-endurance',
+        display_name: 'Improving physical endurance',
+      },
+      { option_id: 2096, option_value: 'increasing-strength', display_name: 'Increasing strength' },
     ],
   },
   {

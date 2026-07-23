@@ -46,6 +46,12 @@ const ARC_BOTTOM_RIGHT: RadialDialArcLayout = {
   path: ARC_BOTTOM_RIGHT_PATH,
 }
 
+export const SIT_DURATION_SLOT_ARCS: Record<string, RadialDialArcLayout> = {
+  top: ARC_TOP,
+  left: ARC_LEFT,
+  'bottom-right': ARC_BOTTOM_RIGHT,
+}
+
 export const SIT_DURATION_DIAL_CONFIG: RadialDialConfig<SitDurationOption> = {
   idPrefix: 'sit-duration',
   width: 281,
@@ -56,11 +62,7 @@ export const SIT_DURATION_DIAL_CONFIG: RadialDialConfig<SitDurationOption> = {
   hubRadius: HUB_RADIUS,
   unselectedArcs: [],
   slotSelection: {
-    slotArcs: {
-      top: ARC_TOP,
-      left: ARC_LEFT,
-      'bottom-right': ARC_BOTTOM_RIGHT,
-    },
+    slotArcs: SIT_DURATION_SLOT_ARCS,
     slotOrder: ['top', 'left', 'bottom-right'],
     optionSlots: {
       'under-1h': 'top',

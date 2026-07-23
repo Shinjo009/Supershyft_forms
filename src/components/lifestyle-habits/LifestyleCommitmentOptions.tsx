@@ -41,13 +41,18 @@ function CommitmentPill({
 export function LifestyleCommitmentOptions({
   selected,
   onSelect,
+  items,
 }: {
   selected: LifestyleCommitmentOption | null
   onSelect: (value: LifestyleCommitmentOption) => void
+  /** When provided, only these options are shown (with given labels). */
+  items?: { id: LifestyleCommitmentOption; label: string }[]
 }) {
+  const pills = items ?? LIFESTYLE_COMMITMENT_OPTIONS
+
   return (
     <div className="flex w-full flex-col gap-4">
-      {LIFESTYLE_COMMITMENT_OPTIONS.map((option) => (
+      {pills.map((option) => (
         <CommitmentPill
           key={option.id}
           label={option.label}

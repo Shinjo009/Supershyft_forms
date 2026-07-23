@@ -47,6 +47,12 @@ export type RadialDialSlotSelection<T extends string> = {
   optionSlots: Record<T, string>
   /** Fixed slot render order — avoids z-index / visual inconsistencies */
   slotOrder: string[]
+  /**
+   * When set (e.g. 5-slot leisure), clip each rotated Figma arc to this angular
+   * sweep (degrees) so segments sit on a circle without overlapping.
+   * Clip wedge is centered on the slot rotation angle in dial space.
+   */
+  arcClipSweepDeg?: number
   /** Distance from dial center to inner arc edge along the pointer direction */
   pointerReachFromCenter?: number
   activeArcStrokeWidth?: number
@@ -68,6 +74,11 @@ export type RadialDialConfig<T extends string> = {
   arcGlowBounds?: { x: number; y: number; width: number; height: number }
   rotationByOption: Record<T, number>
   pills: RadialDialPillConfig[]
+  /**
+   * When set, every pill center sits on this radius from dial center (dial-local px).
+   * Keeps the option group circular regardless of label length.
+   */
+  pillOrbitRadius?: number
 }
 
 export function getSlotArcLayout(

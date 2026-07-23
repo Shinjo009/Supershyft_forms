@@ -53,13 +53,29 @@ function AlcoholPill({
 export function AlcoholConsumptionOptions({
   selected,
   onSelect,
+  items,
 }: {
   selected: AlcoholConsumptionOption | null
   onSelect: (value: AlcoholConsumptionOption) => void
+  /** When provided, filter rows to these ids and use the given labels. */
+  items?: { id: AlcoholConsumptionOption; label: string }[]
 }) {
+  const labelById = items
+    ? (Object.fromEntries(items.map((item) => [item.id, item.label])) as Partial<
+        Record<AlcoholConsumptionOption, string>
+      >)
+    : OPTION_LABELS
+  const availableIds = items
+    ? new Set(items.map((item) => item.id))
+    : null
+
+  const rows = ALCOHOL_CONSUMPTION_ROWS.map((row) =>
+    availableIds ? row.filter((id) => availableIds.has(id)) : row,
+  ).filter((row) => row.length > 0)
+
   return (
     <div className="flex w-full flex-col gap-4">
-      {ALCOHOL_CONSUMPTION_ROWS.map((row, rowIndex) => (
+      {rows.map((row, rowIndex) => (
         <div
           key={rowIndex}
           className={`flex w-full ${row.length > 1 ? 'gap-4' : ''}`}
@@ -67,7 +83,7 @@ export function AlcoholConsumptionOptions({
           {row.map((optionId) => (
             <AlcoholPill
               key={optionId}
-              label={OPTION_LABELS[optionId]}
+              label={labelById[optionId] ?? OPTION_LABELS[optionId]}
               selected={selected === optionId}
               fullWidth={row.length === 1}
               onClick={() => onSelect(optionId)}

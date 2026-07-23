@@ -76,6 +76,14 @@ const ARC_BOTTOM_LEFT: RadialDialArcLayout = {
   path: ARC_BOTTOM_LEFT_PATH,
 }
 
+export const DAILY_WALKING_SLOT_ARCS: Record<string, RadialDialArcLayout> = {
+  top: ARC_TOP,
+  right: ARC_RIGHT,
+  left: ARC_LEFT,
+  'bottom-right': ARC_BOTTOM_RIGHT,
+  'bottom-left': ARC_BOTTOM_LEFT,
+}
+
 /** Figma 5629:14668 — daily walking radial dial (5 fixed slots) */
 export const DAILY_WALKING_DIAL_CONFIG: RadialDialConfig<DailyWalkingOption> = {
   idPrefix: 'daily-walking',
@@ -87,13 +95,7 @@ export const DAILY_WALKING_DIAL_CONFIG: RadialDialConfig<DailyWalkingOption> = {
   hubRadius: HUB_RADIUS,
   unselectedArcs: [],
   slotSelection: {
-    slotArcs: {
-      top: ARC_TOP,
-      right: ARC_RIGHT,
-      left: ARC_LEFT,
-      'bottom-right': ARC_BOTTOM_RIGHT,
-      'bottom-left': ARC_BOTTOM_LEFT,
-    },
+    slotArcs: DAILY_WALKING_SLOT_ARCS,
     slotOrder: ['top', 'right', 'bottom-right', 'bottom-left', 'left'],
     optionSlots: {
       'under-15m': 'top',

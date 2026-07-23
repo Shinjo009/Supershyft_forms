@@ -1,45 +1,49 @@
 import { useMemo } from 'react'
 import type { QuestionnaireOption } from '../../api/questionnaire'
+import { MCQ_QUESTION_HINT_CLASS } from '../mcq/mcqLayout'
 import { LifestyleHabitsQuestionHeader } from './LifestyleHabitsQuestionHeader'
 import { LifestyleApiPillGrid } from './LifestyleApiPillGrid'
 import { RadialDialSelector } from './RadialDialSelector'
-import { fitApiOptionsToFixedDial } from './fitApiOptionsToDial'
-import { SIT_DURATION_SLOT_ARCS } from './sitDurationDialConfig'
+import { fitApiOptionsToRotatedDial } from './fitApiOptionsToDial'
+import { PHYSICAL_ACTIVITY_BASE_ARC } from './physicalActivityDialConfig'
 
-const SIT_MATCHERS = [
-  {
-    slot: 'top',
-    match: (text: string) =>
-      text.includes('< 1') ||
-      text.includes('<1') ||
-      text.includes('under 1') ||
-      text.includes('less than 1') ||
-      text.includes('under-1'),
-  },
+const ACTIVITY_MATCHERS = [
   {
     slot: 'left',
     match: (text: string) =>
-      text.includes('4h+') ||
-      text.includes('4+') ||
-      text.includes('more than 4') ||
-      text.includes('over 4') ||
-      text.includes('4h-plus'),
+      text.includes('rare') || text.includes('never') || text.includes('seldom'),
   },
   {
-    slot: 'bottom-right',
+    slot: 'top',
     match: (text: string) =>
-      text.includes('1-4') ||
-      text.includes('1 – 4') ||
-      text.includes('1 to 4') ||
-      text.includes('1–4') ||
-      text.includes('1 - 4'),
+      text.includes('< 30') ||
+      text.includes('<30') ||
+      text.includes('under 30') ||
+      text.includes('less than 30'),
+  },
+  {
+    slot: 'right',
+    match: (text: string) =>
+      text.includes('30-60') ||
+      text.includes('30 – 60') ||
+      text.includes('30 to 60') ||
+      text.includes('30–60'),
+  },
+  {
+    slot: 'bottom',
+    match: (text: string) =>
+      text.includes('60+') ||
+      text.includes('more than 60') ||
+      text.includes('over 60') ||
+      text.includes('60-plus'),
   },
 ]
 
-/** Designed Lifestyle Q1 — sit duration dial fitted with all API options. */
-export function LifestyleSitDurationQuestion({
+/** Designed Lifestyle Q2 — physical activity dial fitted with all API options. */
+export function LifestylePhysicalActivityQuestion({
   questionLabel,
   questionText,
+  helpText,
   options,
   selectedValue,
   onSelect,
@@ -47,6 +51,7 @@ export function LifestyleSitDurationQuestion({
 }: {
   questionLabel: string
   questionText: string
+  helpText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -54,25 +59,26 @@ export function LifestyleSitDurationQuestion({
 }) {
   const { config, centerLabels, overflow } = useMemo(
     () =>
-      fitApiOptionsToFixedDial(
+      fitApiOptionsToRotatedDial(
         {
-          idPrefix: 'sit-duration',
+          idPrefix: 'physical-activity',
           width: 300,
-          height: 230,
+          height: 260,
           dialOffsetX: 63,
-          dialOffsetY: 36,
+          dialOffsetY: 40,
           dialSize: 174,
-          hubRadius: 18,
-          slotArcs: SIT_DURATION_SLOT_ARCS,
-          slotOrder: ['top', 'left', 'bottom-right'],
-          rotationBySlot: {
-            top: 0,
-            'bottom-right': 106,
-            left: 244,
-          },
-          preferredMatchers: SIT_MATCHERS,
+          hubRadius: 23,
+          baseArc: PHYSICAL_ACTIVITY_BASE_ARC,
           activeArcStrokeWidth: 4,
           arcGlowBounds: { x: 0, y: -20, width: 170, height: 120 },
+          designedSlotOrder: ['top', 'right', 'bottom', 'left'],
+          designedRotations: {
+            top: -90,
+            right: 0,
+            bottom: 90,
+            left: 180,
+          },
+          preferredMatchers: ACTIVITY_MATCHERS,
         },
         options,
       ),
@@ -83,6 +89,7 @@ export function LifestyleSitDurationQuestion({
     <div className="flex w-full flex-col gap-16">
       <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
         <p>{questionText}</p>
+        {helpText ? <p className={MCQ_QUESTION_HINT_CLASS}>{helpText}</p> : null}
       </LifestyleHabitsQuestionHeader>
 
       <div className="overflow-visible">

@@ -53,13 +53,29 @@ function SmokingPill({
 export function SmokingFrequencyOptions({
   selected,
   onSelect,
+  items,
 }: {
   selected: SmokingFrequencyOption | null
   onSelect: (value: SmokingFrequencyOption) => void
+  /** When provided, filter rows to these ids and use the given labels. */
+  items?: { id: SmokingFrequencyOption; label: string }[]
 }) {
+  const labelById = items
+    ? (Object.fromEntries(items.map((item) => [item.id, item.label])) as Partial<
+        Record<SmokingFrequencyOption, string>
+      >)
+    : OPTION_LABELS
+  const availableIds = items
+    ? new Set(items.map((item) => item.id))
+    : null
+
+  const rows = SMOKING_FREQUENCY_ROWS.map((row) =>
+    availableIds ? row.filter((id) => availableIds.has(id)) : row,
+  ).filter((row) => row.length > 0)
+
   return (
     <div className="flex w-full flex-col gap-4">
-      {SMOKING_FREQUENCY_ROWS.map((row, rowIndex) => (
+      {rows.map((row, rowIndex) => (
         <div
           key={rowIndex}
           className={`flex w-full ${row.length > 1 ? 'gap-4' : ''}`}
@@ -67,7 +83,7 @@ export function SmokingFrequencyOptions({
           {row.map((optionId) => (
             <SmokingPill
               key={optionId}
-              label={OPTION_LABELS[optionId]}
+              label={labelById[optionId] ?? OPTION_LABELS[optionId]}
               selected={selected === optionId}
               fullWidth={row.length === 1}
               onClick={() => onSelect(optionId)}

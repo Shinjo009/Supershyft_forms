@@ -16,7 +16,10 @@ export function NutritionConsumptionFrequencySelector<T extends string>({
   selected: T | null
   onSelect: (value: T) => void
 }) {
-  const reading = selected === null ? { value: 0, fillRatio: 0, unit: 'TIMES/MONTH' } : meter[selected]
+  const reading =
+    selected === null
+      ? { value: 0, fillRatio: 0, unit: 'TIMES/MONTH' }
+      : (meter[selected] ?? { value: 0, fillRatio: 0, unit: 'TIMES/MONTH' })
 
   return (
     <div className="flex w-full flex-col items-center gap-4">

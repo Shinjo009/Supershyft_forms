@@ -11,11 +11,12 @@ function shortestAngleDelta(from: number, to: number) {
   return delta
 }
 
-/** Smooth pointer rotation when switching dial options. */
+/** Smooth pointer / arc rotation when switching dial options. */
 export function useAnimatedDialRotation(targetRotation: number | null) {
   const [rotation, setRotation] = useState(0)
   const currentRef = useRef(0)
   const frameRef = useRef<number | undefined>(undefined)
+  const hasTargetRef = useRef(false)
 
   useEffect(() => {
     if (frameRef.current !== undefined) {
@@ -23,21 +24,30 @@ export function useAnimatedDialRotation(targetRotation: number | null) {
     }
 
     if (targetRotation === null) {
+      hasTargetRef.current = false
       currentRef.current = 0
       setRotation(0)
+      return
+    }
+
+    // First selection: start from the target so we don't sweep from an arbitrary origin.
+    if (!hasTargetRef.current) {
+      hasTargetRef.current = true
+      currentRef.current = targetRotation
+      setRotation(targetRotation)
       return
     }
 
     const animate = () => {
       const delta = shortestAngleDelta(currentRef.current, targetRotation)
 
-      if (Math.abs(delta) < 0.5) {
+      if (Math.abs(delta) < 0.25) {
         currentRef.current = targetRotation
         setRotation(targetRotation)
         return
       }
 
-      currentRef.current += delta * 0.18
+      currentRef.current += delta * 0.22
       setRotation(currentRef.current)
       frameRef.current = requestAnimationFrame(animate)
     }

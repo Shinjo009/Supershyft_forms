@@ -109,7 +109,50 @@ function raySegmentIntersectionT(
 }
 
 /**
- * Ray from dial center through arc midpoint, intersected with the actual SVG arc path.
+ * Angular midpoint of an arc path (bisects the visible segment), not the bbox center.
+ * Uses the circular mean of outer-ridge samples so thick path outlines still bisect correctly.
+ */
+function arcBisectorDirection(
+  points: { x: number; y: number }[],
+  dialCenter: number,
+  hubRadius: number,
+): { dirX: number; dirY: number; dist: number } {
+  const measured = points.map((point) => {
+    const dx = point.x - dialCenter
+    const dy = point.y - dialCenter
+    return { dist: Math.hypot(dx, dy), angle: Math.atan2(dy, dx) }
+  })
+
+  const beyondHub = measured.filter((entry) => entry.dist > hubRadius + 1)
+  const pool = beyondHub.length > 0 ? beyondHub : measured
+  let maxDist = 0
+  let minDist = Number.POSITIVE_INFINITY
+
+  for (const entry of pool) {
+    maxDist = Math.max(maxDist, entry.dist)
+    minDist = Math.min(minDist, entry.dist)
+  }
+
+  const outerThreshold = minDist + (maxDist - minDist) * 0.55
+  const outer = pool.filter((entry) => entry.dist >= outerThreshold)
+  const anglePool = outer.length > 0 ? outer : pool
+
+  let sumX = 0
+  let sumY = 0
+  for (const entry of anglePool) {
+    sumX += Math.cos(entry.angle)
+    sumY += Math.sin(entry.angle)
+  }
+
+  const midAngle = Math.atan2(sumY, sumX)
+  const dirX = Math.cos(midAngle)
+  const dirY = Math.sin(midAngle)
+
+  return { dirX, dirY, dist: maxDist || 1 }
+}
+
+/**
+ * Ray from dial center through the arc's angular midpoint, intersected with the SVG path.
  * Returns the first hit along the ray beyond the hub radius.
  */
 export function arcPointerTouch(
@@ -118,20 +161,8 @@ export function arcPointerTouch(
   hubRadius: number,
   rotation = 0,
 ): { x: number; y: number } {
-  const midX = arc.x + arc.w / 2
-  const midY = arc.y + arc.h / 2
-  const mid =
-    rotation === 0
-      ? { x: midX, y: midY }
-      : rotatePointAround(midX, midY, dialCenter, dialCenter, rotation)
-
-  const dx = mid.x - dialCenter
-  const dy = mid.y - dialCenter
-  const dist = Math.hypot(dx, dy) || 1
-  const dirX = dx / dist
-  const dirY = dy / dist
-
   const points = sampleArcPathPoints(arc, dialCenter, rotation)
+  const { dirX, dirY, dist } = arcBisectorDirection(points, dialCenter, hubRadius)
   const minT = hubRadius + 0.5
   let bestT: number | null = null
 
@@ -228,7 +259,36 @@ function estimatePillHalfHeight(pill: RadialDialPillConfig): number {
   return pill.labelLines?.length ? 20 : 16.5
 }
 
-/** Anchor point for a pill — consistent gap from arc outer edge in dial-local space. */
+/** Outermost point on the arc along a given ray from dial center. */
+export function arcOuterPointAlongRay(
+  arc: RadialDialArcLayout,
+  dialCenter: number,
+  dirX: number,
+  dirY: number,
+  rotation = 0,
+): { x: number; y: number } {
+  const points = sampleArcPathPoints(arc, dialCenter, rotation)
+  let bestT = 0
+
+  for (const point of points) {
+    const px = point.x - dialCenter
+    const py = point.y - dialCenter
+    const t = px * dirX + py * dirY
+    if (t > bestT) bestT = t
+  }
+
+  if (bestT <= 0) {
+    const fallback = arcOuterEdgePoint(arc, dialCenter, 0, rotation)
+    return { x: fallback.x, y: fallback.y }
+  }
+
+  return {
+    x: dialCenter + dirX * bestT,
+    y: dialCenter + dirY * bestT,
+  }
+}
+
+/** Anchor point for a pill — along the same ray as the center-line (perfect alignment). */
 export function computeRadialPillAnchor<T extends string>(
   config: RadialDialConfig<T>,
   optionId: T,
@@ -246,15 +306,30 @@ export function computeRadialPillAnchor<T extends string>(
   const pill = config.pills.find((entry) => entry.id === optionId)
   const dialCenter = config.dialSize / 2
   const { layout, rotation } = getSlotArcLayout(slotSelection, slotId)
-  const outer = arcOuterEdgePoint(layout, dialCenter, config.hubRadius, rotation)
+  const touch = arcPointerTouch(layout, dialCenter, config.hubRadius, rotation)
+  const dx = touch.x - dialCenter
+  const dy = touch.y - dialCenter
+  const dist = Math.hypot(dx, dy) || 1
+  const dirX = dx / dist
+  const dirY = dy / dist
+
+  // Equal orbit keeps the option group circular (label length must not push pills in/out).
+  if (config.pillOrbitRadius != null) {
+    return {
+      left: config.dialOffsetX + dialCenter + dirX * config.pillOrbitRadius,
+      top: config.dialOffsetY + dialCenter + dirY * config.pillOrbitRadius,
+    }
+  }
+
+  const outer = arcOuterPointAlongRay(layout, dialCenter, dirX, dirY, rotation)
   const pillHalfWidth = pill ? estimatePillHalfWidth(pill) : 28
   const pillHalfHeight = pill ? estimatePillHalfHeight(pill) : 16.5
   const radialExtent =
-    Math.abs(outer.dirX) * pillHalfWidth + Math.abs(outer.dirY) * pillHalfHeight
+    Math.abs(dirX) * pillHalfWidth + Math.abs(dirY) * pillHalfHeight
   const totalOffset = RADIAL_PILL_ARC_GAP + radialExtent
 
   return {
-    left: config.dialOffsetX + outer.x + outer.dirX * totalOffset,
-    top: config.dialOffsetY + outer.y + outer.dirY * totalOffset,
+    left: config.dialOffsetX + outer.x + dirX * totalOffset,
+    top: config.dialOffsetY + outer.y + dirY * totalOffset,
   }
 }

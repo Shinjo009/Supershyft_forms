@@ -61,13 +61,40 @@ function WellnessPill({
 export function HealthWellnessPrioritiesOptions({
   selected,
   onSelect,
+  items,
 }: {
   selected: HealthWellnessPriorityOption | null
   onSelect: (value: HealthWellnessPriorityOption) => void
+  /** When provided, filter rows to these ids and use the given labels. */
+  items?: { id: HealthWellnessPriorityOption; label: string }[]
 }) {
+  const labelById = items
+    ? (Object.fromEntries(items.map((item) => [item.id, item.label])) as Partial<
+        Record<HealthWellnessPriorityOption, string>
+      >)
+    : OPTION_LABELS
+  const availableIds = items
+    ? new Set(items.map((item) => item.id))
+    : null
+
+  const rows = HEALTH_WELLNESS_PRIORITY_ROWS.map((row) => {
+    const options = availableIds
+      ? row.options.filter((id) => availableIds.has(id))
+      : row.options
+    if (options.length === 0) return null
+    const becameSingle = Boolean(availableIds) && row.options.length > 1 && options.length === 1
+    return {
+      options,
+      fullWidth:
+        options.length === 1
+          ? becameSingle || row.fullWidth !== false
+          : false,
+    }
+  }).filter((row): row is NonNullable<typeof row> => row != null)
+
   return (
     <div className="flex w-full flex-col gap-4">
-      {HEALTH_WELLNESS_PRIORITY_ROWS.map((row, rowIndex) => (
+      {rows.map((row, rowIndex) => (
         <div
           key={rowIndex}
           className={`flex w-full ${row.options.length > 1 ? 'gap-4' : ''}`}
@@ -75,7 +102,7 @@ export function HealthWellnessPrioritiesOptions({
           {row.options.map((optionId) => (
             <WellnessPill
               key={optionId}
-              label={OPTION_LABELS[optionId]}
+              label={labelById[optionId] ?? OPTION_LABELS[optionId]}
               selected={selected === optionId}
               widthClass={
                 row.options.length > 1

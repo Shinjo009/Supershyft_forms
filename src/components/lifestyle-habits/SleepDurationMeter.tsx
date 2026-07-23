@@ -183,7 +183,7 @@ function SleepPill({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-center rounded-[24px] border border-solid px-[10px] py-2 text-[14px] leading-5 text-white"
+      className="flex w-full items-center justify-center whitespace-nowrap rounded-[24px] border border-solid px-[10px] py-2 text-[14px] leading-5 text-white"
       style={
         selected
           ? {
@@ -204,19 +204,36 @@ function SleepPill({
 export function SleepDurationMeter({
   selected,
   onSelect,
+  items,
+  fillById,
 }: {
-  selected: SleepDurationOption | null
-  onSelect: (value: SleepDurationOption) => void
+  selected: string | null
+  onSelect: (value: string) => void
+  /** When provided, these pills are shown with API labels. */
+  items?: { id: string; label: string }[]
+  /** Optional moon-fill amount per option id (0–1). */
+  fillById?: Record<string, number>
 }) {
-  const targetFill = SLEEP_MOON_FILL[selected ?? 'unselected']
+  const pills = items && items.length > 0 ? items : SLEEP_DURATION_OPTIONS
+  const targetFill =
+    selected === null
+      ? SLEEP_MOON_FILL.unselected
+      : (fillById?.[selected] ??
+        SLEEP_MOON_FILL[(selected as SleepDurationOption) ?? 'unselected'] ??
+        SLEEP_MOON_FILL.unselected)
   const fill = useAnimatedFill(targetFill)
+  const columnCount =
+    pills.length <= 1 ? 1 : pills.length === 2 || pills.length === 4 ? 2 : 3
 
   return (
     <div className="flex w-full flex-col items-center gap-6 overflow-visible">
       <SleepMoon fill={fill} />
 
-      <div className="grid w-full grid-cols-3 gap-4">
-        {SLEEP_DURATION_OPTIONS.map((option) => (
+      <div
+        className="grid w-full gap-3"
+        style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+      >
+        {pills.map((option) => (
           <SleepPill
             key={option.id}
             label={option.label}

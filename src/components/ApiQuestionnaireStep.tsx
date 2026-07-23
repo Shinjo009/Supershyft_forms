@@ -21,8 +21,27 @@ import {
 } from '../lib/apiOtherFollowUps'
 import {
   isFamilyHistoryLocationQuestion,
+  isLifestyleActivityIntensityQuestion,
+  isLifestyleAlcoholConsumptionQuestion,
+  isLifestyleCommitmentQuestion,
+  isLifestyleDailyWalkingQuestion,
+  isLifestylePhysicalActivityQuestion,
   isLifestyleSitDurationQuestion,
+  isLifestyleSleepDurationQuestion,
+  isLifestyleSmokingFrequencyQuestion,
+  isLifestyleWeeklyLeisureQuestion,
+  isLifestyleWellnessPrioritiesQuestion,
+  isNutritionBreakfastFrequencyQuestion,
+  isNutritionCoffeeTeaIntakeQuestion,
+  isNutritionCoffeeTeaTypeQuestion,
+  isNutritionConsumptionFrequencyQuestion,
+  isNutritionDailyFoodGroupsQuestion,
   isNutritionDietTypeQuestion,
+  isNutritionExtraSaltQuestion,
+  isNutritionIllnessFrequencyQuestion,
+  isNutritionIodizedSaltQuestion,
+  isNutritionWaterIntakeQuestion,
+  nutritionMeterIdForQuestion,
 } from '../lib/apiQuestionLayouts'
 import { parseHelpTextToInfoItems } from '../lib/parseHelpTextToInfoItems'
 import {
@@ -31,7 +50,23 @@ import {
   type AnswerValue,
 } from '../lib/questionnaireVisibility'
 import { FamilyHistoryLocationOptions } from './family-history/FamilyHistoryLocationOptions'
+import { LifestyleActivityIntensityQuestion } from './lifestyle-habits/LifestyleActivityIntensityQuestion'
+import { LifestyleAlcoholConsumptionQuestion } from './lifestyle-habits/LifestyleAlcoholConsumptionQuestion'
+import { LifestyleCommitmentQuestion } from './lifestyle-habits/LifestyleCommitmentQuestion'
+import { LifestyleDailyWalkingQuestion } from './lifestyle-habits/LifestyleDailyWalkingQuestion'
+import { LifestylePhysicalActivityQuestion } from './lifestyle-habits/LifestylePhysicalActivityQuestion'
 import { LifestyleSitDurationQuestion } from './lifestyle-habits/LifestyleSitDurationQuestion'
+import { LifestyleSleepDurationQuestion } from './lifestyle-habits/LifestyleSleepDurationQuestion'
+import { LifestyleSmokingFrequencyQuestion } from './lifestyle-habits/LifestyleSmokingFrequencyQuestion'
+import { LifestyleWeeklyLeisureQuestion } from './lifestyle-habits/LifestyleWeeklyLeisureQuestion'
+import { LifestyleWellnessPrioritiesQuestion } from './lifestyle-habits/LifestyleWellnessPrioritiesQuestion'
+import {
+  NutritionApiCircularMeterQuestion,
+  NutritionApiConsumptionFrequencyQuestion,
+} from './nutrition-log/NutritionApiCircularMeterQuestion'
+import { NutritionApiMultiSelectQuestion } from './nutrition-log/NutritionApiMultiSelectQuestion'
+import { NutritionApiPillRowQuestion } from './nutrition-log/NutritionApiPillRowQuestion'
+import { NutritionApiWaterIntakeQuestion } from './nutrition-log/NutritionApiWaterIntakeQuestion'
 import { NutritionDietTypeQuestion } from './nutrition-log/NutritionDietTypeQuestion'
 import { NUTRITION_NEXT_BUTTON_GRADIENT, NUTRITION_PILL_GRADIENT } from './nutrition-log/nutritionLogConfig'
 import {
@@ -309,7 +344,29 @@ export function ApiQuestionnaireStep({
   const text = isTextType(question.question_type) || (!single && !multi && options.length === 0)
   const useLocationLayout = isFamilyHistoryLocationQuestion(question)
   const useSitDurationLayout = isLifestyleSitDurationQuestion(question)
+  const usePhysicalActivityLayout = isLifestylePhysicalActivityQuestion(question)
+  const useWeeklyLeisureLayout = isLifestyleWeeklyLeisureQuestion(question)
+  const useActivityIntensityLayout = isLifestyleActivityIntensityQuestion(question)
+  const useDailyWalkingLayout = isLifestyleDailyWalkingQuestion(question)
+  const useSleepDurationLayout = isLifestyleSleepDurationQuestion(question)
+  const useAlcoholConsumptionLayout = isLifestyleAlcoholConsumptionQuestion(question)
+  const useSmokingFrequencyLayout = isLifestyleSmokingFrequencyQuestion(question)
+  const useWellnessPrioritiesLayout = isLifestyleWellnessPrioritiesQuestion(question)
+  const useLifestyleCommitmentLayout = isLifestyleCommitmentQuestion(question)
   const useDietTypeLayout = isNutritionDietTypeQuestion(question)
+  const useDailyFoodGroupsLayout = isNutritionDailyFoodGroupsQuestion(question)
+  const useBreakfastFrequencyLayout = isNutritionBreakfastFrequencyQuestion(question)
+  const useIllnessFrequencyLayout = isNutritionIllnessFrequencyQuestion(question)
+  const useWaterIntakeLayout = isNutritionWaterIntakeQuestion(question)
+  const useCoffeeTeaTypeLayout = isNutritionCoffeeTeaTypeQuestion(question)
+  const useCoffeeTeaIntakeLayout = isNutritionCoffeeTeaIntakeQuestion(question)
+  const useIodizedSaltLayout = isNutritionIodizedSaltQuestion(question)
+  const useExtraSaltLayout = isNutritionExtraSaltQuestion(question)
+  const useConsumptionFrequencyLayout =
+    !useBreakfastFrequencyLayout &&
+    !useIllnessFrequencyLayout &&
+    !useWaterIntakeLayout &&
+    isNutritionConsumptionFrequencyQuestion(question)
   const progressColor = THEME_PROGRESS_COLOR[theme]
   const nextGradient = THEME_NEXT_GRADIENT[theme]
   const chipGradient = THEME_CHIP_GRADIENT[theme]
@@ -404,6 +461,144 @@ export function ApiQuestionnaireStep({
                 }))
               }}
             />
+          ) : usePhysicalActivityLayout ? (
+            <LifestylePhysicalActivityQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              helpText={question.help_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useWeeklyLeisureLayout ? (
+            <LifestyleWeeklyLeisureQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useActivityIntensityLayout ? (
+            <LifestyleActivityIntensityQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useDailyWalkingLayout ? (
+            <LifestyleDailyWalkingQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              helpText={question.help_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useSleepDurationLayout ? (
+            <LifestyleSleepDurationQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useAlcoholConsumptionLayout ? (
+            <LifestyleAlcoholConsumptionQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              helpText={question.help_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useSmokingFrequencyLayout ? (
+            <LifestyleSmokingFrequencyQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useWellnessPrioritiesLayout ? (
+            <LifestyleWellnessPrioritiesQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useLifestyleCommitmentLayout ? (
+            <LifestyleCommitmentQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
           ) : useDietTypeLayout ? (
             <NutritionDietTypeQuestion
               questionLabel={`Question ${visibleIndex + 1} of ${total}`}
@@ -411,6 +606,116 @@ export function ApiQuestionnaireStep({
               options={options}
               selectedValue={selectedValues[0] ?? null}
               disabled={Boolean(question.is_read_only) || isSaving}
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useDailyFoodGroupsLayout || useCoffeeTeaTypeLayout ? (
+            <NutritionApiMultiSelectQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              helpText={question.help_text}
+              options={options}
+              selectedValues={selectedValues}
+              onInfoClick={openInfo}
+              onToggle={(value) => {
+                setSaveError('')
+                applyChoiceSelection(toggleMulti(selectedValues, value))
+              }}
+            />
+          ) : useBreakfastFrequencyLayout ? (
+            <NutritionApiCircularMeterQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              meterId={nutritionMeterIdForQuestion(question)}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              variant="breakfast"
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useIllnessFrequencyLayout ? (
+            <NutritionApiCircularMeterQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              meterId={nutritionMeterIdForQuestion(question)}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              variant="illness"
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useWaterIntakeLayout ? (
+            <NutritionApiWaterIntakeQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useConsumptionFrequencyLayout ? (
+            <NutritionApiConsumptionFrequencyQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              meterId={nutritionMeterIdForQuestion(question)}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useIodizedSaltLayout ? (
+            <NutritionApiPillRowQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              layout="row"
+              onInfoClick={openInfo}
+              onSelect={(value) => {
+                setSaveError('')
+                setAnswers((prev) => ({
+                  ...prev,
+                  [question.question_id]: value,
+                }))
+              }}
+            />
+          ) : useExtraSaltLayout || useCoffeeTeaIntakeLayout ? (
+            <NutritionApiPillRowQuestion
+              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionText={question.question_text}
+              options={options}
+              selectedValue={selectedValues[0] ?? null}
+              layout="wrap"
               onInfoClick={openInfo}
               onSelect={(value) => {
                 setSaveError('')

@@ -294,7 +294,10 @@ function Question4ActivityIntensity({
         <p>rate the intensity of your activities or workouts?</p>
       </LifestyleHabitsQuestionHeader>
 
-      <ActivityIntensityMeter selected={selected} onSelect={onSelect} />
+      <ActivityIntensityMeter
+        selected={selected}
+        onSelect={(value) => onSelect(value as ActivityIntensityOption)}
+      />
     </div>
   )
 }
@@ -345,7 +348,10 @@ function Question6SleepDuration({
         <p>What is your average duration of good-quality sleep?</p>
       </LifestyleHabitsQuestionHeader>
 
-      <SleepDurationMeter selected={selected} onSelect={onSelect} />
+      <SleepDurationMeter
+        selected={selected}
+        onSelect={(value) => onSelect(value as SleepDurationOption)}
+      />
     </div>
   )
 }
