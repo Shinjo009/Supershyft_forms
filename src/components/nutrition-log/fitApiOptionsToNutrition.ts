@@ -117,7 +117,14 @@ export function buildBreakfastMeterFromApi(options: QuestionnaireOption[]): {
 
   items.forEach((item, index) => {
     const text = item.label.toLowerCase()
-    if (text.includes('skip') || text.includes('no breakfast') || text.includes('never')) {
+    if (
+      text.includes('skip') ||
+      text.includes('no breakfast') ||
+      text.includes('not have breakfast') ||
+      text.includes('do not have') ||
+      text.includes("don't have") ||
+      text.includes('never')
+    ) {
       meter[item.id] = { value: 0, fillRatio: 0, unit: 'DAYS/WEEK' }
       return
     }
@@ -161,7 +168,11 @@ export function buildWaterReadingsFromApi(options: QuestionnaireOption[]): {
   const readings: Record<string, WaterIntakeReading> = {}
 
   items.forEach((item, index) => {
-    const text = `${item.id} ${item.label}`.toLowerCase()
+    // Prefer label over id — API option values are often scores/codes, not glass counts.
+    const label = item.label.toLowerCase()
+    const id = item.id.toLowerCase()
+    const text = `${label} ${id}`
+
     if (
       text.includes('8+') ||
       text.includes('8 plus') ||
@@ -171,15 +182,24 @@ export function buildWaterReadingsFromApi(options: QuestionnaireOption[]): {
       readings[item.id] = readingForGlasses(10)
       return
     }
-    if (text.includes('< 2') || text.includes('<2') || text.includes('less than 2') || text.includes('under 2')) {
+    if (
+      text.includes('< 2') ||
+      text.includes('<2') ||
+      text.includes('less than 2') ||
+      text.includes('under 2')
+    ) {
       readings[item.id] = readingForGlasses(1)
       return
     }
-    const match = text.match(/(\d+)/)
-    if (match) {
-      readings[item.id] = readingForGlasses(Number(match[1]))
+
+    // 1 glass = 250 ml → parse glass count from the label when possible.
+    const glassesMatch =
+      label.match(/(\d+)\s*glasses?/) || label.match(/(\d+)/) || id.match(/^(\d+)$/)
+    if (glassesMatch) {
+      readings[item.id] = readingForGlasses(Number(glassesMatch[1]))
       return
     }
+
     const n = Math.max(items.length, 1)
     const glasses = Math.max(1, Math.round(8 * (1 - index / n)))
     readings[item.id] = readingForGlasses(glasses)

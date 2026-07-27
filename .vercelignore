@@ -1,0 +1,11 @@
+.git
+.DS_Store
+*.log
+.vscode
+.idea
+dist
+coverage
+agent-transcripts
+*.md
+!README.md
+eslint.config.js
