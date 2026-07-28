@@ -91,7 +91,7 @@ export function getSlotArcLayout(
   }
 
   return {
-    layout: slotSelection.baseArc!,
+    layout: slotSelection.baseArc as RadialDialArcLayout,
     rotation: slotSelection.slotRotations?.[slotId] ?? 0,
   }
 }

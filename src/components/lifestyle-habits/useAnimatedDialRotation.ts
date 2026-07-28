@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 
 function shortestAngleDelta(from: number, to: number) {
   let delta = to - from
@@ -11,44 +11,74 @@ function shortestAngleDelta(from: number, to: number) {
   return delta
 }
 
-/** Smooth pointer / arc rotation when switching dial options. */
-export function useAnimatedDialRotation(targetRotation: number | null) {
-  const [rotation, setRotation] = useState(0)
+/**
+ * Smooth pointer / arc rotation without React re-renders.
+ * Same easing as before (lerp factor 0.22); updates happen imperatively via onFrame.
+ */
+export function useDialRotationDriver(
+  targetRotation: number | null,
+  onFrame: (rotation: number) => void,
+) {
+  const onFrameRef = useRef(onFrame)
+  onFrameRef.current = onFrame
+
   const currentRef = useRef(0)
   const frameRef = useRef<number | undefined>(undefined)
   const hasTargetRef = useRef(false)
+  const targetRef = useRef<number | null>(null)
+  targetRef.current = targetRotation
+
+  // Apply before paint so React remounts don't flash the final angle for one frame.
+  useLayoutEffect(() => {
+    if (targetRotation === null) {
+      hasTargetRef.current = false
+      currentRef.current = 0
+      onFrameRef.current(0)
+      return
+    }
+
+    if (!hasTargetRef.current) {
+      hasTargetRef.current = true
+      currentRef.current = targetRotation
+      onFrameRef.current(targetRotation)
+      return
+    }
+
+    // Selection changed mid-dial: keep the current needle angle on the new DOM nodes.
+    onFrameRef.current(currentRef.current)
+  }, [targetRotation])
 
   useEffect(() => {
     if (frameRef.current !== undefined) {
       cancelAnimationFrame(frameRef.current)
+      frameRef.current = undefined
     }
 
     if (targetRotation === null) {
-      hasTargetRef.current = false
-      currentRef.current = 0
-      setRotation(0)
       return
     }
 
-    // First selection: start from the target so we don't sweep from an arbitrary origin.
-    if (!hasTargetRef.current) {
-      hasTargetRef.current = true
+    if (Math.abs(shortestAngleDelta(currentRef.current, targetRotation)) < 0.25) {
       currentRef.current = targetRotation
-      setRotation(targetRotation)
+      onFrameRef.current(targetRotation)
       return
     }
 
     const animate = () => {
-      const delta = shortestAngleDelta(currentRef.current, targetRotation)
+      const target = targetRef.current
+      if (target === null) return
+
+      const delta = shortestAngleDelta(currentRef.current, target)
 
       if (Math.abs(delta) < 0.25) {
-        currentRef.current = targetRotation
-        setRotation(targetRotation)
+        currentRef.current = target
+        onFrameRef.current(target)
+        frameRef.current = undefined
         return
       }
 
       currentRef.current += delta * 0.22
-      setRotation(currentRef.current)
+      onFrameRef.current(currentRef.current)
       frameRef.current = requestAnimationFrame(animate)
     }
 
@@ -57,9 +87,8 @@ export function useAnimatedDialRotation(targetRotation: number | null) {
     return () => {
       if (frameRef.current !== undefined) {
         cancelAnimationFrame(frameRef.current)
+        frameRef.current = undefined
       }
     }
   }, [targetRotation])
-
-  return rotation
 }

@@ -1,9 +1,10 @@
+import { memo, useCallback, useRef, type RefObject } from 'react'
 import { RadialDialPill } from './RadialDialPill'
 import { arcPointerTouch, computeRadialPillAnchor } from './arcPathGeometry'
 import type { RadialDialArcLayout, RadialDialConfig } from './radialDialShared'
 import { getSlotArcLayout } from './radialDialShared'
 import { MCQ_DIAL_DESKTOP_CLASS } from '../mcq/mcqLayout'
-import { useAnimatedDialRotation } from './useAnimatedDialRotation'
+import { useDialRotationDriver } from './useAnimatedDialRotation'
 
 function NestedGreyArc({ layout }: { layout: RadialDialArcLayout }) {
   return (
@@ -75,34 +76,6 @@ function NestedOrangeArcGlow({
       viewBox={`0 0 ${layout.vbW} ${layout.vbH}`}
       overflow="visible"
     >
-      <defs>
-        <filter
-          id={glowId}
-          x="-20"
-          y="-20"
-          width={layout.vbW + 40}
-          height={layout.vbH + 40}
-          filterUnits="userSpaceOnUse"
-          colorInterpolationFilters="sRGB"
-        >
-          <feFlood floodOpacity="0" result="BackgroundImageFix" />
-          <feColorMatrix
-            in="SourceAlpha"
-            type="matrix"
-            values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
-            result="hardAlpha"
-          />
-          <feOffset />
-          <feGaussianBlur stdDeviation="8" />
-          <feComposite in2="hardAlpha" operator="out" />
-          <feColorMatrix
-            type="matrix"
-            values="0 0 0 0 1 0 0 0 0 0.533333 0 0 0 0 0 0 0 0 0.5 0"
-          />
-          <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow" />
-          <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape" />
-        </filter>
-      </defs>
       <g filter={`url(#${glowId})`}>
         <path
           d={layout.path}
@@ -268,13 +241,13 @@ function pointerLineFromTouch(
 function computeSlotPointerLine<T extends string>(
   config: RadialDialConfig<T>,
   selected: T,
-): { x1: number; y1: number; x2: number; y2: number } {
+): { x1: number; y1: number; x2: number; y2: number } | null {
   const { slotSelection, dialSize } = config
   const dialCenter = dialSize / 2
+  const dialCx = config.dialOffsetX + dialCenter
+  const dialCy = config.dialOffsetY + dialCenter
 
   if (!slotSelection) {
-    const dialCx = config.dialOffsetX + dialCenter
-    const dialCy = config.dialOffsetY + dialCenter
     return {
       x1: dialCx,
       y1: dialCy - config.hubRadius,
@@ -284,13 +257,20 @@ function computeSlotPointerLine<T extends string>(
   }
 
   const slotId = slotSelection.optionSlots[selected]
-  const { layout: arc, rotation: slotRotation } = getSlotArcLayout(slotSelection, slotId)
-  const touchLocal = arcPointerTouch(arc, dialCenter, config.hubRadius, slotRotation)
+  if (!slotId) {
+    return null
+  }
 
+  const { layout: arc, rotation: slotRotation } = getSlotArcLayout(slotSelection, slotId)
+  if (!arc?.path) {
+    return null
+  }
+
+  const touchLocal = arcPointerTouch(arc, dialCenter, config.hubRadius, slotRotation)
   return pointerLineFromTouch(touchLocal, config as RadialDialConfig<string>)
 }
 
-function GeneratedSlotDial<T extends string>({
+function GeneratedSlotDialInner<T extends string>({
   config,
   selected,
   idPrefix,
@@ -309,6 +289,7 @@ function GeneratedSlotDial<T extends string>({
   const activeSlot = selected !== null ? slotSelection.optionSlots[selected] : null
   const activeArcStrokeWidth = slotSelection.activeArcStrokeWidth ?? 0
   const clipSweepDeg = slotSelection.arcClipSweepDeg
+  const sharedGlowId = `${idPrefix}-slot-arc-glow`
 
   return (
     <g transform={`translate(${config.dialOffsetX} ${config.dialOffsetY})`}>
@@ -320,7 +301,7 @@ function GeneratedSlotDial<T extends string>({
             rotation={rotation}
             pivotX={pivotX}
             pivotY={pivotY}
-            glowId={`${idPrefix}-arc-glow-${activeSlot}`}
+            glowId={sharedGlowId}
             strokeWidth={activeArcStrokeWidth}
             clipSweepDeg={clipSweepDeg}
             clipId={clipSweepDeg ? `${idPrefix}-clip-glow-${activeSlot}` : undefined}
@@ -366,19 +347,25 @@ function GeneratedSlotDial<T extends string>({
   )
 }
 
+/** Arcs only re-render when selection changes — not every animation frame. */
+const GeneratedSlotDial = memo(GeneratedSlotDialInner) as typeof GeneratedSlotDialInner
+
 function SlotPointerLine({
   x1,
   y1,
   x2,
   y2,
+  lineRef,
 }: {
   x1: number
   y1: number
   x2: number
   y2: number
+  lineRef?: RefObject<SVGLineElement | null>
 }) {
   return (
     <line
+      ref={lineRef}
       x1={x1}
       y1={y1}
       x2={x2}
@@ -455,15 +442,20 @@ function pointerFromRotation(
  * Rotated-slot dials (physical activity / weekly leisure):
  * orange arc + center line share one SVG rotate — always perfectly aligned,
  * and the whole selection sweeps when switching options.
+ * Transform is updated imperatively during animation (no React re-renders).
  */
 function RotatedSlotSelectedDial<T extends string>({
   config,
   selected,
-  animatedSlotRotation,
+  rotateGroupRef,
+  clipPathRef,
+  pointerGroupRef,
 }: {
   config: RadialDialConfig<T>
   selected: T
-  animatedSlotRotation: number
+  rotateGroupRef: RefObject<SVGGElement | null>
+  clipPathRef: RefObject<SVGPathElement | null>
+  pointerGroupRef: RefObject<SVGGElement | null>
 }) {
   const { slotSelection } = config
   if (!slotSelection?.baseArc) return null
@@ -476,18 +468,38 @@ function RotatedSlotSelectedDial<T extends string>({
   const pointer = baseArcPointerLocal(baseArc, dialCenter, config.hubRadius)
   const clipSweepDeg = slotSelection.arcClipSweepDeg
   const activeSlot = slotSelection.optionSlots[selected]
-  const orangeClipId = clipSweepDeg ? `${config.idPrefix}-clip-orange-active` : undefined
+  if (!activeSlot) {
+    return (
+      <g transform={`translate(${config.dialOffsetX} ${config.dialOffsetY})`}>
+        {slotSelection.slotOrder.map((slotId) => {
+          const { layout, rotation } = getSlotArcLayout(slotSelection, slotId)
+          if (!layout?.path) return null
+          return (
+            <RotatedArc
+              key={slotId}
+              layout={layout}
+              rotation={rotation}
+              pivotX={pivotX}
+              pivotY={pivotY}
+              active={false}
+              clipSweepDeg={clipSweepDeg}
+              clipId={clipSweepDeg ? `${config.idPrefix}-clip-grey-${slotId}` : undefined}
+            />
+          )
+        })}
+      </g>
+    )
+  }
 
-  const orangeGroup = (
-    <g transform={`rotate(${animatedSlotRotation} ${pivotX} ${pivotY})`}>
-      <NestedOrangeArcGlow
-        layout={baseArc}
-        glowId={`${config.idPrefix}-arc-glow-active`}
-        strokeWidth={strokeWidth}
-      />
+  const orangeClipId = clipSweepDeg ? `${config.idPrefix}-clip-orange-active` : undefined
+  const sharedGlowId = `${config.idPrefix}-slot-arc-glow`
+  const initialRotation = getSlotArcLayout(slotSelection, activeSlot).rotation
+
+  const orangeContent = (
+    <>
+      <NestedOrangeArcGlow layout={baseArc} glowId={sharedGlowId} strokeWidth={strokeWidth} />
       <NestedOrangeArcFill layout={baseArc} strokeWidth={strokeWidth} />
-      <SlotPointerLine {...pointer} />
-    </g>
+    </>
   )
 
   return (
@@ -514,26 +526,38 @@ function RotatedSlotSelectedDial<T extends string>({
         <>
           <defs>
             <clipPath id={orangeClipId}>
-              <path d={arcClipWedgePath(pivotX, pivotY, clipSweepDeg, animatedSlotRotation)} />
+              <path
+                ref={clipPathRef}
+                d={arcClipWedgePath(pivotX, pivotY, clipSweepDeg, initialRotation)}
+              />
             </clipPath>
           </defs>
-          {/* Clip only the arc fills — pointer stays full length via separate unclipped line */}
           <g clipPath={`url(#${orangeClipId})`}>
-            <g transform={`rotate(${animatedSlotRotation} ${pivotX} ${pivotY})`}>
-              <NestedOrangeArcGlow
-                layout={baseArc}
-                glowId={`${config.idPrefix}-arc-glow-active`}
-                strokeWidth={strokeWidth}
-              />
-              <NestedOrangeArcFill layout={baseArc} strokeWidth={strokeWidth} />
+            <g
+              ref={rotateGroupRef}
+              transform={`rotate(${initialRotation} ${pivotX} ${pivotY})`}
+              style={{ willChange: 'transform' }}
+            >
+              {orangeContent}
             </g>
           </g>
-          <g transform={`rotate(${animatedSlotRotation} ${pivotX} ${pivotY})`}>
+          <g
+            ref={pointerGroupRef}
+            transform={`rotate(${initialRotation} ${pivotX} ${pivotY})`}
+            style={{ willChange: 'transform' }}
+          >
             <SlotPointerLine {...pointer} />
           </g>
         </>
       ) : (
-        orangeGroup
+        <g
+          ref={rotateGroupRef}
+          transform={`rotate(${initialRotation} ${pivotX} ${pivotY})`}
+          style={{ willChange: 'transform' }}
+        >
+          {orangeContent}
+          <SlotPointerLine {...pointer} />
+        </g>
       )}
     </g>
   )
@@ -542,30 +566,23 @@ function RotatedSlotSelectedDial<T extends string>({
 /**
  * Fixed-slot dials (sit duration / daily walking):
  * arcs stay in designed seats; center line animates to each arc's geometric bisector.
+ * Pointer attributes are updated imperatively during animation.
  */
 function FixedSlotSelectedDial<T extends string>({
   config,
   selected,
-  animatedRotation,
+  pointerLineRef,
 }: {
   config: RadialDialConfig<T>
   selected: T
-  animatedRotation: number
+  pointerLineRef: RefObject<SVGLineElement | null>
 }) {
   const targetPointer = computeSlotPointerLine(config, selected)
-  const dialCx = config.dialOffsetX + config.dialSize / 2
-  const dialCy = config.dialOffsetY + config.dialSize / 2
-  const targetAngle = pointerAngleDeg(targetPointer, dialCx, dialCy)
-  const reach = Math.hypot(targetPointer.x2 - dialCx, targetPointer.y2 - dialCy)
-  const settled = Math.abs(shortestDisplayAngleDelta(animatedRotation, targetAngle)) < 0.35
-  const pointer = settled
-    ? targetPointer
-    : pointerFromRotation(config as RadialDialConfig<string>, animatedRotation, reach)
 
   return (
     <>
       <GeneratedSlotDial config={config} selected={selected} idPrefix={config.idPrefix} />
-      <SlotPointerLine {...pointer} />
+      {targetPointer ? <SlotPointerLine {...targetPointer} lineRef={pointerLineRef} /> : null}
     </>
   )
 }
@@ -573,18 +590,26 @@ function FixedSlotSelectedDial<T extends string>({
 function SlotSelectedDial<T extends string>({
   config,
   selected,
-  animatedRotation,
+  pointerLineRef,
+  rotateGroupRef,
+  clipPathRef,
+  pointerGroupRef,
 }: {
   config: RadialDialConfig<T>
   selected: T
-  animatedRotation: number
+  pointerLineRef: RefObject<SVGLineElement | null>
+  rotateGroupRef: RefObject<SVGGElement | null>
+  clipPathRef: RefObject<SVGPathElement | null>
+  pointerGroupRef: RefObject<SVGGElement | null>
 }) {
   if (config.slotSelection?.baseArc) {
     return (
       <RotatedSlotSelectedDial
         config={config}
         selected={selected}
-        animatedSlotRotation={animatedRotation}
+        rotateGroupRef={rotateGroupRef}
+        clipPathRef={clipPathRef}
+        pointerGroupRef={pointerGroupRef}
       />
     )
   }
@@ -593,7 +618,7 @@ function SlotSelectedDial<T extends string>({
     <FixedSlotSelectedDial
       config={config}
       selected={selected}
-      animatedRotation={animatedRotation}
+      pointerLineRef={pointerLineRef}
     />
   )
 }
@@ -772,26 +797,90 @@ export function RadialDialSelector<T extends string>({
   const dialCy = config.dialOffsetY + config.dialSize / 2
   const isRotatedMode = Boolean(config.slotSelection?.baseArc)
 
+  // Ignore stale answers that no longer map to a dial slot (prevents render crashes).
+  const resolvedSelected =
+    selected !== null && config.slotSelection
+      ? config.slotSelection.optionSlots[selected]
+        ? selected
+        : null
+      : selected
+
+  const pointerLineRef = useRef<SVGLineElement | null>(null)
+  const rotateGroupRef = useRef<SVGGElement | null>(null)
+  const pointerGroupRef = useRef<SVGGElement | null>(null)
+  const clipPathRef = useRef<SVGPathElement | null>(null)
+
+  const selectedRef = useRef(resolvedSelected)
+  selectedRef.current = resolvedSelected
+  const configRef = useRef(config)
+  configRef.current = config
+
   let animationTarget: number | null = null
-  if (config.slotSelection && selected !== null) {
+  if (config.slotSelection && resolvedSelected !== null) {
     if (isRotatedMode) {
-      const slotId = config.slotSelection.optionSlots[selected]
-      animationTarget = getSlotArcLayout(config.slotSelection, slotId).rotation
+      const slotId = config.slotSelection.optionSlots[resolvedSelected]
+      if (slotId) {
+        animationTarget = getSlotArcLayout(config.slotSelection, slotId).rotation
+      }
     } else {
-      animationTarget = pointerAngleDeg(
-        computeSlotPointerLine(config, selected),
-        dialCx,
-        dialCy,
-      )
+      const targetPointer = computeSlotPointerLine(config, resolvedSelected)
+      if (targetPointer) {
+        animationTarget = pointerAngleDeg(targetPointer, dialCx, dialCy)
+      }
     }
   }
 
-  const animatedRotation = useAnimatedDialRotation(animationTarget)
-  const rotation = config.slotSelection
-    ? animatedRotation
-    : selected !== null
-      ? (config.rotationByOption[selected] ?? 0)
+  const applyRotation = useCallback(
+    (rotation: number) => {
+      const cfg = configRef.current as RadialDialConfig<string>
+      const current = selectedRef.current
+      if (!cfg.slotSelection || current === null) return
+
+      if (cfg.slotSelection.baseArc) {
+        const pivot = cfg.dialSize / 2
+        const transform = `rotate(${rotation} ${pivot} ${pivot})`
+        rotateGroupRef.current?.setAttribute('transform', transform)
+        pointerGroupRef.current?.setAttribute('transform', transform)
+        const clipSweep = cfg.slotSelection.arcClipSweepDeg
+        if (clipSweep && clipPathRef.current) {
+          clipPathRef.current.setAttribute(
+            'd',
+            arcClipWedgePath(pivot, pivot, clipSweep, rotation),
+          )
+        }
+        return
+      }
+
+      const line = pointerLineRef.current
+      if (!line) return
+
+      const targetPointer = computeSlotPointerLine(cfg, current)
+      if (!targetPointer) return
+
+      const cx = cfg.dialOffsetX + cfg.dialSize / 2
+      const cy = cfg.dialOffsetY + cfg.dialSize / 2
+      const targetAngle = pointerAngleDeg(targetPointer, cx, cy)
+      const reach = Math.hypot(targetPointer.x2 - cx, targetPointer.y2 - cy)
+      const settled = Math.abs(shortestDisplayAngleDelta(rotation, targetAngle)) < 0.35
+      const pointer = settled
+        ? targetPointer
+        : pointerFromRotation(cfg, rotation, reach)
+
+      line.setAttribute('x1', String(pointer.x1))
+      line.setAttribute('y1', String(pointer.y1))
+      line.setAttribute('x2', String(pointer.x2))
+      line.setAttribute('y2', String(pointer.y2))
+    },
+    [],
+  )
+
+  useDialRotationDriver(config.slotSelection ? animationTarget : null, applyRotation)
+
+  const staticRotation =
+    !config.slotSelection && resolvedSelected !== null
+      ? (config.rotationByOption[resolvedSelected] ?? 0)
       : 0
+
   const arcGlow = config.arcGlowBounds ?? {
     x: 76.882,
     y: 8.5,
@@ -836,6 +925,33 @@ export function RadialDialSelector<T extends string>({
             <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow" />
             <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape" />
           </filter>
+          {/* Shared slot-arc glow (stdDeviation 8) — avoid recreating filters per frame */}
+          <filter
+            id={`${config.idPrefix}-slot-arc-glow`}
+            x={arcGlow.x - 20}
+            y={arcGlow.y - 20}
+            width={arcGlow.width + 40}
+            height={arcGlow.height + 40}
+            filterUnits="userSpaceOnUse"
+            colorInterpolationFilters="sRGB"
+          >
+            <feFlood floodOpacity="0" result="BackgroundImageFix" />
+            <feColorMatrix
+              in="SourceAlpha"
+              type="matrix"
+              values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
+              result="hardAlpha"
+            />
+            <feOffset />
+            <feGaussianBlur stdDeviation="8" />
+            <feComposite in2="hardAlpha" operator="out" />
+            <feColorMatrix
+              type="matrix"
+              values="0 0 0 0 1 0 0 0 0 0.533333 0 0 0 0 0 0 0 0 0.5 0"
+            />
+            <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow" />
+            <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape" />
+          </filter>
           <filter
             id={`${config.idPrefix}-hub-glow`}
             x={dialCx - config.hubRadius - 10}
@@ -864,7 +980,7 @@ export function RadialDialSelector<T extends string>({
           </filter>
         </defs>
 
-        {selected === null ? (
+        {resolvedSelected === null ? (
           config.slotSelection ? (
             <GeneratedSlotDial config={config} selected={null} idPrefix={config.idPrefix} />
           ) : (
@@ -875,17 +991,23 @@ export function RadialDialSelector<T extends string>({
         ) : config.slotSelection ? (
           <SlotSelectedDial
             config={config}
-            selected={selected}
-            animatedRotation={rotation}
+            selected={resolvedSelected}
+            pointerLineRef={pointerLineRef}
+            rotateGroupRef={rotateGroupRef}
+            clipPathRef={clipPathRef}
+            pointerGroupRef={pointerGroupRef}
           />
         ) : (
-          <SelectedDial config={config} rotation={rotation} />
+          <SelectedDial config={config} rotation={staticRotation} />
         )}
 
-        {selected === null ? (
+        {resolvedSelected === null ? (
           <IdleCenterHub config={config} />
         ) : (
-          <SelectedCenterHub config={config} label={centerLabelByOption[selected]} />
+          <SelectedCenterHub
+            config={config}
+            label={centerLabelByOption[resolvedSelected] ?? ''}
+          />
         )}
       </svg>
 
@@ -899,7 +1021,7 @@ export function RadialDialSelector<T extends string>({
             key={pill.id}
             label={pill.label}
             labelLines={pill.labelLines}
-            selected={selected === pill.id}
+            selected={resolvedSelected === pill.id}
             className={pill.className}
             anchor={anchor}
             onClick={() => onSelect(pill.id as T)}

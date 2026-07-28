@@ -1,0 +1,322 @@
+/* Clean stacked celebration: gauge → SUCCESS → pedals */
+
+.scc {
+  --scc-accent: #90df9e;
+  --scc-soft: rgba(144, 223, 158, 0.55);
+  --scc-glow: rgba(144, 223, 158, 0.4);
+
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(100%, 300px);
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 0 auto 4px;
+  overflow: visible;
+  pointer-events: none;
+  user-select: none;
+  color: #fff;
+}
+
+.scc-stage {
+  position: relative;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+}
+
+.scc-aura {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 200px;
+  height: 120px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, var(--scc-glow), transparent 70%);
+  opacity: 0;
+  animation: scc-aura 2.4s ease-out forwards;
+}
+
+.scc-gauge {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 240px;
+  height: 140px;
+  overflow: visible;
+}
+
+.scc-track {
+  opacity: 0;
+  animation: scc-fade-in 0.4s ease-out 0.1s forwards;
+}
+
+.scc-tick {
+  color: rgba(255, 255, 255, 0.28);
+  opacity: 0;
+  animation: scc-tick-on 0.45s ease-out forwards;
+}
+
+.scc-tick-major {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.scc-progress {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  opacity: 0.95;
+  animation: scc-draw-arc 1.45s cubic-bezier(0.22, 0.9, 0.3, 1) 0.25s forwards;
+}
+
+.scc-needle {
+  transform: rotate(0deg);
+  transform-box: view-box;
+  animation: scc-needle 1.45s cubic-bezier(0.22, 0.9, 0.3, 1) 0.25s forwards;
+}
+
+.scc-success {
+  position: relative;
+  z-index: 2;
+  margin: -6px 0 0;
+  font-family: 'Sora', 'Lato', ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  line-height: 1.15;
+  text-indent: 0.18em;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 0 16px var(--scc-glow);
+  opacity: 0;
+  transform: translateY(8px);
+  animation: scc-success 0.55s cubic-bezier(0.22, 1, 0.36, 1) 1.2s forwards;
+}
+
+.scc-pedals {
+  display: grid;
+  width: 100%;
+  max-width: 280px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 12px;
+  align-items: start;
+  padding: 0 4px;
+}
+
+.scc-pedal {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(10px);
+  color: rgba(255, 255, 255, 0.5);
+  animation: scc-pedal 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.scc-delay-1 {
+  animation-delay: 1.4s;
+}
+.scc-delay-2 {
+  animation-delay: 1.65s;
+}
+.scc-delay-3 {
+  animation-delay: 1.9s;
+}
+
+.scc-delay-1 .scc-swoosh {
+  animation: scc-swoosh 0.65s ease-out 1.4s forwards;
+}
+.scc-delay-2 .scc-swoosh {
+  animation: scc-swoosh 0.65s ease-out 1.65s forwards;
+}
+.scc-delay-3 .scc-swoosh {
+  animation: scc-swoosh 0.65s ease-out 1.9s forwards;
+}
+
+.scc-pedal-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.scc-pedal-glyph {
+  width: 26px;
+  height: 29px;
+}
+
+.scc-pedal-label {
+  width: 100%;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scc-swoosh {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: 36px;
+  height: 28px;
+  translate: -50% -100%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at bottom, #fff 0%, var(--scc-accent) 40%, transparent 72%);
+  opacity: 0;
+  filter: blur(0.5px);
+  pointer-events: none;
+}
+
+/* --- keyframes --- */
+
+@keyframes scc-fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scc-aura {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  45% {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+}
+
+@keyframes scc-tick-on {
+  0% {
+    opacity: 0;
+    color: rgba(255, 255, 255, 0.2);
+  }
+  40% {
+    opacity: 1;
+    color: var(--scc-accent);
+  }
+  100% {
+    opacity: 1;
+    color: #fff;
+  }
+}
+
+@keyframes scc-draw-arc {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Needle starts at left of arc (~200°) and sweeps to right (~340°) = +140° */
+@keyframes scc-needle {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(140deg);
+  }
+}
+
+@keyframes scc-success {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    letter-spacing: 0.28em;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    letter-spacing: 0.18em;
+  }
+}
+
+@keyframes scc-pedal {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+    color: rgba(255, 255, 255, 0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-2px);
+    color: #fff;
+    filter: drop-shadow(0 0 8px var(--scc-soft));
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    color: #fff;
+    filter: drop-shadow(0 0 6px var(--scc-soft));
+  }
+}
+
+@keyframes scc-swoosh {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.5);
+  }
+  40% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -18px) scale(1.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scc-aura,
+  .scc-track,
+  .scc-tick,
+  .scc-progress,
+  .scc-needle,
+  .scc-success,
+  .scc-pedal,
+  .scc-swoosh {
+    animation: none !important;
+  }
+
+  .scc-aura {
+    opacity: 0.35;
+  }
+
+  .scc-track,
+  .scc-tick,
+  .scc-success,
+  .scc-pedal {
+    opacity: 1;
+    color: #fff;
+    transform: none;
+  }
+
+  .scc-progress {
+    stroke-dashoffset: 0;
+  }
+
+  .scc-needle {
+    transform: rotate(140deg);
+  }
+}

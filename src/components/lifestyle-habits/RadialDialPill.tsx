@@ -1,7 +1,8 @@
+import { memo } from 'react'
 import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
 import { DIAL_PILL_GRADIENT } from './radialDialShared'
 
-export function RadialDialPill({
+function RadialDialPillInner({
   label,
   labelLines,
   selected,
@@ -53,3 +54,5 @@ export function RadialDialPill({
     </button>
   )
 }
+
+export const RadialDialPill = memo(RadialDialPillInner)

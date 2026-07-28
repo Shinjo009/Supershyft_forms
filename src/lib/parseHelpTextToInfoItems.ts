@@ -1,6 +1,16 @@
 import type { McqInfoItem } from '../components/mcq/mcqInfoTypes'
 
 /**
+ * Glossary-style help_text (e.g. "Whole Grains : Wheat, rice. Pulses : Beans.")
+ * belongs in the (i) overlay, not as grey text under the question.
+ */
+export function isGlossaryHelpText(helpText: string | null | undefined): boolean {
+  const text = helpText?.trim()
+  if (!text) return false
+  return /[A-Za-z][^:]{0,60}?\s*:\s*\S/.test(text)
+}
+
+/**
  * Turns API `help_text` glossary strings into info-card items.
  * Expected shape: "Term : description. Next term : description."
  */

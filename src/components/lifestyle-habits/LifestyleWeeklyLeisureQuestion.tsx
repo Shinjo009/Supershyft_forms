@@ -3,12 +3,14 @@ import type { QuestionnaireOption } from '../../api/questionnaire'
 import { LifestyleHabitsQuestionHeader } from './LifestyleHabitsQuestionHeader'
 import { LifestyleApiPillGrid } from './LifestyleApiPillGrid'
 import { RadialDialSelector } from './RadialDialSelector'
-import { collectApiDialOptions, fitApiOptionsToRotatedDial } from './fitApiOptionsToDial'
-import { PHYSICAL_ACTIVITY_BASE_ARC } from './physicalActivityDialConfig'
 import {
-  WEEKLY_LEISURE_FIVE_ARC_CLIP_SWEEP_DEG,
-  WEEKLY_LEISURE_FIVE_PILL_ORBIT,
-} from './weeklyLeisureDialConfig'
+  collectApiDialOptions,
+  fitApiOptionsToFixedDial,
+  fitApiOptionsToRotatedDial,
+} from './fitApiOptionsToDial'
+import { DAILY_WALKING_SLOT_ARCS } from './dailyWalkingDialConfig'
+import { PHYSICAL_ACTIVITY_BASE_ARC } from './physicalActivityDialConfig'
+import { WEEKLY_LEISURE_FIVE_PILL_ORBIT } from './weeklyLeisureDialConfig'
 
 const LEISURE_MATCHERS_4 = [
   {
@@ -44,6 +46,7 @@ const LEISURE_MATCHERS_4 = [
   },
 ]
 
+/** Same 5 seats / needle animation as daily walking dial. */
 const LEISURE_MATCHERS_5 = [
   {
     slot: 'top',
@@ -51,7 +54,7 @@ const LEISURE_MATCHERS_5 = [
       text.includes('rare') || text.includes('never') || text.includes('seldom'),
   },
   {
-    slot: 'top-right',
+    slot: 'right',
     match: (text: string) =>
       text.includes('< 1') ||
       text.includes('<1') ||
@@ -99,7 +102,36 @@ export function LifestyleWeeklyLeisureQuestion({
 }) {
   const { config, centerLabels, overflow } = useMemo(() => {
     const count = collectApiDialOptions(options).length
-    const useFive = count >= 5
+
+    // 5+ options: fixed seats like daily walking (needle sweeps; orange arc seats).
+    // 4 options: rotated arc like physical activity.
+    if (count >= 5) {
+      return fitApiOptionsToFixedDial(
+        {
+          idPrefix: 'weekly-leisure',
+          width: 300,
+          height: 270,
+          dialOffsetX: 63,
+          dialOffsetY: 44,
+          dialSize: 174,
+          hubRadius: 23,
+          slotArcs: DAILY_WALKING_SLOT_ARCS,
+          slotOrder: ['top', 'right', 'bottom-right', 'bottom-left', 'left'],
+          rotationBySlot: {
+            top: 0,
+            right: 75,
+            'bottom-right': 147,
+            'bottom-left': 220,
+            left: 292,
+          },
+          preferredMatchers: LEISURE_MATCHERS_5,
+          activeArcStrokeWidth: 4,
+          arcGlowBounds: { x: 0, y: -30, width: 180, height: 90 },
+          pillOrbitRadius: WEEKLY_LEISURE_FIVE_PILL_ORBIT,
+        },
+        options,
+      )
+    }
 
     return fitApiOptionsToRotatedDial(
       {
@@ -110,30 +142,17 @@ export function LifestyleWeeklyLeisureQuestion({
         dialOffsetY: 44,
         dialSize: 174,
         hubRadius: 23,
-        // Same Figma arc as Q2 — for 5 slots, clip each copy so they form a clean circle
         baseArc: PHYSICAL_ACTIVITY_BASE_ARC,
         activeArcStrokeWidth: 4,
         arcGlowBounds: { x: 0, y: -20, width: 170, height: 120 },
-        designedSlotOrder: useFive
-          ? ['top', 'top-right', 'bottom-right', 'bottom-left', 'left']
-          : ['top', 'right', 'bottom', 'left'],
-        designedRotations: useFive
-          ? {
-              top: -90,
-              'top-right': -18,
-              'bottom-right': 54,
-              'bottom-left': 126,
-              left: 198,
-            }
-          : {
-              top: -90,
-              right: 0,
-              bottom: 90,
-              left: 180,
-            },
-        preferredMatchers: useFive ? LEISURE_MATCHERS_5 : LEISURE_MATCHERS_4,
-        arcClipSweepDeg: useFive ? WEEKLY_LEISURE_FIVE_ARC_CLIP_SWEEP_DEG : undefined,
-        pillOrbitRadius: useFive ? WEEKLY_LEISURE_FIVE_PILL_ORBIT : undefined,
+        designedSlotOrder: ['top', 'right', 'bottom', 'left'],
+        designedRotations: {
+          top: -90,
+          right: 0,
+          bottom: 90,
+          left: 180,
+        },
+        preferredMatchers: LEISURE_MATCHERS_4,
       },
       options,
     )

@@ -59,8 +59,8 @@ import {
   SectionCompleteHub,
   type SectionCompleteVariant,
 } from './components/SectionCompleteHub'
+import { SectionCompleteCelebration } from './components/SectionCompleteCelebration'
 import { AppointmentJourneyCompleteStep } from './components/AppointmentJourneyCompleteStep'
-import slotConfirmedIcon from './assets/figma/slot-confirmed-icon.svg'
 import packageIcon from './assets/figma/package-icon.svg'
 
 const RELATION_OPTIONS = [
@@ -1589,11 +1589,9 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
 
   return (
     <div className="flex min-h-full w-full flex-col items-center gap-3">
-      <div className="flex w-full flex-col items-center gap-1.5">
-        <div className="flex size-14 items-center justify-center rounded-xl border border-[rgba(144,223,158,0.5)] shadow-[0_4px_12px_rgba(16,185,129,0.1)]">
-          <img src={slotConfirmedIcon} alt="" className="size-7" aria-hidden />
-        </div>
-        <div className="flex w-full flex-col items-center pb-3 text-center">
+      <div className="flex w-full flex-col items-center gap-3">
+        <SectionCompleteCelebration tone="booking" />
+        <div className="flex w-full flex-col items-center gap-1 pb-1 text-center">
           <h2 className="text-[18px] font-semibold tracking-[0.2px] text-white">
             Slot Confirmed!
           </h2>

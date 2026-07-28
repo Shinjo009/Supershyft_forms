@@ -7,13 +7,7 @@ const DIAL_OFFSET_Y = 28
 const DIAL_SIZE = 174
 const HUB_RADIUS = 23
 
-/**
- * 5 slots × 72°. Figma base arc spans ~80°, so clip each copy to this sweep
- * to leave even gaps and a clean circular ring (same arc shape as Q2).
- */
-export const WEEKLY_LEISURE_FIVE_ARC_CLIP_SWEEP_DEG = 58
-
-/** Equal pill radius so options sit on one circle. */
+/** Equal pill radius so 5-option layout sits on one circle. */
 export const WEEKLY_LEISURE_FIVE_PILL_ORBIT = 118
 
 export const WEEKLY_LEISURE_DIAL_CONFIG: RadialDialConfig<WeeklyLeisureOption> = {

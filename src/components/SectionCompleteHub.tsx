@@ -1,8 +1,4 @@
 import tickCircleSolid from '../assets/figma/tick-circle-solid.svg'
-import familySectionIcon from '../assets/figma/family-section-icon.svg'
-import lifestyleSectionIcon from '../assets/figma/lifestyle-section-icon.svg'
-import nutritionCarrotIcon from '../assets/figma/nutrition-carrot.svg'
-import nutritionAppleIcon from '../assets/figma/nutrition-apple.svg'
 import assessmentRadioImg from '../assets/Ellipse 13077.svg'
 import {
   categoryDescriptionForKey,
@@ -11,43 +7,26 @@ import {
   type AssessmentCategoryStatus,
 } from '../api/assessments'
 import { ContinueButton } from './ContinueButton'
+import { SectionCompleteCelebration } from './SectionCompleteCelebration'
 import { ASSESSMENT_CARD_STACK_CLASS, ASSESSMENT_CONTENT_MAX_CLASS } from './mcq/mcqLayout'
 
 export type SectionCompleteVariant = 'family' | 'lifestyle' | 'nutrition'
 
 const VARIANT_COPY: Record<
   SectionCompleteVariant,
-  { title: string; subtitle?: string; iconBorder: string }
+  { title: string; subtitle?: string }
 > = {
   family: {
     title: 'Family Section Complete!',
     subtitle: 'Only 2 more sections left',
-    iconBorder: 'border-[rgba(182,108,242,0.5)]',
   },
   lifestyle: {
     title: 'Lifestyle Section Complete!',
     subtitle: 'Only 1 more section left',
-    iconBorder: 'border-[rgba(246,167,33,0.5)]',
   },
   nutrition: {
     title: 'Nutrition Section Complete!',
-    iconBorder: 'border-[rgba(84,170,255,0.5)]',
   },
-}
-
-function SectionIcon({ variant }: { variant: SectionCompleteVariant }) {
-  if (variant === 'lifestyle') {
-    return <img src={lifestyleSectionIcon} alt="" className="size-[30px]" aria-hidden />
-  }
-  if (variant === 'nutrition') {
-    return (
-      <span className="flex items-center" aria-hidden>
-        <img src={nutritionCarrotIcon} alt="" className="-mr-0.5 size-[19px]" />
-        <img src={nutritionAppleIcon} alt="" className="size-[27px]" />
-      </span>
-    )
-  }
-  return <img src={familySectionIcon} alt="" className="size-7" aria-hidden />
 }
 
 /** Shared section-complete hub — categories come from /assessments/{id}/status */
@@ -80,13 +59,9 @@ export function SectionCompleteHub({
   return (
     <div className="flex min-h-full w-full flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="my-auto flex w-full flex-col items-center gap-11 px-6 py-10">
-        <div className="flex flex-col items-center gap-2">
-          <div
-            className={`mb-6 flex size-14 items-center justify-center rounded-xl border p-px shadow-[0_4px_12px_0_rgba(16,185,129,0.1)] ${copy.iconBorder}`}
-          >
-            <SectionIcon variant={variant} />
-          </div>
-          <div className="flex flex-col items-center pb-3">
+        <div className="flex flex-col items-center gap-3">
+          <SectionCompleteCelebration key={variant} tone={variant} />
+          <div className="flex flex-col items-center gap-1 pb-1">
             <h2 className="text-center text-[18px] font-semibold tracking-[0.2px] text-white">
               {copy.title}
             </h2>
