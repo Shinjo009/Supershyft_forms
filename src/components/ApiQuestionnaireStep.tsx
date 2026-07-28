@@ -786,7 +786,7 @@ export function ApiQuestionnaireStep({
                               }))
                             }}
                             placeholder="Please specify"
-                            className="ml-[22px] w-[calc(100%-22px)] border-0 border-b border-[rgba(255,255,255,0.35)] bg-transparent py-0.5 text-[11px] font-light leading-6 text-white outline-none placeholder:text-[#9a9a9a] disabled:opacity-60"
+                            className="ml-[22px] w-[calc(100%-22px)] border-0 border-b border-[rgba(255,255,255,0.35)] bg-transparent py-0.5 text-[16px] font-light leading-6 text-white outline-none placeholder:text-[#9a9a9a] disabled:opacity-60"
                             aria-label={`Please specify for ${otherFollowUp.question_text}`}
                           />
                         </div>
@@ -837,7 +837,7 @@ export function ApiQuestionnaireStep({
                   }}
                   rows={4}
                   placeholder="Type your answer"
-                  className="w-full resize-none rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-[14px] text-white outline-none placeholder:text-white/35 focus:ring-1 focus:ring-[#9D50BB] disabled:opacity-60"
+                  className="w-full resize-none rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-[16px] text-white outline-none placeholder:text-white/35 focus:ring-1 focus:ring-[#9D50BB] disabled:opacity-60"
                 />
               ) : null}
             </>

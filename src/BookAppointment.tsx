@@ -995,7 +995,7 @@ export default function BookAppointment() {
 }
 
 const mobileFieldInput =
-  'booking-field-input h-10 w-full rounded-[8px] border border-transparent bg-white/5 px-4 text-[14px] font-normal outline-none focus:border-[#4b8d83]'
+  'booking-field-input h-10 w-full rounded-[8px] border border-transparent bg-white/5 px-4 text-[16px] font-normal outline-none focus:border-[#4b8d83]'
 
 function PersonalStep({
   form,

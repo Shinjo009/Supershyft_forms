@@ -57,6 +57,16 @@ select:autofill {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
+/*
+ * iOS Safari zooms the page when a focused input/textarea is under 16px.
+ * Keep all form controls at least 16px so mobile focus never zooms.
+ */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
 /* Booking form — placeholder examples must stay muted grey (not inherit input text color). */
 .booking-field-input {
   color: #cccccc;

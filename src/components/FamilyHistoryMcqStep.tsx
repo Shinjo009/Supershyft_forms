@@ -320,7 +320,7 @@ function MultiSelectChipQuestion({
                   value={otherText}
                   onChange={(event) => onOtherTextChange(event.target.value)}
                   placeholder="Please specify"
-                  className="ml-[22px] w-[calc(100%-22px)] border-0 border-b border-[rgba(255,255,255,0.35)] bg-transparent py-0.5 text-[11px] font-light leading-6 text-white outline-none placeholder:text-[#9a9a9a]"
+                  className="ml-[22px] w-[calc(100%-22px)] border-0 border-b border-[rgba(255,255,255,0.35)] bg-transparent py-0.5 text-[16px] font-light leading-6 text-white outline-none placeholder:text-[#9a9a9a]"
                   aria-label="Please specify other condition"
                 />
               </div>
