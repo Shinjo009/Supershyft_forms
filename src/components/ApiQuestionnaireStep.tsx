@@ -538,11 +538,10 @@ export function ApiQuestionnaireStep({
                 }))
               }}
             />
-          ) : useAlcoholConsumptionLayout ? (
-            <LifestyleAlcoholConsumptionQuestion
+          ) : useSmokingFrequencyLayout ? (
+            <LifestyleSmokingFrequencyQuestion
               questionLabel={`Question ${visibleIndex + 1} of ${total}`}
               questionText={question.question_text}
-              helpText={question.help_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -554,10 +553,11 @@ export function ApiQuestionnaireStep({
                 }))
               }}
             />
-          ) : useSmokingFrequencyLayout ? (
-            <LifestyleSmokingFrequencyQuestion
+          ) : useAlcoholConsumptionLayout ? (
+            <LifestyleAlcoholConsumptionQuestion
               questionLabel={`Question ${visibleIndex + 1} of ${total}`}
               questionText={question.question_text}
+              helpText={question.help_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -623,6 +623,8 @@ export function ApiQuestionnaireStep({
               options={options}
               selectedValues={selectedValues}
               onInfoClick={openInfo}
+              reserveTickSpaceForSelectedLabels={useCoffeeTeaTypeLayout}
+              showFullOptionLabels={useCoffeeTeaTypeLayout}
               onToggle={(value) => {
                 setSaveError('')
                 applyChoiceSelection(toggleMulti(selectedValues, value))
@@ -715,7 +717,7 @@ export function ApiQuestionnaireStep({
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
-              layout="wrap"
+              layout={useCoffeeTeaIntakeLayout ? 'coffee-intake' : 'wrap'}
               onInfoClick={openInfo}
               onSelect={(value) => {
                 setSaveError('')

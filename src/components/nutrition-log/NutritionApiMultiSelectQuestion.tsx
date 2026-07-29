@@ -15,6 +15,8 @@ export function NutritionApiMultiSelectQuestion({
   selectedValues,
   onToggle,
   onInfoClick,
+  reserveTickSpaceForSelectedLabels = false,
+  showFullOptionLabels = false,
 }: {
   questionLabel: string
   questionText: string
@@ -23,6 +25,10 @@ export function NutritionApiMultiSelectQuestion({
   selectedValues: string[]
   onToggle: (value: string) => void
   onInfoClick?: () => void
+  /** Only for the coffee/tea type question: tick icon is absolute, so reserve left padding to avoid overlap. */
+  reserveTickSpaceForSelectedLabels?: boolean
+  /** Only for the coffee/tea type question: avoid `...` truncation for long labels. */
+  showFullOptionLabels?: boolean
 }) {
   const items = useMemo(() => collectNutritionApiOptions(options), [options])
   // Glossary help_text (Term : examples) is shown via the (i) button only.
@@ -40,6 +46,8 @@ export function NutritionApiMultiSelectQuestion({
         options={items}
         selected={selectedValues}
         onToggle={onToggle}
+        reserveTickSpaceForSelectedLabels={reserveTickSpaceForSelectedLabels}
+        showFullOptionLabels={showFullOptionLabels}
       />
     </div>
   )

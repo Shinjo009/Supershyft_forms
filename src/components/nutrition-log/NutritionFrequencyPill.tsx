@@ -1,6 +1,5 @@
 import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
-import { NUTRITION_PILL_GRADIENT, NUTRITION_PILL_GRADIENT_FULL } from './nutritionLogConfig'
-import { NUTRITION_PILL_GRADIENT_NARROW } from './breakfastFrequencyConfig'
+import { NUTRITION_PILL_GRADIENT } from './nutritionLogConfig'
 
 export function NutritionFrequencyPill({
   label,
@@ -30,11 +29,8 @@ export function NutritionFrequencyPill({
       style={
         selected
           ? {
-              backgroundImage: fullWidth
-                ? NUTRITION_PILL_GRADIENT_FULL
-                : compact
-                  ? NUTRITION_PILL_GRADIENT
-                  : NUTRITION_PILL_GRADIENT_NARROW,
+              // Keep one consistent selected glow across nutrition options.
+              backgroundImage: NUTRITION_PILL_GRADIENT,
               borderColor: MCQ_PILL_BORDER_SELECTED,
             }
           : {

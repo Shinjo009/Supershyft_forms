@@ -28,7 +28,7 @@ export function LifestyleSmokingFrequencyQuestion({
         options={options}
         selectedValue={selectedValue}
         onSelect={onSelect}
-        layout="pairs"
+        layout="smoking"
       />
     </div>
   )

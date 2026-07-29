@@ -28,7 +28,7 @@ export function LifestyleWellnessPrioritiesQuestion({
         options={options}
         selectedValue={selectedValue}
         onSelect={onSelect}
-        layout="pairs"
+        layout="wellness"
         showTick
       />
     </div>

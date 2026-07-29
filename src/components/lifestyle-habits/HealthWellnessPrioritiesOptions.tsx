@@ -33,9 +33,7 @@ function WellnessPill({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center gap-2.5 rounded-[24px] border border-solid px-[10px] text-center text-[12px] leading-6 text-white ${widthClass} ${
-        selected ? 'py-1 font-normal' : 'py-2 font-normal'
-      }`}
+      className={`flex items-center justify-center gap-2 rounded-[24px] border border-solid px-[10px] py-2 text-center text-[12px] leading-6 text-white ${widthClass}`}
       style={
         selected
           ? {
@@ -49,10 +47,13 @@ function WellnessPill({
             }
       }
     >
-      {selected ? (
-        <img src={tickCircleIcon} alt="" className="size-3 shrink-0" aria-hidden />
-      ) : null}
-      {label}
+      <img
+        src={tickCircleIcon}
+        alt=""
+        className={`size-3 shrink-0 ${selected ? 'opacity-100' : 'opacity-0'}`}
+        aria-hidden
+      />
+      <span className="whitespace-nowrap">{label}</span>
     </button>
   )
 }

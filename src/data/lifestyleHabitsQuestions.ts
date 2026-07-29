@@ -192,7 +192,7 @@ export const ALCOHOL_CONSUMPTION_OPTIONS: {
   { id: 'more-than-3', label: 'More than 3 servings per week' },
 ]
 
-/** Figma 5629:14868 — row layout for alcohol pills */
+/** Figma 5629:14868 — alcohol pill positions. */
 export const ALCOHOL_CONSUMPTION_ROWS: AlcoholConsumptionOption[][] = [
   ['3-or-less'],
   ['quit', '1-2-per-3-months'],
@@ -213,7 +213,7 @@ export const SMOKING_FREQUENCY_OPTIONS: {
   { id: 'more-than-7-weekly', label: 'More than 7 times a week' },
 ]
 
-/** Figma 5657:50958 — 2-column grid with full-width last row */
+/** Figma 5657:50958 — smoking pill positions. */
 export const SMOKING_FREQUENCY_ROWS: SmokingFrequencyOption[][] = [
   ['never', 'quit'],
   ['1-3-weekly', '1-2-monthly'],
@@ -233,13 +233,13 @@ export const HEALTH_WELLNESS_PRIORITY_OPTIONS: {
   { id: 'increasing-strength', label: 'Increasing strength' },
 ]
 
-/** Figma 5657:51041 — mixed half/full-width rows */
+/** Figma 5657:51041 — wellness pill positions. */
 export const HEALTH_WELLNESS_PRIORITY_ROWS: WellnessPriorityRow[] = [
   { options: ['weight-loss', 'building-muscle'] },
   { options: ['increase-energy'], fullWidth: true },
   { options: ['improving-metabolic'], fullWidth: true },
   { options: ['improving-endurance'], fullWidth: true },
-  { options: ['increasing-strength'], fullWidth: false },
+  { options: ['increasing-strength'], fullWidth: true },
 ]
 
 export const LIFESTYLE_COMMITMENT_OPTIONS: {

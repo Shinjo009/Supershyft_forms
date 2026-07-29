@@ -176,6 +176,9 @@ export function isLifestyleSleepDurationQuestion(question: QuestionnaireQuestion
 
 /** Detect Lifestyle Q7 — alcohol consumption pills. */
 export function isLifestyleAlcoholConsumptionQuestion(question: QuestionnaireQuestion): boolean {
+  // Smoking also has a "quit" option — never treat smoke/tobacco questions as alcohol.
+  if (isLifestyleSmokingFrequencyQuestion(question)) return false
+
   const text = String(question.question_text || '').toLowerCase()
   const key = String(question.question_key || '').toLowerCase()
   if (
@@ -192,10 +195,10 @@ export function isLifestyleAlcoholConsumptionQuestion(question: QuestionnaireQue
   const labels = options.map((option) => getOptionLabel(option).toLowerCase())
   return labels.some(
     (label) =>
-      label.includes('drink') ||
-      label.includes('serving') ||
+      // Coffee/tea also contains "drink", so don't match generic "do not drink" text.
       label.includes('alcohol') ||
-      label.includes('quit'),
+      label.includes('serving') ||
+      (label.includes('drink') && label.includes('alcohol')),
   )
 }
 
