@@ -102,7 +102,13 @@ export function NutritionMultiSelectGridOptions<T extends string>({
         // When showFullOptionLabels is on, long labels span the full row so they never wrap.
         const autoFullWidth =
           showFullOptionLabels && option.label.trim().length > LONG_LABEL_CHARS
-        const isFullWidth = option.fullWidth || autoFullWidth
+        const isCruciferousOption =
+          String(option.id).toLowerCase() === 'cruciferous' ||
+          option.label.toLowerCase().includes('cruciferous')
+        const isFullWidth = option.fullWidth || isCruciferousOption || autoFullWidth
+        const effectiveShowFullOptionLabels = showFullOptionLabels || Boolean(option.fullWidth)
+        const effectiveReserveTickSpaceForSelectedLabels =
+          reserveTickSpaceForSelectedLabels || Boolean(option.fullWidth) || isCruciferousOption
 
         return (
           <div key={option.id} className={isFullWidth ? 'col-span-2' : undefined}>
@@ -110,8 +116,8 @@ export function NutritionMultiSelectGridOptions<T extends string>({
               label={option.label}
               fullWidth={isFullWidth}
               selected={selected.includes(option.id)}
-              reserveTickSpaceForSelectedLabels={reserveTickSpaceForSelectedLabels}
-              showFullOptionLabels={showFullOptionLabels}
+              reserveTickSpaceForSelectedLabels={effectiveReserveTickSpaceForSelectedLabels}
+              showFullOptionLabels={effectiveShowFullOptionLabels || isCruciferousOption}
               onClick={() => onToggle(option.id)}
             />
           </div>
