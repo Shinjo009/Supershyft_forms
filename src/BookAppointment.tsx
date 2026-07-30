@@ -61,7 +61,6 @@ import {
 } from './components/SectionCompleteHub'
 import { SectionCompleteCelebration } from './components/SectionCompleteCelebration'
 import { AppointmentJourneyCompleteStep } from './components/AppointmentJourneyCompleteStep'
-import packageIcon from './assets/figma/package-icon.svg'
 
 const RELATION_OPTIONS = [
   'Parent',
@@ -1582,10 +1581,6 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
     .filter(Boolean)
     .filter((part, index, arr) => arr.indexOf(part) === index)
     .join(', ') || '—'
-  const packageLabel =
-    form.gender === 'female'
-      ? 'Full Body with Vitamins, Women Peak Performance'
-      : 'Full Body with Vitamins, Men Peak Performance'
 
   return (
     <div className="flex min-h-full w-full flex-col items-center gap-3">
@@ -1624,11 +1619,6 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
 
       <div className="flex w-full flex-col gap-6 rounded-xl border border-[rgba(144,223,158,0.2)] bg-[rgba(75,141,131,0.1)] p-[13px]">
         <SuccessDetailRow icon={<CalendarIcon />} label="Date & Time" value={bookingDateTime} />
-        <SuccessDetailRow
-          icon={<img src={packageIcon} alt="" className="size-5" aria-hidden />}
-          label="Package"
-          value={packageLabel}
-        />
         <SuccessDetailRow icon={<UserIcon />} label="Member name" value={memberName} />
         <SuccessDetailRow icon={<LocationIcon />} label="Location" value={locationLabel} />
       </div>

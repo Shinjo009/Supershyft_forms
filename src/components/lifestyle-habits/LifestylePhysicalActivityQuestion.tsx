@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import type { QuestionnaireOption } from '../../api/questionnaire'
-import { MCQ_QUESTION_HINT_CLASS } from '../mcq/mcqLayout'
 import { LifestyleHabitsQuestionHeader } from './LifestyleHabitsQuestionHeader'
 import { LifestyleApiPillGrid } from './LifestyleApiPillGrid'
 import { RadialDialSelector } from './RadialDialSelector'
@@ -43,7 +42,6 @@ const ACTIVITY_MATCHERS = [
 export function LifestylePhysicalActivityQuestion({
   questionLabel,
   questionText,
-  helpText,
   options,
   selectedValue,
   onSelect,
@@ -51,7 +49,6 @@ export function LifestylePhysicalActivityQuestion({
 }: {
   questionLabel: string
   questionText: string
-  helpText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -89,7 +86,6 @@ export function LifestylePhysicalActivityQuestion({
     <div className="flex w-full flex-col gap-16">
       <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
         <p>{questionText}</p>
-        {helpText ? <p className={MCQ_QUESTION_HINT_CLASS}>{helpText}</p> : null}
       </LifestyleHabitsQuestionHeader>
 
       <div className="overflow-visible">

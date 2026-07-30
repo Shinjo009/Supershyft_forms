@@ -37,8 +37,8 @@
   translate: -50% -50%;
   border-radius: 50%;
   background: radial-gradient(ellipse at center, var(--scc-glow), transparent 70%);
-  opacity: 0;
-  animation: scc-aura 2.4s ease-out forwards;
+  opacity: 0.35;
+  animation: scc-aura 2.4s ease-in-out infinite;
 }
 
 .scc-gauge {
@@ -58,7 +58,9 @@
 .scc-tick {
   color: rgba(255, 255, 255, 0.28);
   opacity: 0;
-  animation: scc-tick-on 0.45s ease-out forwards;
+  animation:
+    scc-tick-on 0.45s ease-out forwards,
+    scc-tick-glow 2s ease-in-out infinite;
 }
 
 .scc-tick-major {
@@ -69,13 +71,13 @@
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
   opacity: 0.95;
-  animation: scc-draw-arc 1.45s cubic-bezier(0.22, 0.9, 0.3, 1) 0.25s forwards;
+  animation: scc-draw-arc 1.45s cubic-bezier(0.22, 0.9, 0.3, 1) 0.25s infinite alternate;
 }
 
 .scc-needle {
   transform: rotate(0deg);
   transform-box: view-box;
-  animation: scc-needle 1.45s cubic-bezier(0.22, 0.9, 0.3, 1) 0.25s forwards;
+  animation: scc-needle 1.45s cubic-bezier(0.22, 0.9, 0.3, 1) 0.25s infinite alternate;
 }
 
 .scc-success {
@@ -93,7 +95,9 @@
   text-shadow: 0 0 16px var(--scc-glow);
   opacity: 0;
   transform: translateY(8px);
-  animation: scc-success 0.55s cubic-bezier(0.22, 1, 0.36, 1) 1.2s forwards;
+  animation:
+    scc-success 0.55s cubic-bezier(0.22, 1, 0.36, 1) 1.2s forwards,
+    scc-success-pulse 2.2s ease-in-out 1.8s infinite;
 }
 
 .scc-pedals {
@@ -130,13 +134,13 @@
 }
 
 .scc-delay-1 .scc-swoosh {
-  animation: scc-swoosh 0.65s ease-out 1.4s forwards;
+  animation: scc-swoosh 2.8s ease-out 1.4s infinite;
 }
 .scc-delay-2 .scc-swoosh {
-  animation: scc-swoosh 0.65s ease-out 1.65s forwards;
+  animation: scc-swoosh 2.8s ease-out 1.65s infinite;
 }
 .scc-delay-3 .scc-swoosh {
-  animation: scc-swoosh 0.65s ease-out 1.9s forwards;
+  animation: scc-swoosh 2.8s ease-out 1.9s infinite;
 }
 
 .scc-pedal-icon {
@@ -150,6 +154,17 @@
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.04);
+  animation: scc-pedal-idle 2.4s ease-in-out infinite;
+}
+
+.scc-delay-1 .scc-pedal-icon {
+  animation-delay: 2s;
+}
+.scc-delay-2 .scc-pedal-icon {
+  animation-delay: 2.25s;
+}
+.scc-delay-3 .scc-pedal-icon {
+  animation-delay: 2.5s;
 }
 
 .scc-pedal-glyph {
@@ -192,17 +207,14 @@
 }
 
 @keyframes scc-aura {
-  0% {
-    opacity: 0;
-    transform: scale(0.7);
-  }
-  45% {
-    opacity: 0.9;
-    transform: scale(1.05);
-  }
+  0%,
   100% {
-    opacity: 0.4;
-    transform: scale(1);
+    opacity: 0.35;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.08);
   }
 }
 
@@ -218,6 +230,16 @@
   100% {
     opacity: 1;
     color: #fff;
+  }
+}
+
+@keyframes scc-tick-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 4px var(--scc-soft));
   }
 }
 
@@ -253,6 +275,16 @@
   }
 }
 
+@keyframes scc-success-pulse {
+  0%,
+  100% {
+    text-shadow: 0 0 16px var(--scc-glow);
+  }
+  50% {
+    text-shadow: 0 0 28px var(--scc-glow);
+  }
+}
+
 @keyframes scc-pedal {
   0% {
     opacity: 0;
@@ -273,13 +305,29 @@
   }
 }
 
+@keyframes scc-pedal-idle {
+  0%,
+  100% {
+    box-shadow: 0 0 0 transparent;
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+  50% {
+    box-shadow: 0 0 12px var(--scc-soft);
+    border-color: var(--scc-accent);
+  }
+}
+
 @keyframes scc-swoosh {
   0% {
     opacity: 0;
     transform: translate(-50%, 6px) scale(0.5);
   }
-  40% {
+  12% {
     opacity: 0.85;
+  }
+  28% {
+    opacity: 0;
+    transform: translate(-50%, -18px) scale(1.2);
   }
   100% {
     opacity: 0;
@@ -295,6 +343,7 @@
   .scc-needle,
   .scc-success,
   .scc-pedal,
+  .scc-pedal-icon,
   .scc-swoosh {
     animation: none !important;
   }

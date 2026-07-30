@@ -1,5 +1,5 @@
-import coastalImg from '../../assets/family-history/coastal.jpg'
-import inlandImg from '../../assets/family-history/inland.jpg'
+import coastalImg from '../../assets/family-history/coastal.webp'
+import inlandImg from '../../assets/family-history/inland.webp'
 import {
   getOptionLabel,
   getOptionValue,
@@ -14,6 +14,14 @@ const CARD_META: Record<
 > = {
   inland: { image: inlandImg, imageTop: '-61px', isInland: true },
   coastal: { image: coastalImg, imageTop: '-65px', isInland: false },
+}
+
+/** Warm the location card images into browser cache as soon as this module loads. */
+if (typeof document !== 'undefined') {
+  for (const src of [inlandImg, coastalImg]) {
+    const img = new Image()
+    img.src = src
+  }
 }
 
 /** Designed Inland / Coastal cards — driven by API option labels/values. */
@@ -72,6 +80,9 @@ export function FamilyHistoryLocationOptions({
                   <img
                     src={meta.image}
                     alt=""
+                    decoding="async"
+                    fetchPriority="high"
+                    loading="eager"
                     className="pointer-events-none absolute -left-4 h-[189px] w-[283px] object-cover"
                     style={{ top: meta.imageTop }}
                     aria-hidden

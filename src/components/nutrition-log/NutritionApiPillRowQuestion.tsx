@@ -6,15 +6,13 @@ import { NutritionFrequencyPill } from './NutritionFrequencyPill'
 
 /**
  * Coffee intake layout — matches the Figma design:
- * short numeric labels (e.g. "1-2 cups per day") pair side-by-side,
- * long descriptive labels (e.g. "I do not drink coffee or tea") go full-width.
+ * short numeric labels (e.g. "1-2 cups per day", "2-3 times a week") pair side-by-side,
+ * long descriptive labels (e.g. "I do not drink coffee or tea") go full-width below.
  *
- * A label is "short" if it starts with a digit or contains a digit followed by text ≤ 16 chars.
+ * Short = starts with a digit (amount/frequency). Everything else is full-width.
  */
 function isShortCoffeeLabel(label: string): boolean {
-  const t = label.trim()
-  // Matches things like "1-2 cups per day", "0-1 cups per day", "3+ cups"
-  return /^\d/.test(t) && t.length <= 18
+  return /^\d/.test(label.trim())
 }
 
 function CoffeeIntakeGrid({

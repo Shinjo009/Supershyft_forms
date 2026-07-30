@@ -29,7 +29,6 @@ export function LifestyleWellnessPrioritiesQuestion({
         selectedValue={selectedValue}
         onSelect={onSelect}
         layout="wellness"
-        showTick
       />
     </div>
   )

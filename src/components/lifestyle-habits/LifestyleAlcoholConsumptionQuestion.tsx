@@ -1,5 +1,4 @@
 import type { QuestionnaireOption } from '../../api/questionnaire'
-import { MCQ_QUESTION_HINT_CLASS } from '../mcq/mcqLayout'
 import { LifestyleHabitsQuestionHeader } from './LifestyleHabitsQuestionHeader'
 import { LifestyleApiPillGrid } from './LifestyleApiPillGrid'
 
@@ -7,7 +6,6 @@ import { LifestyleApiPillGrid } from './LifestyleApiPillGrid'
 export function LifestyleAlcoholConsumptionQuestion({
   questionLabel,
   questionText,
-  helpText,
   options,
   selectedValue,
   onSelect,
@@ -15,7 +13,6 @@ export function LifestyleAlcoholConsumptionQuestion({
 }: {
   questionLabel: string
   questionText: string
-  helpText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -25,7 +22,6 @@ export function LifestyleAlcoholConsumptionQuestion({
     <div className="flex w-full flex-col gap-8">
       <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
         <p>{questionText}</p>
-        {helpText ? <p className={MCQ_QUESTION_HINT_CLASS}>{helpText}</p> : null}
       </LifestyleHabitsQuestionHeader>
 
       <LifestyleApiPillGrid

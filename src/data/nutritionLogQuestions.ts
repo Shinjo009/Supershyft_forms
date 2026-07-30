@@ -48,7 +48,6 @@ export type ExtraSaltFrequencyOption = 'never' | 'rarely' | 'usually'
 
 export type CoffeeTeaIntakeOption =
   | '1-2-cups-per-day'
-  | '0-1-cups-per-day'
   | 'no-coffee-tea'
   | 'more-than-2-cups'
   | '2-3-times-week'
@@ -230,10 +229,9 @@ export const COFFEE_TEA_INTAKE_OPTIONS: {
   fullWidth?: boolean
 }[] = [
   { id: '1-2-cups-per-day', label: '1-2 cups per day' },
-  { id: '0-1-cups-per-day', label: '0-1 cups per day' },
+  { id: '2-3-times-week', label: '2-3 times a week' },
   { id: 'no-coffee-tea', label: 'I do not drink coffee or tea', fullWidth: true },
   { id: 'more-than-2-cups', label: 'More than 2 cups per day', fullWidth: true },
-  { id: '2-3-times-week', label: '2-3 time a week', fullWidth: true },
 ]
 
 export const COFFEE_TEA_TYPE_OPTIONS: {

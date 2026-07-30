@@ -39,7 +39,7 @@ function DesignedPill({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center gap-2 rounded-[24px] border border-solid px-[10px] py-2 text-center text-[12px] leading-6 text-white ${widthClass} ${
+      className={`relative flex items-center justify-center rounded-[24px] border border-solid px-[10px] py-2 text-center text-[12px] leading-6 text-white ${widthClass} ${
         selected ? 'font-semibold' : 'font-normal'
       }`}
       style={
@@ -55,12 +55,14 @@ function DesignedPill({
             }
       }
     >
-      {/* Reserve tick space when enabled so selection doesn't shrink the label and wrap it. */}
+      {/* Absolute tick so the label stays optically centered in the pill. */}
       {showTick ? (
         <img
           src={tickCircleIcon}
           alt=""
-          className={`size-3 shrink-0 ${selected ? 'opacity-100' : 'opacity-0'}`}
+          className={`pointer-events-none absolute left-[10px] size-3 shrink-0 ${
+            selected ? 'opacity-100' : 'opacity-0'
+          }`}
           aria-hidden
         />
       ) : null}

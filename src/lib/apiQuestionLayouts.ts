@@ -370,7 +370,10 @@ export function isNutritionCoffeeTeaIntakeQuestion(question: QuestionnaireQuesti
   return (
     key.includes('coffee_tea_intake') ||
     ((text.includes('coffee') || text.includes('tea')) &&
-      (text.includes('how much') || text.includes('drink in a day') || text.includes('cups')))
+      (text.includes('how much') ||
+        text.includes('drink in a day') ||
+        text.includes('cups') ||
+        text.includes('intake')))
   )
 }
 

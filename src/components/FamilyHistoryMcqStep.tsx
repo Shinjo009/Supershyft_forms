@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import coastalImg from '../assets/family-history/coastal.jpg'
-import inlandImg from '../assets/family-history/inland.jpg'
+import coastalImg from '../assets/family-history/coastal.webp'
+import inlandImg from '../assets/family-history/inland.webp'
 import tickCircleIcon from '../assets/family-history/tick-circle-outline.svg'
 import {
   FAMILY_HISTORY_HEALTH_CONDITIONS,
@@ -236,6 +236,9 @@ function Question1Location({
               <img
                 src={option.image}
                 alt=""
+                decoding="async"
+                fetchPriority="high"
+                loading="eager"
                 className="pointer-events-none absolute -left-4 h-[189px] w-[283px] object-cover"
                 style={{ top: option.imageTop }}
                 aria-hidden

@@ -74,7 +74,6 @@ import {
   MCQ_PILL_BORDER_IDLE,
   MCQ_PILL_BORDER_SELECTED,
   MCQ_PILL_CHIP_CLASS,
-  MCQ_QUESTION_HINT_CLASS,
   MCQ_SHELL_CLASS,
   MCQ_SHELL_FOOTER_INNER_CLASS,
   MCQ_SHELL_SCROLL_CLASS,
@@ -465,7 +464,6 @@ export function ApiQuestionnaireStep({
             <LifestylePhysicalActivityQuestion
               questionLabel={`Question ${visibleIndex + 1} of ${total}`}
               questionText={question.question_text}
-              helpText={question.help_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -511,7 +509,6 @@ export function ApiQuestionnaireStep({
             <LifestyleDailyWalkingQuestion
               questionLabel={`Question ${visibleIndex + 1} of ${total}`}
               questionText={question.question_text}
-              helpText={question.help_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -557,7 +554,6 @@ export function ApiQuestionnaireStep({
             <LifestyleAlcoholConsumptionQuestion
               questionLabel={`Question ${visibleIndex + 1} of ${total}`}
               questionText={question.question_text}
-              helpText={question.help_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -619,7 +615,6 @@ export function ApiQuestionnaireStep({
             <NutritionApiMultiSelectQuestion
               questionLabel={`Question ${visibleIndex + 1} of ${total}`}
               questionText={question.question_text}
-              helpText={question.help_text}
               options={options}
               selectedValues={selectedValues}
               onInfoClick={openInfo}
@@ -736,9 +731,6 @@ export function ApiQuestionnaireStep({
                 titleClassName="mt-2 text-[16px] font-semibold leading-6 tracking-[0.2px] text-white"
               >
                 <p>{question.question_text}</p>
-                {question.is_required === false ? (
-                  <p className={MCQ_QUESTION_HINT_CLASS}>Optional</p>
-                ) : null}
               </McqQuestionHeader>
 
               {single || multi ? (

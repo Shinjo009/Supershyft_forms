@@ -1,4 +1,3 @@
-import tickCircleIcon from '../../assets/family-history/tick-circle-outline.svg'
 import {
   HEALTH_WELLNESS_PRIORITY_ROWS,
   HEALTH_WELLNESS_PRIORITY_OPTIONS,
@@ -33,7 +32,7 @@ function WellnessPill({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center gap-2 rounded-[24px] border border-solid px-[10px] py-2 text-center text-[12px] leading-6 text-white ${widthClass}`}
+      className={`flex items-center justify-center rounded-[24px] border border-solid px-[10px] py-2 text-center text-[12px] leading-6 text-white ${widthClass}`}
       style={
         selected
           ? {
@@ -47,12 +46,6 @@ function WellnessPill({
             }
       }
     >
-      <img
-        src={tickCircleIcon}
-        alt=""
-        className={`size-3 shrink-0 ${selected ? 'opacity-100' : 'opacity-0'}`}
-        aria-hidden
-      />
       <span className="whitespace-nowrap">{label}</span>
     </button>
   )
