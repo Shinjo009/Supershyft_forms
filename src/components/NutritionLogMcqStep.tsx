@@ -17,6 +17,7 @@ import {
   type IllnessFrequencyOption,
   type WaterIntakeOption,
 } from '../data/nutritionLogQuestions'
+import { filterFoodGroupItemsByDiet } from '../lib/filterFoodGroupsByDiet'
 import { BreakfastFrequencySelector } from './nutrition-log/BreakfastFrequencySelector'
 import { BakedGoodsFrequencySelector } from './nutrition-log/BakedGoodsFrequencySelector'
 import { ExtraSaltFrequencyOptions } from './nutrition-log/ExtraSaltFrequencyOptions'
@@ -51,6 +52,16 @@ export function NutritionLogMcqStep({
   const [breakfastFrequency, setBreakfastFrequency] = useState<BreakfastFrequencyOption | null>(
     null,
   )
+
+  // When diet type changes, drop food-group selections that are no longer allowed.
+  useEffect(() => {
+    setDailyFoodGroups((current) => {
+      const next = current.filter(
+        (id) => filterFoodGroupItemsByDiet([{ id, label: id }], dietType).length > 0,
+      )
+      return next.length === current.length ? current : next
+    })
+  }, [dietType])
   const [freshFruitsFrequency, setFreshFruitsFrequency] =
     useState<ConsumptionFrequencyOption | null>(null)
   const [freshVegetablesFrequency, setFreshVegetablesFrequency] =
@@ -190,6 +201,7 @@ export function NutritionLogMcqStep({
       {questionIndex === 1 ? (
         <Question2DailyFoodGroups
           selected={dailyFoodGroups}
+          dietType={dietType}
           onToggle={toggleDailyFoodGroup}
           onInfoClick={() => openInfo(1)}
         />
@@ -320,10 +332,12 @@ function Question1DietType({
 /** Figma 5654:8650 — daily food groups (multi-select) */
 function Question2DailyFoodGroups({
   selected,
+  dietType,
   onToggle,
   onInfoClick,
 }: {
   selected: DailyFoodGroupOption[]
+  dietType: DietTypeOption | null
   onToggle: (value: DailyFoodGroupOption) => void
   onInfoClick: () => void
 }) {
@@ -338,7 +352,7 @@ function Question2DailyFoodGroups({
         <p className={MCQ_QUESTION_HINT_CLASS}>(Select all that apply)</p>
       </McqQuestionHeader>
 
-      <DailyFoodGroupsOptions selected={selected} onToggle={onToggle} />
+      <DailyFoodGroupsOptions selected={selected} dietType={dietType} onToggle={onToggle} />
     </div>
   )
 }

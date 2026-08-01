@@ -44,6 +44,7 @@ import {
   nutritionMeterIdForQuestion,
 } from '../lib/apiQuestionLayouts'
 import { parseHelpTextToInfoItems } from '../lib/parseHelpTextToInfoItems'
+import { filterFoodGroupOptionsByDiet } from '../lib/filterFoodGroupsByDiet'
 import {
   filterVisibleQuestions,
   seedAnswersFromQuestions,
@@ -318,6 +319,39 @@ export function ApiQuestionnaireStep({
     }
   }
 
+  const dietTypeAnswer = useMemo(() => {
+    const dietQuestion = questions.find((item) => isNutritionDietTypeQuestion(item))
+    if (!dietQuestion) return { dietQuestion: null as QuestionnaireQuestion | null, answer: null as unknown }
+    return { dietQuestion, answer: answers[dietQuestion.question_id] ?? null }
+  }, [questions, answers])
+
+  const isCurrentFoodGroups = Boolean(question && isNutritionDailyFoodGroupsQuestion(question))
+  const rawOptions = Array.isArray(question?.options) ? question.options : []
+  const displayedOptions = useMemo(() => {
+    if (!isCurrentFoodGroups) return rawOptions
+    return filterFoodGroupOptionsByDiet(
+      rawOptions,
+      dietTypeAnswer.answer,
+      dietTypeAnswer.dietQuestion,
+    )
+  }, [isCurrentFoodGroups, rawOptions, dietTypeAnswer])
+
+  // Drop food-group answers that are no longer allowed for the selected diet.
+  useEffect(() => {
+    if (!question || !isCurrentFoodGroups) return
+    const questionId = question.question_id
+    const allowed = new Set(
+      displayedOptions.map((option) => getOptionValue(option)).filter(Boolean),
+    )
+    setAnswers((prev) => {
+      const current = prev[questionId]
+      if (!Array.isArray(current)) return prev
+      const next = current.map(String).filter((value) => allowed.has(value))
+      if (next.length === current.length) return prev
+      return { ...prev, [questionId]: next }
+    })
+  }, [question, isCurrentFoodGroups, displayedOptions])
+
   if (!question || total === 0) {
     return (
       <div className={MCQ_SHELL_CLASS}>
@@ -335,7 +369,7 @@ export function ApiQuestionnaireStep({
     )
   }
 
-  const options = Array.isArray(question.options) ? question.options : []
+  const options = displayedOptions
   const multi = isMultiChoiceType(question.question_type)
   const single =
     isSingleChoiceType(question.question_type) ||
@@ -615,7 +649,7 @@ export function ApiQuestionnaireStep({
             <NutritionApiMultiSelectQuestion
               questionLabel={`Question ${visibleIndex + 1} of ${total}`}
               questionText={question.question_text}
-              options={options}
+              options={displayedOptions}
               selectedValues={selectedValues}
               onInfoClick={openInfo}
               reserveTickSpaceForSelectedLabels={useCoffeeTeaTypeLayout}
