@@ -1,5 +1,5 @@
-import bookingConfirmedCheck from '../assets/figma/booking-confirmed-check.svg'
 import { ContinueButton } from './ContinueButton'
+import { SectionCompleteCelebration } from './SectionCompleteCelebration'
 import { JOURNEY_COMPLETE_CONTENT_CLASS, ASSESSMENT_CONTENT_MAX_CLASS } from './mcq/mcqLayout'
 
 function formatBookingDisplayId(employeeId: string): string {
@@ -30,15 +30,11 @@ export function AppointmentJourneyCompleteStep({
   }
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col pb-6 pt-[84px]">
+    <div className="flex min-h-0 w-full flex-1 flex-col pb-6 pt-6">
       <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className={`${JOURNEY_COMPLETE_CONTENT_CLASS} gap-6`}>
-          <div className="flex w-full flex-col items-center gap-6">
-            <div className="flex flex-col items-center py-2">
-              <div className="flex size-24 items-center justify-center rounded-full bg-[#f973a9] shadow-[0_0_20px_rgba(249,115,169,0.4)]">
-                <img src={bookingConfirmedCheck} alt="" className="size-10" aria-hidden />
-              </div>
-            </div>
+          <div className="flex w-full flex-col items-center gap-3">
+            <SectionCompleteCelebration tone="booking" />
             <h2 className="pb-3 text-center text-[18px] font-semibold tracking-[0.2px] text-white">
               Appointment Booking Confirmed!
             </h2>

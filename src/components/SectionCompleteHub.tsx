@@ -1,5 +1,6 @@
 import tickCircleSolid from '../assets/figma/tick-circle-solid.svg'
 import assessmentRadioImg from '../assets/Ellipse 13077.svg'
+import sectionSuccessGif from '../assets/animation-gif (1).gif'
 import {
   categoryDescriptionForKey,
   isCategoryCompleted,
@@ -7,7 +8,6 @@ import {
   type AssessmentCategoryStatus,
 } from '../api/assessments'
 import { ContinueButton } from './ContinueButton'
-import { SectionCompleteCelebration } from './SectionCompleteCelebration'
 import { ASSESSMENT_CARD_STACK_CLASS, ASSESSMENT_CONTENT_MAX_CLASS } from './mcq/mcqLayout'
 
 export type SectionCompleteVariant = 'family' | 'lifestyle' | 'nutrition'
@@ -58,9 +58,15 @@ export function SectionCompleteHub({
 
   return (
     <div className="flex min-h-full w-full flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="my-auto flex w-full flex-col items-center gap-11 px-6 py-10">
+      <div className="mb-auto mt-4 flex w-full flex-col items-center gap-11 px-6 pb-10 pt-2">
         <div className="flex flex-col items-center gap-3">
-          <SectionCompleteCelebration key={variant} tone={variant} />
+          <img
+            key={variant}
+            src={sectionSuccessGif}
+            alt=""
+            draggable={false}
+            className="mx-auto -mt-4 h-[280px] w-[280px] object-contain"
+          />
           <div className="flex flex-col items-center gap-1 pb-1">
             <h2 className="text-center text-[18px] font-semibold tracking-[0.2px] text-white">
               {copy.title}
@@ -132,7 +138,7 @@ export function SectionCompleteHub({
             disabled={isContinuing}
             onClick={onContinue}
           >
-            {isContinuing ? 'Submitting...' : 'Continue'}
+            {isContinuing ? 'Submitting...' : 'Submit'}
           </ContinueButton>
         ) : null}
       </div>

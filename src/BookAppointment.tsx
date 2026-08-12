@@ -59,8 +59,8 @@ import {
   SectionCompleteHub,
   type SectionCompleteVariant,
 } from './components/SectionCompleteHub'
-import { SectionCompleteCelebration } from './components/SectionCompleteCelebration'
 import { AppointmentJourneyCompleteStep } from './components/AppointmentJourneyCompleteStep'
+import bookingSuccessGif from './assets/animation-gif.gif'
 
 const RELATION_OPTIONS = [
   'Parent',
@@ -1585,7 +1585,12 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
   return (
     <div className="flex min-h-full w-full flex-col items-center gap-3">
       <div className="flex w-full flex-col items-center gap-3">
-        <SectionCompleteCelebration tone="booking" />
+        <img
+          src={bookingSuccessGif}
+          alt=""
+          draggable={false}
+          className="mx-auto h-[148px] w-[148px] object-contain"
+        />
         <div className="flex w-full flex-col items-center gap-1 pb-1 text-center">
           <h2 className="text-[18px] font-semibold tracking-[0.2px] text-white">
             Slot Confirmed!
