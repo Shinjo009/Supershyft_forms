@@ -1,6 +1,8 @@
 import tickCircleSolid from '../assets/figma/tick-circle-solid.svg'
 import assessmentRadioImg from '../assets/Ellipse 13077.svg'
 import sectionSuccessGif from '../assets/animation-gif (1).gif'
+import lifestyleSuccessGif from '../assets/animation-gif-lifestyle-orange.webp'
+import nutritionSuccessGif from '../assets/animation-gif-nutrition-blue.webp'
 import {
   categoryDescriptionForKey,
   isCategoryCompleted,
@@ -27,6 +29,12 @@ const VARIANT_COPY: Record<
   nutrition: {
     title: 'Nutrition Section Complete!',
   },
+}
+
+const VARIANT_SUCCESS_GIF: Record<SectionCompleteVariant, string> = {
+  family: sectionSuccessGif,
+  lifestyle: lifestyleSuccessGif,
+  nutrition: nutritionSuccessGif,
 }
 
 /** Shared section-complete hub — categories come from /assessments/{id}/status */
@@ -62,7 +70,7 @@ export function SectionCompleteHub({
         <div className="flex flex-col items-center gap-3">
           <img
             key={variant}
-            src={sectionSuccessGif}
+            src={VARIANT_SUCCESS_GIF[variant]}
             alt=""
             draggable={false}
             className="mx-auto -mt-4 h-[280px] w-[280px] object-contain"
