@@ -161,11 +161,11 @@ function toggleMulti(current: string[], value: string): string[] {
   return [...withoutNone, value]
 }
 
-function isAnswered(question: QuestionnaireQuestion, answer: AnswerValue | undefined): boolean {
-  if (answer == null) return !question.is_required
-  if (Array.isArray(answer)) return answer.length > 0 || !question.is_required
-  if (typeof answer === 'object') return Object.keys(answer).length > 0 || !question.is_required
-  return String(answer).trim().length > 0 || !question.is_required
+function isAnswered(_question: QuestionnaireQuestion, answer: AnswerValue | undefined): boolean {
+  if (answer == null) return false
+  if (Array.isArray(answer)) return answer.length > 0
+  if (typeof answer === 'object') return Object.keys(answer).length > 0
+  return String(answer).trim().length > 0
 }
 
 export function ApiQuestionnaireStep({
@@ -241,6 +241,18 @@ export function ApiQuestionnaireStep({
   const otherAnswer = otherFollowUp ? answers[otherFollowUp.question_id] : undefined
   const otherText =
     typeof otherAnswer === 'string' || typeof otherAnswer === 'number' ? String(otherAnswer) : ''
+  const currentSelectedValues = Array.isArray(answer)
+    ? answer.map(String)
+    : typeof answer === 'string' || typeof answer === 'number'
+      ? [String(answer)]
+      : []
+  const canProceed =
+    answered &&
+    !(
+      Boolean(otherFollowUp) &&
+      selectedIncludesOther(currentSelectedValues, question?.options ?? undefined) &&
+      otherText.trim().length === 0
+    )
 
   const collectSaveIds = (throughIndex: number): number[] => {
     const ids: number[] = []
@@ -292,7 +304,7 @@ export function ApiQuestionnaireStep({
   }
 
   const handleNext = async () => {
-    if (isSaving || !question) return
+    if (isSaving || !question || !canProceed) return
 
     setSaveError('')
     setIsSaving(true)
@@ -895,7 +907,7 @@ export function ApiQuestionnaireStep({
           <button
             type="button"
             onClick={handleNext}
-            disabled={isSaving}
+            disabled={isSaving || !canProceed}
             className={`flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px ${nextShadow} disabled:opacity-60`}
             style={{ backgroundImage: nextGradient }}
             aria-label={isSaving ? 'Saving answer' : 'Next question'}

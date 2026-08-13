@@ -10,20 +10,19 @@ export function parseIsoDate(iso: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
-/** First selectable day: today + 2. Last selectable day: June 30 (current or next year). */
-export function getBookingDateBounds(now = new Date()): { min: Date; max: Date } {
-  const today = new Date(now)
-  today.setHours(0, 0, 0, 0)
+/** Sole bookable camp date: 18 August 2026. */
+export const BOOKING_CAMP_ISO = '2026-08-18'
 
-  const min = new Date(today)
-  min.setDate(min.getDate() + 2)
+export function getCampDate(): Date {
+  const camp = new Date(2026, 7, 18)
+  camp.setHours(0, 0, 0, 0)
+  return camp
+}
 
-  let max = new Date(today.getFullYear(), 5, 30)
-  if (max < min) {
-    max = new Date(today.getFullYear() + 1, 5, 30)
-  }
-
-  return { min, max }
+/** Only 18 August 2026 is selectable. */
+export function getBookingDateBounds(): { min: Date; max: Date } {
+  const camp = getCampDate()
+  return { min: camp, max: camp }
 }
 
 export function isDateInBookingRange(date: Date, min: Date, max: Date): boolean {

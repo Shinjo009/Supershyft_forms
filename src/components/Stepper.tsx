@@ -1,4 +1,4 @@
-const STEPS = ['Personal', 'Address', 'Schedule'] as const
+const STEPS = ['Personal', 'Confirm'] as const
 
 type Props = {
   current: number
@@ -7,16 +7,14 @@ type Props = {
 }
 
 function activeStep(current: number) {
-  return current >= 4 ? 3 : Math.max(1, Math.min(3, current))
+  return current >= 5 ? 2 : Math.max(1, Math.min(2, current))
 }
 
-/** Figma progress line width per active step (320px track). */
+/** Progress line width per active step (320px track). */
 function progressWidthPercent(current: number) {
-  if (current >= 4) return 100
-  const step = activeStep(current)
-  if (step === 1) return 13.75
-  if (step === 2) return 45.31
-  if (step === 3) return 94.06
+  if (current >= 5) return 100
+  if (current === 1) return 18
+  if (current === 2) return 92
   return 0
 }
 
@@ -28,12 +26,10 @@ export function Stepper({ current, maxReachable, onStepClick }: Props) {
     <div
       className="w-full"
       role="navigation"
-      aria-label={`Form progress, step ${stepForA11y} of 3: ${STEPS[stepForA11y - 1]}`}
+      aria-label={`Form progress, step ${stepForA11y} of 2: ${STEPS[stepForA11y - 1]}`}
     >
       <div className="relative mx-auto w-full max-w-[320px]">
-        <div className="pointer-events-none absolute left-0 right-[calc(50%+30px)] top-[14px] h-px rounded-full bg-[#9a9a9a]/50" />
-        <div className="pointer-events-none absolute left-[calc(50%-30px)] right-[30px] top-[14px] h-px rounded-full bg-[#9a9a9a]/50" />
-        <div className="pointer-events-none absolute left-[calc(100%-15px)] right-0 top-[14px] h-px rounded-full bg-[#9a9a9a]/50" />
+        <div className="pointer-events-none absolute left-[30px] right-[30px] top-[14px] h-px rounded-full bg-[#9a9a9a]/50" />
 
         <div
           className="pointer-events-none absolute left-0 top-[14px] h-[2px] rounded-full bg-[#4b8d83] shadow-[0_1px_10px_0_#90df9e]"
@@ -43,8 +39,8 @@ export function Stepper({ current, maxReachable, onStepClick }: Props) {
         <div className="relative z-10 flex items-start justify-between">
           {STEPS.map((label, i) => {
             const step = i + 1
-            const active = current < 4 && step === current
-            const done = (current < 4 && step < current) || current >= 4
+            const active = current < 5 && step === current
+            const done = (current < 5 && step < current) || current >= 5
             const reachable = maxReachable ?? current
             const clickable = Boolean(onStepClick) && step !== current && step <= reachable
 

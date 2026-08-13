@@ -75,7 +75,7 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
     question_key: 'relative_conditions_other',
     question_text: 'Family health history (other)',
     question_type: 'text',
-    is_required: false,
+    is_required: true,
     help_text: null,
     visibility_rules: {
       match: 'all',
@@ -94,7 +94,7 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
     question_key: 'personal_diagnoses_other',
     question_text: 'Diagnosed diseases (other)',
     question_type: 'text',
-    is_required: false,
+    is_required: true,
     help_text: null,
     visibility_rules: {
       match: 'all',
@@ -113,7 +113,7 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
     question_key: 'medications_other',
     question_text: 'Medications (other)',
     question_type: 'text',
-    is_required: false,
+    is_required: true,
     help_text: null,
     visibility_rules: {
       match: 'all',

@@ -1,18 +1,14 @@
+import { BOOKING_CAMP_ISO } from './lib/bookingDates'
+
 export type FormData = {
   firstName: string
   lastName: string
   phone: string
   email: string
-  employeeId: string
   age: string
   gender: '' | 'male' | 'female'
-  street: string
-  landmark: string
-  pincode: string
-  city: string
-  state: string
+  department: '' | 'Sales' | 'Marketing' | 'Operations' | 'Others'
   relation: string
-  houseNumber: string
   appointmentDate: string
   appointmentTime: string
 }
@@ -22,16 +18,10 @@ export const defaultFormData: FormData = {
   lastName: '',
   phone: '',
   email: '',
-  employeeId: '',
   age: '',
   gender: '',
-  street: '',
-  landmark: '',
-  pincode: '',
-  city: '',
-  state: 'Maharashtra',
+  department: '',
   relation: 'spouse',
-  houseNumber: '',
-  appointmentDate: '',
-  appointmentTime: '',
+  appointmentDate: BOOKING_CAMP_ISO,
+  appointmentTime: '09:00 AM',
 }
