@@ -1,4 +1,9 @@
-import { saveAuthTokens } from '../lib/authStorage'
+import {
+  applyAuthTokensFromResponse,
+  getAccessToken,
+  getRefreshToken,
+  saveAuthTokens,
+} from '../lib/authStorage'
 import { isFrontendOnly } from '../lib/frontendOnly'
 import { getBackendBaseUrl } from './http'
 
@@ -32,6 +37,7 @@ export type OnboardResult = {
   engagementCode: string
   userId?: number
   tokens: OnboardTokens
+  alreadyEnrolled?: boolean
 }
 
 type ValidationErrorDetail = {
@@ -79,6 +85,32 @@ function parseBookingGender(gender: string): 'male' | 'female' {
   if (normalized === 'male' || normalized === 'm') return 'male'
   if (normalized === 'female' || normalized === 'f') return 'female'
   throw new Error('Gender is required and must be male or female.')
+}
+
+function readErrorCode(data: unknown): string {
+  if (!data || typeof data !== 'object') return ''
+  const row = data as Record<string, unknown>
+  const nested =
+    row.data && typeof row.data === 'object' && !Array.isArray(row.data)
+      ? (row.data as Record<string, unknown>)
+      : row
+  return String(row.error_code || nested.error_code || '').trim().toUpperCase()
+}
+
+export function isAlreadyEnrolledError(status: number, data: unknown): boolean {
+  if (status !== 409) return false
+  const code = readErrorCode(data)
+  if (code === 'ALREADY_ENROLLED') return true
+  const text = (typeof data === 'string' ? data : JSON.stringify(data)).toLowerCase()
+  return text.includes('already_enrolled') || text.includes('already enrolled')
+}
+
+function tokensFromStorage(): OnboardTokens {
+  return {
+    accessToken: getAccessToken(),
+    refreshToken: getRefreshToken(),
+    tokenType: 'bearer',
+  }
 }
 
 function parseValidationMessage(data: unknown): string | null {
@@ -188,6 +220,21 @@ export async function onboardUserForEngagement(
   const data: unknown = isJson ? await response.json() : await response.text()
 
   if (!response.ok) {
+    if (isAlreadyEnrolledError(response.status, data)) {
+      applyAuthTokensFromResponse(data)
+      const tokens = tokensFromStorage()
+      console.info('[onboard] already enrolled; continuing with existing session', {
+        engagementCode,
+        hasAccessToken: Boolean(tokens.accessToken),
+      })
+      return {
+        message: 'Already enrolled',
+        engagementCode,
+        alreadyEnrolled: true,
+        tokens,
+      }
+    }
+
     const requestId = response.headers.get('x-request-id') || ''
     const statusPrefix = `Request failed (${response.status})`
     const traceSuffix = requestId ? ` [request-id: ${requestId}]` : ''

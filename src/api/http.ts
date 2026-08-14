@@ -1,4 +1,9 @@
 import { isFrontendOnly } from '../lib/frontendOnly'
+import {
+  applyAuthTokensFromResponse,
+  getAccessToken,
+  getRefreshToken,
+} from '../lib/authStorage'
 
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '')
@@ -19,6 +24,21 @@ export function getBackendBaseUrl(): string {
     import.meta.env.BACKEND_BASE_URL,
     import.meta.env.API_BASE_URL,
   )
+}
+
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+export function getApiErrorStatus(error: unknown): number | null {
+  if (error instanceof ApiError) return error.status
+  return null
 }
 
 type ValidationErrorDetail = {
@@ -62,31 +82,57 @@ function buildUrl(path: string, query?: Record<string, string | number | undefin
   }`
 }
 
-async function authorizedRequest<T = unknown>(
-  path: string,
-  accessToken: string,
-  options: {
-    method?: 'GET' | 'PUT' | 'POST' | 'PATCH' | 'DELETE'
-    query?: Record<string, string | number | undefined>
-    body?: unknown
-  } = {},
-): Promise<T> {
-  const method = options.method || 'GET'
+let refreshInFlight: Promise<boolean> | null = null
 
-  // No-send mode: block every write so redesign never hits the backend.
+async function refreshAuthSession(): Promise<boolean> {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken || refreshToken.length < 10) return false
+
+  try {
+    const data = await jsonRequest<unknown>({
+      path: '/auth/refresh-token',
+      method: 'POST',
+      body: { refresh_token: refreshToken },
+      retryOnUnauthorized: false,
+    })
+    return Boolean(applyAuthTokensFromResponse(data)?.accessToken)
+  } catch (error) {
+    console.warn('[auth] refresh-token failed', error instanceof Error ? error.message : error)
+    return false
+  }
+}
+
+function refreshAuthSessionOnce(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = refreshAuthSession().finally(() => {
+      refreshInFlight = null
+    })
+  }
+  return refreshInFlight
+}
+
+async function jsonRequest<T = unknown>(options: {
+  path: string
+  method?: 'GET' | 'PUT' | 'POST' | 'PATCH' | 'DELETE'
+  query?: Record<string, string | number | undefined>
+  body?: unknown
+  accessToken?: string
+  retryOnUnauthorized?: boolean
+}): Promise<T> {
+  const method = options.method || 'GET'
+  const retryOnUnauthorized = options.retryOnUnauthorized !== false
+
   if (isFrontendOnly() && method !== 'GET') {
-    console.info('[frontend-only] blocked write', { method, path })
+    console.info('[frontend-only] blocked write', { method, path: options.path })
     return null as T
   }
 
-  if (!accessToken.trim()) {
-    throw new Error('You are not logged in. Please confirm your booking again.')
-  }
-
-  const url = buildUrl(path, options.query)
+  const url = buildUrl(options.path, options.query)
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    Authorization: `Bearer ${accessToken}`,
+  }
+  if (options.accessToken) {
+    headers.Authorization = `Bearer ${options.accessToken}`
   }
   if (options.body !== undefined) {
     headers['Content-Type'] = 'application/json'
@@ -98,15 +144,68 @@ async function authorizedRequest<T = unknown>(
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   })
 
+  if (response.status === 401 && retryOnUnauthorized && options.accessToken) {
+    const refreshed = await refreshAuthSessionOnce()
+    if (refreshed) {
+      return jsonRequest<T>({
+        ...options,
+        accessToken: getAccessToken(),
+        retryOnUnauthorized: false,
+      })
+    }
+  }
+
   const contentType = response.headers.get('content-type') || ''
   const isJson = contentType.includes('application/json')
-  const data: unknown = isJson ? await response.json() : await response.text()
+  const raw = await response.text()
+  let data: unknown = raw
+  if (isJson && raw.trim()) {
+    try {
+      data = JSON.parse(raw) as unknown
+    } catch {
+      data = raw
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(parseErrorMessage(data, response.status))
+    throw new ApiError(parseErrorMessage(data, response.status), response.status)
   }
 
   return data as T
+}
+
+async function authorizedRequest<T = unknown>(
+  path: string,
+  accessToken: string,
+  options: {
+    method?: 'GET' | 'PUT' | 'POST' | 'PATCH' | 'DELETE'
+    query?: Record<string, string | number | undefined>
+    body?: unknown
+  } = {},
+): Promise<T> {
+  const method = options.method || 'GET'
+
+  if (!accessToken.trim()) {
+    throw new Error('You are not logged in. Please confirm your booking again.')
+  }
+
+  return jsonRequest<T>({
+    path,
+    method,
+    query: options.query,
+    body: options.body,
+    accessToken,
+    retryOnUnauthorized: true,
+  })
+}
+
+export async function publicPost<T = unknown>(path: string, body?: unknown): Promise<T> {
+  return jsonRequest<T>({
+    path,
+    method: 'POST',
+    body: body === undefined ? {} : body,
+    retryOnUnauthorized: false,
+  })
 }
 
 export async function authorizedGet<T = unknown>(

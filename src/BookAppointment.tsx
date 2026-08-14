@@ -17,6 +17,8 @@ import {
   onboardUserForEngagement,
   type OnboardUserForEngagementPayload,
 } from './api/onboard'
+import { resendBookingOtp, sendBookingOtp, verifyBookingOtp } from './api/otp'
+import { createEmployeeUser } from './api/users'
 import {
   isCategoryCompleted,
   loadAssessmentCategoriesForStep2,
@@ -47,6 +49,7 @@ import {
   type SectionCompleteVariant,
 } from './components/SectionCompleteHub'
 import { AppointmentJourneyCompleteStep } from './components/AppointmentJourneyCompleteStep'
+import { OtpVerifyStep } from './components/OtpVerifyStep'
 import bookingSuccessGif from './assets/animation-gif.gif'
 
 const RELATION_OPTIONS = [
@@ -80,6 +83,35 @@ const logClientError = (message: string) => {
 
 function generateEmployeeIdForApi(): string {
   return `HRM${Date.now()}`
+}
+
+function bookingAge(form: FormData, fallback = 25): number {
+  const parsed = Number.parseInt(form.age, 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function buildOnboardPayload(
+  form: FormData,
+  employeeId: string,
+): OnboardUserForEngagementPayload {
+  return {
+    age: bookingAge(form),
+    first_name: form.firstName.trim(),
+    last_name: form.lastName.trim(),
+    email: form.email.trim(),
+    phone: form.phone.trim(),
+    gender: form.gender || 'male',
+    address: 'NA',
+    pincode: '000000',
+    city: 'NA',
+    state: 'Maharashtra',
+    country: 'India',
+    blood_collection_date: form.appointmentDate,
+    blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
+    participants_employee_id: employeeId,
+    participant_blood_group: 'NA',
+    want_doctor_consultation: false,
+  }
 }
 
 /** Convert UI slots like "09:30 AM" to API "9:00" / "13:00" hour form. */
@@ -155,6 +187,11 @@ export default function BookAppointment() {
   const [questionnaireReturnStep, setQuestionnaireReturnStep] = useState(6)
   const [uiError, setUiError] = useState('')
   const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
+  const [isResendingOtp, setIsResendingOtp] = useState(false)
+  const [hasCreatedUser, setHasCreatedUser] = useState(false)
+  const [hasOnboarded, setHasOnboarded] = useState(false)
+  const [otpVerified, setOtpVerified] = useState(false)
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     if (uiError) setUiError('')
@@ -237,47 +274,77 @@ export default function BookAppointment() {
       return
     }
 
+    setUiError('')
     setStep(2)
   }
 
-  const skipToQuestionnaire = async () => {
-    if (isLoadingQuestionnaire) return
+  const handleVerifyOtp = async (otp: string) => {
+    if (isVerifyingOtp) return
 
     setUiError('')
-    setIsLoadingQuestionnaire(true)
+    setIsVerifyingOtp(true)
 
-    try {
-      const result = await loadAssessmentCategoriesForStep2('')
-      const firstCategory = result.categories[0]
-      if (!firstCategory) {
-        throw new Error('No assessment categories available.')
-      }
-      const questions = getMockQuestionnaireQuestions(firstCategory.category_key)
-      if (questions.length === 0) {
-        throw new Error('No mock questions available for this category yet.')
-      }
-
+    const openHealthAssessment = async () => {
+      const accessToken = getAccessToken()
+      const result = await loadAssessmentCategoriesForStep2(accessToken)
       setAssessmentInstanceId(result.assessmentInstanceId)
       setAssessmentCategories(result.categories)
-      setCompletedCategoryIds([])
-      setActiveCategory(firstCategory)
-      setCategoryQuestions(questions)
-      setQuestionnaireReturnStep(1)
-      setStep(7)
-    } catch (error) {
-      logClientError(
-        error instanceof Error ? error.message : 'Unable to load questionnaire questions.',
+      setCompletedCategoryIds(
+        result.categories
+          .filter((category) => isCategoryCompleted(category, []))
+          .map((category) => Number(category.category_id)),
       )
+      setStep(6)
+    }
+
+    try {
+      if (!otpVerified) {
+        await verifyBookingOtp({ phone: form.phone.trim() }, otp)
+        setOtpVerified(true)
+      }
+
+      if (!hasOnboarded) {
+        const apiEmployeeId = bookingDisplayId.replace(/\s/g, '') || generateEmployeeIdForApi()
+        const onboardResult = await onboardUserForEngagement(buildOnboardPayload(form, apiEmployeeId))
+        setHasOnboarded(true)
+        setBookingDisplayId(apiEmployeeId)
+
+        if (onboardResult.alreadyEnrolled) {
+          try {
+            await openHealthAssessment()
+          } catch (error) {
+            logClientError(
+              error instanceof Error ? error.message : 'Unable to load health assessment.',
+            )
+          }
+          return
+        }
+      }
+
+      setStep(5)
+    } catch (error) {
+      logClientError(error instanceof Error ? error.message : 'Unable to verify OTP.')
     } finally {
-      setIsLoadingQuestionnaire(false)
+      setIsVerifyingOtp(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    if (isResendingOtp || isVerifyingOtp) return
+
+    setUiError('')
+    setIsResendingOtp(true)
+
+    try {
+      await resendBookingOtp({ phone: form.phone.trim(), email: form.email.trim() })
+    } catch (error) {
+      logClientError(error instanceof Error ? error.message : 'Unable to resend OTP.')
+    } finally {
+      setIsResendingOtp(false)
     }
   }
 
   const handleConfirmBooking = async () => {
-    if (isFrontendOnly()) {
-      void skipToQuestionnaire()
-      return
-    }
     if (isSubmittingBooking) return
 
     const trimmedPhone = form.phone.trim()
@@ -311,14 +378,6 @@ export default function BookAppointment() {
         logClientError('Please enter a valid email address.')
         return
       }
-      if (!trimmedPhone) {
-        logClientError('Phone is required.')
-        return
-      }
-      if (!PHONE_REGEX.test(trimmedPhone)) {
-        logClientError('Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9.')
-        return
-      }
       if (!form.gender) {
         logClientError('Gender is required.')
         return
@@ -337,6 +396,15 @@ export default function BookAppointment() {
       }
     }
 
+    if (!trimmedPhone) {
+      logClientError('Phone is required.')
+      return
+    }
+    if (!PHONE_REGEX.test(trimmedPhone)) {
+      logClientError('Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9.')
+      return
+    }
+
     if (!isFrontendOnly()) {
       if (!form.gender) {
         logClientError('Gender is required.')
@@ -352,34 +420,32 @@ export default function BookAppointment() {
     setIsSubmittingBooking(true)
 
     try {
-      const confirmGender = form.gender || 'male'
       const confirmAge = Number.isFinite(safeAge) ? safeAge : 25
-      const apiEmployeeId = generateEmployeeIdForApi()
+      const email = EMAIL_REGEX.test(trimmedEmail) ? trimmedEmail : null
 
-      const payload: OnboardUserForEngagementPayload = {
-        age: confirmAge,
-        first_name: form.firstName.trim(),
-        last_name: form.lastName.trim(),
-        email: trimmedEmail,
-        phone: trimmedPhone,
-        gender: confirmGender,
-        address: 'NA',
-        pincode: '000000',
-        city: 'NA',
-        state: 'Maharashtra',
-        country: 'India',
-        blood_collection_date: form.appointmentDate,
-        blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
-        participants_employee_id: apiEmployeeId,
-        participant_blood_group: 'NA',
-        want_doctor_consultation: false,
+      if (!hasCreatedUser) {
+        await createEmployeeUser({
+          age: confirmAge,
+          phone: trimmedPhone,
+          first_name: form.firstName.trim() || null,
+          last_name: form.lastName.trim() || null,
+          email,
+          gender: form.gender || null,
+          address: 'NA',
+          pin_code: '000000',
+          city: 'NA',
+          state: 'Maharashtra',
+          country: 'India',
+          is_participant: true,
+          status: 'active',
+        })
+        setHasCreatedUser(true)
       }
 
-      await onboardUserForEngagement(payload)
-      setBookingDisplayId(apiEmployeeId)
-      setStep(5)
+      await sendBookingOtp({ phone: trimmedPhone })
+      setStep(3)
     } catch (error) {
-      logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
+      logClientError(error instanceof Error ? error.message : 'Unable to send OTP.')
     } finally {
       setIsSubmittingBooking(false)
     }
@@ -557,7 +623,7 @@ export default function BookAppointment() {
   const mobileScreenTitle = 'Book Appointment'
 
   const showBack = step > 1
-  const hideGlobalContinue = step === 2 || step === 5 || step === 6 || step === 7 || step === 8 || step === 10 || step === 12 || step === 13
+  const hideGlobalContinue = step === 2 || step === 3 || step === 5 || step === 6 || step === 7 || step === 8 || step === 10 || step === 12 || step === 13
   const hideStepper = step >= 5
   const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 10 || step === 12
   const confirmStepperBorder = step === 2
@@ -683,9 +749,30 @@ export default function BookAppointment() {
             {step === 2 && (
               <ConfirmStep
                 form={form}
-                onEdit={(s) => setStep(s)}
+                onEdit={(s) => {
+                  setHasCreatedUser(false)
+                  setHasOnboarded(false)
+                  setOtpVerified(false)
+                  setStep(s)
+                }}
                 onProceed={handleConfirmBooking}
                 isSubmitting={isSubmittingBooking}
+              />
+            )}
+            {step === 3 && (
+              <OtpVerifyStep
+                key={form.phone}
+                phone={form.phone}
+                isVerifying={isVerifyingOtp}
+                isResending={isResendingOtp}
+                onVerify={handleVerifyOtp}
+                onResend={handleResendOtp}
+                onChangeNumber={() => {
+                  setHasCreatedUser(false)
+                  setHasOnboarded(false)
+                  setOtpVerified(false)
+                  setStep(1)
+                }}
               />
             )}
             {step === 5 && (
@@ -749,7 +836,7 @@ export default function BookAppointment() {
                 disabled={isLoadingQuestionnaire}
                 onClick={handleStepContinue}
               >
-                {isLoadingQuestionnaire ? 'Loading...' : 'Continue'}
+                Continue
               </ContinueButton>
             </div>
           ) : null}
@@ -979,7 +1066,7 @@ function ConfirmStep({
         disabled={isSubmitting}
         onClick={onProceed}
       >
-        {isSubmitting ? 'Confirming...' : 'Confirm'}
+        {isSubmitting ? 'Sending OTP...' : 'Continue & Send OTP'}
       </ContinueButton>
     </div>
   )

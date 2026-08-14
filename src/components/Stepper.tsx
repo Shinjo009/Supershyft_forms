@@ -1,4 +1,5 @@
-const STEPS = ['Personal', 'Confirm'] as const
+const STEPS = ['Personal', 'Confirm', 'OTP'] as const
+const BOOKING_STEP_COUNT = STEPS.length
 
 type Props = {
   current: number
@@ -7,14 +8,15 @@ type Props = {
 }
 
 function activeStep(current: number) {
-  return current >= 5 ? 2 : Math.max(1, Math.min(2, current))
+  return current >= 5 ? BOOKING_STEP_COUNT : Math.max(1, Math.min(BOOKING_STEP_COUNT, current))
 }
 
 /** Progress line width per active step (320px track). */
 function progressWidthPercent(current: number) {
   if (current >= 5) return 100
-  if (current === 1) return 18
-  if (current === 2) return 92
+  if (current === 1) return 14
+  if (current === 2) return 50
+  if (current === 3) return 92
   return 0
 }
 
@@ -26,7 +28,7 @@ export function Stepper({ current, maxReachable, onStepClick }: Props) {
     <div
       className="w-full"
       role="navigation"
-      aria-label={`Form progress, step ${stepForA11y} of 2: ${STEPS[stepForA11y - 1]}`}
+      aria-label={`Form progress, step ${stepForA11y} of ${BOOKING_STEP_COUNT}: ${STEPS[stepForA11y - 1]}`}
     >
       <div className="relative mx-auto w-full max-w-[320px]">
         <div className="pointer-events-none absolute left-[30px] right-[30px] top-[14px] h-px rounded-full bg-[#9a9a9a]/50" />

@@ -1,0 +1,4 @@
+VITE_BACKEND_BASE_URL=https://api.supershyft.com
+
+# Engagement code used by /users/code/{code}/onboard/me
+VITE_ENGAGEMENT_CODE=DEMU0826
