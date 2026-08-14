@@ -2,8 +2,6 @@ import { isFrontendOnly } from '../lib/frontendOnly'
 import { applyAuthTokensFromResponse } from '../lib/authStorage'
 import { publicPost } from './http'
 
-export type OtpChannel = 'email' | 'whatsapp'
-
 export type BookingOtpTarget = {
   phone?: string
   email?: string
@@ -61,14 +59,11 @@ export async function sendBookingOtp(target: BookingOtpTarget): Promise<void> {
   applyAuthTokensFromResponse(data)
 }
 
-export async function resendBookingOtp(
-  target: BookingOtpTarget,
-  via?: OtpChannel,
-): Promise<void> {
-  const phone = requirePhone(target.phone)
-  const email = requireEmail(target.email)
-  const channel: OtpChannel = via || 'whatsapp'
-  const payload = { phone, email, via: channel }
+export async function resendBookingOtp(target: BookingOtpTarget): Promise<void> {
+  const payload = {
+    phone: requirePhone(target.phone),
+    email: requireEmail(target.email),
+  }
 
   if (isFrontendOnly()) {
     console.info('[frontend-only] skipped resend-otp', payload)
