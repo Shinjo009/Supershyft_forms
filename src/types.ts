@@ -11,10 +11,13 @@ export type FormData = {
   pincode: string
   city: string
   state: string
+  department: string
   relation: string
   houseNumber: string
   appointmentDate: string
   appointmentTime: string
+  appointmentCabin: string
+  appointmentCabinName: string
 }
 
 export const defaultFormData: FormData = {
@@ -29,9 +32,12 @@ export const defaultFormData: FormData = {
   landmark: '',
   pincode: '',
   city: '',
-  state: 'Maharashtra',
+  state: '',
+  department: '',
   relation: 'spouse',
   houseNumber: '',
   appointmentDate: '',
   appointmentTime: '',
+  appointmentCabin: '',
+  appointmentCabinName: '',
 }

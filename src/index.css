@@ -1,4 +1,9 @@
 @import 'tailwindcss';
+@source not '../pincodes.csv';
+@source not '../public/**';
+@source not '../scripts/**';
+@source not '../.git/**';
+@source not '../node_modules/**';
 
 @theme {
   --font-sans: 'Lato', ui-sans-serif, system-ui, sans-serif;
@@ -70,6 +75,22 @@ select {
 /* Booking form — placeholder examples must stay muted grey (not inherit input text color). */
 .booking-field-input {
   color: #cccccc;
+  position: relative;
+  transform-origin: center;
+}
+
+@media (hover: hover) {
+  .booking-field-input {
+    transition:
+      transform 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .booking-field-input:hover {
+    z-index: 1;
+    transform: scale(1.03);
+    transform-origin: center;
+  }
 }
 
 .booking-field-input::placeholder {

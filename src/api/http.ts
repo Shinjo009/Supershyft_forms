@@ -21,6 +21,21 @@ export function getBackendBaseUrl(): string {
   )
 }
 
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+export function getApiErrorStatus(error: unknown): number | null {
+  if (error instanceof ApiError) return error.status
+  return null
+}
+
 type ValidationErrorDetail = {
   msg?: string
 }
@@ -104,6 +119,56 @@ async function authorizedRequest<T = unknown>(
 
   if (!response.ok) {
     throw new Error(parseErrorMessage(data, response.status))
+  }
+
+  return data as T
+}
+
+export async function publicGet<T = unknown>(
+  path: string,
+  query?: Record<string, string | number | undefined>,
+): Promise<T> {
+  const url = buildUrl(path, query)
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  })
+
+  const contentType = response.headers.get('content-type') || ''
+  const isJson = contentType.includes('application/json')
+  const data: unknown = isJson ? await response.json() : await response.text()
+
+  if (!response.ok) {
+    throw new ApiError(parseErrorMessage(data, response.status), response.status)
+  }
+
+  return data as T
+}
+
+export async function publicPost<T = unknown>(path: string, body?: unknown): Promise<T> {
+  if (isFrontendOnly()) {
+    console.info('[frontend-only] blocked write', { method: 'POST', path })
+    return null as T
+  }
+
+  const url = buildUrl(path)
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body === undefined ? {} : body),
+  })
+
+  const contentType = response.headers.get('content-type') || ''
+  const isJson = contentType.includes('application/json')
+  const data: unknown = isJson ? await response.json() : await response.text()
+
+  if (!response.ok) {
+    throw new ApiError(parseErrorMessage(data, response.status), response.status)
   }
 
   return data as T

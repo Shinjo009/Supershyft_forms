@@ -43,6 +43,71 @@ export function clampBookingDate(iso: string, bounds = getBookingDateBounds()): 
   return ''
 }
 
+export const BOOKING_CITIES = ['Pune', 'Bangalore', 'Gurugram', 'Hyderabad'] as const
+export type BookingCity = (typeof BOOKING_CITIES)[number]
+
+export const BOOKING_DEPARTMENTS = [
+  'Department 1',
+  'Department 2',
+  'Department 3',
+  'Department 4',
+] as const
+
+export const CITY_LOCATION: Record<BookingCity, { state: string; pincode: string }> = {
+  Pune: { state: 'Maharashtra', pincode: '411001' },
+  Bangalore: { state: 'Karnataka', pincode: '560001' },
+  Gurugram: { state: 'Haryana', pincode: '122001' },
+  Hyderabad: { state: 'Telangana', pincode: '500001' },
+}
+
+/** Month is 0-indexed. Pune 1–3 Sep, Bangalore 31 Aug–3 Sep, Gurugram 1 Sep, Hyderabad 2–3 Sep. */
+const CITY_SCHEDULE_MONTH_DAYS: Record<BookingCity, Array<[month: number, day: number]>> = {
+  Pune: [[8, 1], [8, 2], [8, 3]],
+  Bangalore: [[7, 31], [8, 1], [8, 2], [8, 3]],
+  Gurugram: [[8, 1]],
+  Hyderabad: [[8, 2], [8, 3]],
+}
+
+export function isBookingCity(city: string): city is BookingCity {
+  return (BOOKING_CITIES as readonly string[]).includes(city)
+}
+
+/** Use this year's campaign if 3 Sep has not passed; otherwise next year. */
+export function getCityScheduleYear(now = new Date()): number {
+  const campaignEnd = new Date(now.getFullYear(), 8, 3, 23, 59, 59, 999)
+  return now.getTime() > campaignEnd.getTime() ? now.getFullYear() + 1 : now.getFullYear()
+}
+
+export function getCityBookableDates(city: string, now = new Date()): Date[] {
+  if (!isBookingCity(city)) return []
+  const year = getCityScheduleYear(now)
+  return CITY_SCHEDULE_MONTH_DAYS[city].map(([month, day]) => {
+    const date = new Date(year, month, day)
+    date.setHours(0, 0, 0, 0)
+    return date
+  })
+}
+
+export function clampCityBookingDate(iso: string, city: string): string {
+  if (!iso || !isBookingCity(city)) return ''
+  return getCityBookableDates(city).some((date) => toIsoDate(date) === iso) ? iso : ''
+}
+
+/** 9:00 AM through 1:50 PM in 10-minute steps. */
+export function buildTenMinuteTimeSlots(): string[] {
+  const slots: string[] = []
+  const startMinutes = 9 * 60
+  const endMinutes = 13 * 60 + 50
+  for (let total = startMinutes; total <= endMinutes; total += 10) {
+    const hour24 = Math.floor(total / 60)
+    const minute = total % 60
+    const meridiem = hour24 >= 12 ? 'PM' : 'AM'
+    const hour12 = hour24 % 12 || 12
+    slots.push(`${hour12}:${pad(minute)} ${meridiem}`)
+  }
+  return slots
+}
+
 const MONTH_NAMES = [
   'January',
   'February',

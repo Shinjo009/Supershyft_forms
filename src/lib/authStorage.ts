@@ -16,3 +16,44 @@ export function saveAuthTokens(accessToken: string, refreshToken: string): void 
   if (accessToken) window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, accessToken)
   if (refreshToken) window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken)
 }
+
+export type AuthTokenPair = {
+  accessToken: string
+  refreshToken: string
+}
+
+function readString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function readPairFromRecord(row: Record<string, unknown>): AuthTokenPair | null {
+  const nested =
+    row.tokens && typeof row.tokens === 'object' && !Array.isArray(row.tokens)
+      ? (row.tokens as Record<string, unknown>)
+      : row.token && typeof row.token === 'object' && !Array.isArray(row.token)
+        ? (row.token as Record<string, unknown>)
+        : row
+
+  const accessToken = readString(nested.access_token || nested.accessToken)
+  const refreshToken = readString(nested.refresh_token || nested.refreshToken)
+  if (!accessToken) return null
+  return { accessToken, refreshToken }
+}
+
+export function extractAuthTokens(data: unknown): AuthTokenPair | null {
+  if (!data || typeof data !== 'object') return null
+  const row = data as Record<string, unknown>
+  const direct = readPairFromRecord(row)
+  if (direct) return direct
+  if (row.data && typeof row.data === 'object') return readPairFromRecord(row.data as Record<string, unknown>)
+  return null
+}
+
+export function applyAuthTokensFromResponse(data: unknown): AuthTokenPair | null {
+  const extracted = extractAuthTokens(data)
+  if (!extracted) return null
+  const refreshToken = extracted.refreshToken || getRefreshToken()
+  if (!refreshToken) return extracted
+  saveAuthTokens(extracted.accessToken, refreshToken)
+  return { accessToken: extracted.accessToken, refreshToken }
+}

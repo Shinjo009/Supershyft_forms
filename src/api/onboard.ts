@@ -1,4 +1,5 @@
-import { saveAuthTokens } from '../lib/authStorage'
+import { saveAuthTokens, applyAuthTokensFromResponse, getAccessToken, getRefreshToken } from '../lib/authStorage'
+import { resolveEngagementCode } from '../lib/engagementCode'
 import { isFrontendOnly } from '../lib/frontendOnly'
 import { getBackendBaseUrl } from './http'
 
@@ -16,6 +17,7 @@ export type OnboardUserForEngagementPayload = {
   country: string
   blood_collection_date: string
   blood_collection_time_slot: string
+  blood_collection_cabin?: string | null
   participants_employee_id: string
   participant_blood_group: string
   want_doctor_consultation: boolean
@@ -32,6 +34,7 @@ export type OnboardResult = {
   engagementCode: string
   userId?: number
   tokens: OnboardTokens
+  alreadyEnrolled?: boolean
 }
 
 type ValidationErrorDetail = {
@@ -57,21 +60,8 @@ type OnboardSuccessResponse = {
   }
 }
 
-const DEFAULT_ENGAGEMENT_CODE = 'SUMU0226'
-
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '')
-}
-
-function firstNonEmpty(...values: Array<string | undefined>): string {
-  for (const value of values) {
-    if (typeof value === 'string' && value.trim().length > 0) return value.trim()
-  }
-  return ''
-}
-
-function resolveEngagementCode(): string {
-  return firstNonEmpty(import.meta.env.VITE_ENGAGEMENT_CODE, DEFAULT_ENGAGEMENT_CODE)
 }
 
 function parseBookingGender(gender: string): 'male' | 'female' {
@@ -79,6 +69,32 @@ function parseBookingGender(gender: string): 'male' | 'female' {
   if (normalized === 'male' || normalized === 'm') return 'male'
   if (normalized === 'female' || normalized === 'f') return 'female'
   throw new Error('Gender is required and must be male or female.')
+}
+
+function readErrorCode(data: unknown): string {
+  if (!data || typeof data !== 'object') return ''
+  const row = data as Record<string, unknown>
+  const nested =
+    row.data && typeof row.data === 'object' && !Array.isArray(row.data)
+      ? (row.data as Record<string, unknown>)
+      : row
+  return String(row.error_code || nested.error_code || '').trim().toUpperCase()
+}
+
+function isAlreadyEnrolledError(status: number, data: unknown): boolean {
+  if (status !== 409) return false
+  const code = readErrorCode(data)
+  if (code === 'ALREADY_ENROLLED') return true
+  const text = (typeof data === 'string' ? data : JSON.stringify(data)).toLowerCase()
+  return text.includes('already_enrolled') || text.includes('already enrolled')
+}
+
+function tokensFromStorage(): OnboardTokens {
+  return {
+    accessToken: getAccessToken(),
+    refreshToken: getRefreshToken(),
+    tokenType: 'bearer',
+  }
 }
 
 function parseValidationMessage(data: unknown): string | null {
@@ -127,7 +143,7 @@ export function saveOnboardTokens(tokens: OnboardTokens): void {
 export async function onboardUserForEngagement(
   payload: OnboardUserForEngagementPayload,
 ): Promise<OnboardResult> {
-  const engagementCode = resolveEngagementCode()
+  const engagementCode = resolveEngagementCode(payload.city, payload.gender)
 
   if (isFrontendOnly()) {
     const bookingGender = parseBookingGender(payload.gender)
@@ -188,6 +204,21 @@ export async function onboardUserForEngagement(
   const data: unknown = isJson ? await response.json() : await response.text()
 
   if (!response.ok) {
+    if (isAlreadyEnrolledError(response.status, data)) {
+      applyAuthTokensFromResponse(data)
+      const tokens = tokensFromStorage()
+      console.info('[onboard] already enrolled; continuing with existing session', {
+        engagementCode,
+        hasAccessToken: Boolean(tokens.accessToken),
+      })
+      return {
+        message: 'Already enrolled',
+        engagementCode,
+        alreadyEnrolled: true,
+        tokens,
+      }
+    }
+
     const requestId = response.headers.get('x-request-id') || ''
     const statusPrefix = `Request failed (${response.status})`
     const traceSuffix = requestId ? ` [request-id: ${requestId}]` : ''

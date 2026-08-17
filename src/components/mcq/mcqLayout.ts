@@ -3,6 +3,10 @@
 export const APP_COLUMN_CLASS =
   'mx-auto h-full w-full max-w-[360px] lg:max-w-[480px] xl:max-w-[520px]'
 
+/** Wider centered column for booking form steps on laptop. Phone stays 360px. */
+export const BOOKING_FORM_COLUMN_CLASS =
+  'mx-auto h-full w-full max-w-[360px] lg:max-w-[760px] xl:max-w-[880px]'
+
 export const MCQ_SHELL_CLASS =
   'relative mx-auto flex h-full min-h-0 w-full max-w-[360px] lg:max-w-[480px] xl:max-w-[520px] flex-col pb-[72px]'
 
