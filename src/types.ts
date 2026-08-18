@@ -12,6 +12,7 @@ export type FormData = {
   city: string
   state: string
   department: string
+  doctorConsultation: '' | 'yes' | 'no'
   relation: string
   houseNumber: string
   appointmentDate: string
@@ -34,6 +35,7 @@ export const defaultFormData: FormData = {
   city: '',
   state: '',
   department: '',
+  doctorConsultation: '',
   relation: 'spouse',
   houseNumber: '',
   appointmentDate: '',

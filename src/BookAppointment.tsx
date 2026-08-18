@@ -310,6 +310,10 @@ export default function BookAppointment() {
         logClientError('Please select a department.')
         return
       }
+      if (!form.doctorConsultation) {
+        logClientError('Please select doctor consultation preference.')
+        return
+      }
     }
 
     if (!trimmedPhone || !PHONE_REGEX.test(trimmedPhone)) {
@@ -542,7 +546,7 @@ export default function BookAppointment() {
           resolveCabinKey(engagementSchedule, form.appointmentCabin, form.appointmentDate) || null,
         participants_employee_id: participantId,
         participant_blood_group: 'NA',
-        want_doctor_consultation: false,
+        want_doctor_consultation: form.doctorConsultation === 'yes',
       }
 
       await onboardUserForEngagement(payload)
@@ -955,6 +959,7 @@ function PersonalStep({
   const showRequired = Boolean(showMissingRequired)
   const isMissing = (value: string) => showRequired && !value.trim()
   const isMissingGender = showRequired && !form.gender
+  const isMissingDoctorConsultation = showRequired && !form.doctorConsultation
   const fullNameError: 'missing' | 'invalid' | undefined = !showRequired
     ? undefined
     : !form.firstName.trim() || !form.lastName.trim()
@@ -1135,6 +1140,36 @@ function PersonalStep({
           onChange={(value) => update('department', value)}
         />
       </div>
+
+      <div className="flex min-w-0 flex-col gap-1">
+        {labelRow(User, 'Doctor Consultation', undefined, isMissingDoctorConsultation)}
+        <div className="flex h-10 gap-6 overflow-visible">
+          <button
+            type="button"
+            onClick={() => update('doctorConsultation', 'yes')}
+            className={[
+              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[12px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+              form.doctorConsultation === 'yes'
+                ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                : 'bg-white/5 text-[#999]',
+            ].join(' ')}
+          >
+            Yes
+          </button>
+          <button
+            type="button"
+            onClick={() => update('doctorConsultation', 'no')}
+            className={[
+              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[12px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+              form.doctorConsultation === 'no'
+                ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                : 'bg-white/5 text-[#999]',
+            ].join(' ')}
+          >
+            No
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1232,6 +1267,17 @@ function MemberSummary({
         </div>
         <div className="col-span-2">
           <SummaryItem Icon={Mail} label={member.email || '—'} dense={dense} />
+        </div>
+        <div className="col-span-2">
+          <SummaryItem
+            Icon={User}
+            label={
+              member.doctorConsultation
+                ? `Doctor consultation: ${member.doctorConsultation === 'yes' ? 'Yes' : 'No'}`
+                : 'Doctor consultation: —'
+            }
+            dense={dense}
+          />
         </div>
       </div>
     </div>
