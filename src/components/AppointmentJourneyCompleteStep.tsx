@@ -2,23 +2,12 @@ import { ContinueButton } from './ContinueButton'
 import { SectionCompleteCelebration } from './SectionCompleteCelebration'
 import { JOURNEY_COMPLETE_CONTENT_CLASS, ASSESSMENT_CONTENT_MAX_CLASS } from './mcq/mcqLayout'
 
-function formatBookingDisplayId(employeeId: string): string {
-  const normalized = employeeId.trim().toUpperCase()
-  if (!normalized) return 'XYZ 123'
-  if (normalized.startsWith('HRM') && normalized.length > 3) {
-    return `${normalized.slice(0, 3)} ${normalized.slice(3)}`
-  }
-  return normalized
-}
-
 /** Figma node 6120:15284 — final appointment journey complete (without coins) */
 const APP_LOGIN_URL = 'https://app.supershyft.com/#login'
 
 export function AppointmentJourneyCompleteStep({
-  bookingId = 'XYZ 123',
   onDownloadApp,
 }: {
-  bookingId?: string
   onDownloadApp?: () => void
 }) {
   const handleDownloadApp = () => {
@@ -41,15 +30,6 @@ export function AppointmentJourneyCompleteStep({
           </div>
 
           <div className="flex w-full flex-col items-center gap-6 rounded-xl border border-white/10 bg-white/5 p-[13px] backdrop-blur-[12px]">
-            <div className="flex w-full flex-col items-center gap-1.5 px-1.5 text-center">
-              <p className="text-[11px] leading-[15px] text-[#9a9a9a]">Booking ID</p>
-              <p className="text-[24px] font-extrabold leading-8 tracking-[4px] text-[#90df9e]">
-                {formatBookingDisplayId(bookingId)}
-              </p>
-            </div>
-
-            <div className="h-px w-[252px] bg-white/10" />
-
             <div className="flex w-full flex-col gap-1">
               <div className="flex w-full items-start justify-between">
                 <div className="flex flex-col items-start gap-1">

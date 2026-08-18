@@ -891,7 +891,7 @@ export default function BookAppointment() {
               />
             )}
             {step === 13 && (
-              <AppointmentJourneyCompleteStep bookingId={form.employeeId} />
+              <AppointmentJourneyCompleteStep />
             )}
           </div>
 

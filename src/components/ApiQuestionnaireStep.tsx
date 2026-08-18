@@ -161,11 +161,11 @@ function toggleMulti(current: string[], value: string): string[] {
   return [...withoutNone, value]
 }
 
-function isAnswered(question: QuestionnaireQuestion, answer: AnswerValue | undefined): boolean {
-  if (answer == null) return !question.is_required
-  if (Array.isArray(answer)) return answer.length > 0 || !question.is_required
-  if (typeof answer === 'object') return Object.keys(answer).length > 0 || !question.is_required
-  return String(answer).trim().length > 0 || !question.is_required
+function isAnswered(_question: QuestionnaireQuestion, answer: AnswerValue | undefined): boolean {
+  if (answer == null) return false
+  if (Array.isArray(answer)) return answer.length > 0
+  if (typeof answer === 'object') return Object.keys(answer).length > 0
+  return String(answer).trim().length > 0
 }
 
 export function ApiQuestionnaireStep({
@@ -293,6 +293,25 @@ export function ApiQuestionnaireStep({
 
   const handleNext = async () => {
     if (isSaving || !question) return
+    if (!answered) {
+      setSaveError('Please answer this question to continue.')
+      return
+    }
+    if (
+      otherFollowUp &&
+      selectedIncludesOther(
+        Array.isArray(answer)
+          ? answer.map(String)
+          : typeof answer === 'string' || typeof answer === 'number'
+            ? [String(answer)]
+            : [],
+        Array.isArray(question.options) ? question.options : [],
+      ) &&
+      !otherText.trim()
+    ) {
+      setSaveError('Please specify your answer to continue.')
+      return
+    }
 
     setSaveError('')
     setIsSaving(true)
@@ -411,6 +430,10 @@ export function ApiQuestionnaireStep({
     : typeof answer === 'string' || typeof answer === 'number'
       ? [String(answer)]
       : []
+  const otherNeedsText = Boolean(
+    otherFollowUp && selectedIncludesOther(selectedValues, options),
+  )
+  const canAdvance = answered && (!otherNeedsText || otherText.trim().length > 0)
 
   const applyChoiceSelection = (nextSelected: string[]) => {
     setSaveError('')
@@ -895,10 +918,16 @@ export function ApiQuestionnaireStep({
           <button
             type="button"
             onClick={handleNext}
-            disabled={isSaving}
-            className={`flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px ${nextShadow} disabled:opacity-60`}
+            disabled={isSaving || !canAdvance}
+            className={`flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px ${nextShadow} disabled:opacity-40 disabled:cursor-not-allowed`}
             style={{ backgroundImage: nextGradient }}
-            aria-label={isSaving ? 'Saving answer' : 'Next question'}
+            aria-label={
+              isSaving
+                ? 'Saving answer'
+                : !canAdvance
+                  ? 'Answer this question to continue'
+                  : 'Next question'
+            }
           >
             <img src={nextChevronIcon} alt="" className="size-4" aria-hidden />
           </button>
