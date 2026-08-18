@@ -154,7 +154,16 @@ export function isTextType(questionType: string): boolean {
   const type = String(questionType || '')
     .trim()
     .toLowerCase()
-  return type === 'text' || type === 'textarea' || type === 'string' || type === 'long_text'
+  return (
+    type === 'text' ||
+    type === 'textarea' ||
+    type === 'string' ||
+    type === 'long_text' ||
+    type === 'short_text' ||
+    type === 'free_text' ||
+    type === 'open_text' ||
+    type === 'input'
+  )
 }
 
 export function isScaleType(questionType: string): boolean {

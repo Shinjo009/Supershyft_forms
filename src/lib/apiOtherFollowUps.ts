@@ -3,10 +3,13 @@ import {
   getOptionValue,
   isMultiChoiceType,
   isSingleChoiceType,
-  isTextType,
   type QuestionnaireOption,
   type QuestionnaireQuestion,
 } from '../api/questionnaire'
+import {
+  computeQuestionsWithVisibility,
+  type AnswerValue,
+} from './questionnaireVisibility'
 
 function normalizeKey(value: unknown): string {
   return String(value ?? '')
@@ -67,17 +70,53 @@ function isChoiceQuestion(question: QuestionnaireQuestion): boolean {
 }
 
 function looksLikeOtherTextQuestion(question: QuestionnaireQuestion): boolean {
-  if (!isTextType(question.question_type)) return false
   const key = normalizeKey(question.question_key)
   const text = normalizeKey(question.question_text)
-  return (
+  const looksOther =
+    key === 'other' ||
+    key === 'others' ||
     key.endsWith('_other') ||
     key.endsWith('.other') ||
     key.includes('_other_') ||
-    /\(\s*other\s*\)\s*$/i.test(question.question_text || '') ||
+    key.includes('specify') ||
+    text === 'other' ||
+    text === 'others' ||
     text.endsWith(' other') ||
-    text.includes('(other)')
-  )
+    text.includes('(other)') ||
+    text.includes('please specify') ||
+    (text.includes('specify') && text.includes('other')) ||
+    /\(\s*other\s*\)/i.test(question.question_text || '')
+  if (!looksOther) return false
+  if (isChoiceQuestion(question) && questionHasOtherOption(question) && !key.endsWith('_other')) {
+    return false
+  }
+  return true
+}
+
+/** `relative_conditions_other` → `relative_conditions` */
+function inferredParentKey(followUp: QuestionnaireQuestion): string {
+  const key = normalizeKey(followUp.question_key)
+  if (key.endsWith('_other')) return key.slice(0, -'_other'.length)
+  if (key.endsWith('.other')) return key.slice(0, -'.other'.length)
+  return ''
+}
+
+function conditionValueMatchesParentOther(
+  expected: string,
+  parent: QuestionnaireQuestion,
+): boolean {
+  if (!expected) return false
+  if (expected === 'other' || expected === 'others' || expected.includes('other')) return true
+
+  const options = Array.isArray(parent.options) ? parent.options : []
+  return options.some((option) => {
+    if (!isOtherOption(option)) return false
+    return (
+      expected === normalizeKey(getOptionValue(option)) ||
+      expected === normalizeKey(getOptionLabel(option)) ||
+      expected === normalizeKey(option.option_id)
+    )
+  })
 }
 
 function visibilityPointsToParentOther(
@@ -96,7 +135,7 @@ function visibilityPointsToParentOther(
     if (normalizeKey(condition.question_key) !== parentKey) return false
 
     const expected = normalizeKey(condition.value)
-    return expected === 'other' || expected.includes('other')
+    return conditionValueMatchesParentOther(expected, parent)
   })
 }
 
@@ -122,21 +161,30 @@ export function findOtherFollowUpForParent(
   parent: QuestionnaireQuestion,
   allQuestions: QuestionnaireQuestion[],
 ): QuestionnaireQuestion | null {
-  if (!questionHasOtherOption(parent)) return null
-
   const parentIndex = allQuestions.findIndex((q) => q.question_id === parent.question_id)
   if (parentIndex < 0) return null
+
+  const parentKey = normalizeKey(parent.question_key)
+  const byInferredKey = parentKey
+    ? allQuestions.find(
+        (candidate) =>
+          candidate.question_id !== parent.question_id &&
+          inferredParentKey(candidate) === parentKey,
+      )
+    : undefined
+  if (byInferredKey) return byInferredKey
 
   const byRulesOrKey = allQuestions.find(
     (candidate) =>
       candidate.question_id !== parent.question_id &&
-      isTextType(candidate.question_type) &&
+      looksLikeOtherTextQuestion(candidate) &&
       (visibilityPointsToParentOther(candidate, parent) ||
         keySuggestsParentOther(candidate, parent)),
   )
   if (byRulesOrKey) return byRulesOrKey
 
-  // Fallback: next standalone "(other)" text after this parent, before the next choice Q with Other.
+  if (!questionHasOtherOption(parent)) return null
+
   for (let i = parentIndex + 1; i < allQuestions.length; i += 1) {
     const candidate = allQuestions[i]
     if (
@@ -157,11 +205,20 @@ export function findParentForOtherFollowUp(
   followUp: QuestionnaireQuestion,
   allQuestions: QuestionnaireQuestion[],
 ): QuestionnaireQuestion | null {
-  if (!isTextType(followUp.question_type)) return null
+  if (questionHasOtherOption(followUp) && !looksLikeOtherTextQuestion(followUp)) return null
+
+  const inferredKey = inferredParentKey(followUp)
+  if (inferredKey) {
+    const byInferredKey = allQuestions.find(
+      (parent) =>
+        parent.question_id !== followUp.question_id &&
+        normalizeKey(parent.question_key) === inferredKey,
+    )
+    if (byInferredKey) return byInferredKey
+  }
 
   for (const parent of allQuestions) {
     if (parent.question_id === followUp.question_id) continue
-    if (!isChoiceQuestion(parent) || !questionHasOtherOption(parent)) continue
     if (
       visibilityPointsToParentOther(followUp, parent) ||
       keySuggestsParentOther(followUp, parent)
@@ -177,7 +234,8 @@ export function findParentForOtherFollowUp(
 
   for (let i = followIndex - 1; i >= 0; i -= 1) {
     const parent = allQuestions[i]
-    if (isChoiceQuestion(parent) && questionHasOtherOption(parent)) return parent
+    if (looksLikeOtherTextQuestion(parent)) continue
+    if (isChoiceQuestion(parent)) return parent
   }
 
   return null
@@ -196,4 +254,29 @@ export function filterOutInlinedOtherQuestions(
   allQuestions: QuestionnaireQuestion[],
 ): QuestionnaireQuestion[] {
   return questions.filter((question) => !isInlinedOtherTextQuestion(question, allQuestions))
+}
+
+/**
+ * One-at-a-time steps: keep parent MCQs (even if marked read-only) and drop
+ * standalone "(other)" specify questions so they render inline on the parent.
+ */
+export function buildNavigableQuestionnaireQuestions(
+  questions: QuestionnaireQuestion[],
+  answersById: Record<number, AnswerValue>,
+): QuestionnaireQuestion[] {
+  const withVisibility = computeQuestionsWithVisibility(questions, answersById)
+  const visibleIds = new Set(
+    withVisibility
+      .filter((question) => question.is_visible !== false)
+      .map((question) => question.question_id),
+  )
+
+  for (const item of questions) {
+    const parent = findParentForOtherFollowUp(item, questions)
+    if (!parent) continue
+    if (visibleIds.has(item.question_id)) visibleIds.add(parent.question_id)
+  }
+
+  const withParents = questions.filter((question) => visibleIds.has(question.question_id))
+  return filterOutInlinedOtherQuestions(withParents, questions)
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import backIcon from '../assets/family-history/back-icon.svg'
 import nextChevronIcon from '../assets/family-history/next-chevron.svg'
 import tickCircleIcon from '../assets/family-history/tick-circle-outline.svg'
@@ -14,9 +14,10 @@ import {
 } from '../api/questionnaire'
 import { getAccessToken } from '../lib/authStorage'
 import {
-  filterOutInlinedOtherQuestions,
+  buildNavigableQuestionnaireQuestions,
   findOtherFollowUpForParent,
-  isOtherOption,
+  findParentForOtherFollowUp,
+  isInlinedOtherTextQuestion,
   selectedIncludesOther,
 } from '../lib/apiOtherFollowUps'
 import {
@@ -46,7 +47,8 @@ import {
 import { parseHelpTextToInfoItems } from '../lib/parseHelpTextToInfoItems'
 import { filterFoodGroupOptionsByDiet } from '../lib/filterFoodGroupsByDiet'
 import {
-  filterVisibleQuestions,
+  applyAnswersToQuestions,
+  mergeDraftAnswers,
   seedAnswersFromQuestions,
   type AnswerValue,
 } from '../lib/questionnaireVisibility'
@@ -95,22 +97,7 @@ const FAMILY_CHIP_SELECTED_GRADIENT =
 const LIFESTYLE_CHIP_SELECTED_GRADIENT =
   "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 155 36' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.35'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(7.75 0 0 1.8 77.5 18)'><stop stop-color='rgba(255,136,0,1)' offset='0.46635'/><stop stop-color='rgba(233,93,92,0.5)' offset='1'/></radialGradient></defs></svg>\")"
 
-const FAMILY_OTHER_EXPANDED_GRADIENT =
-  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 296 64' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.35'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(14.8 0 0 3.2 148 32)'><stop stop-color='rgba(164,86,234,1)' offset='0'/><stop stop-color='rgba(134,69,194,1)' offset='0.25'/><stop stop-color='rgba(103,52,153,1)' offset='0.5'/><stop stop-color='rgba(73,35,113,1)' offset='0.75'/><stop stop-color='rgba(42,18,72,1)' offset='1'/></radialGradient></defs></svg>\")"
-
-const LIFESTYLE_OTHER_EXPANDED_GRADIENT =
-  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 296 64' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.35'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(14.8 0 0 3.2 148 32)'><stop stop-color='rgba(255,136,0,1)' offset='0'/><stop stop-color='rgba(233,93,92,0.5)' offset='1'/></radialGradient></defs></svg>\")"
-
-const NUTRITION_OTHER_EXPANDED_GRADIENT =
-  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 296 64' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.35'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(14.8 0 0 3.2 148 32)'><stop stop-color='rgba(222,245,255,1)' offset='0'/><stop stop-color='rgba(143,200,255,1)' offset='0.5'/><stop stop-color='rgba(63,156,255,1)' offset='1'/></radialGradient></defs></svg>\")"
-
 type QuestionnaireTheme = 'family' | 'lifestyle' | 'nutrition'
-
-const THEME_OTHER_EXPANDED_GRADIENT: Record<QuestionnaireTheme, string> = {
-  family: FAMILY_OTHER_EXPANDED_GRADIENT,
-  lifestyle: LIFESTYLE_OTHER_EXPANDED_GRADIENT,
-  nutrition: NUTRITION_OTHER_EXPANDED_GRADIENT,
-}
 
 const THEME_PROGRESS_COLOR: Record<QuestionnaireTheme, string> = {
   family: '#9D50BB',
@@ -149,6 +136,27 @@ function splitPreview(text: string): { line1: string; line2: string } {
   return { line1: words.slice(0, mid).join(' '), line2: words.slice(mid).join(' ') }
 }
 
+function isOptionSelected(option: { value: string; label: string }, selectedValues: string[]): boolean {
+  return selectedValues.some((selected) => selected === option.value || selected === option.label)
+}
+
+function adjacentNonInlinedIndex(
+  items: QuestionnaireQuestion[],
+  allQuestions: QuestionnaireQuestion[],
+  from: number,
+  direction: 1 | -1,
+): number {
+  let next = from + direction
+  while (
+    next >= 0 &&
+    next < items.length &&
+    isInlinedOtherTextQuestion(items[next], allQuestions)
+  ) {
+    next += direction
+  }
+  return next
+}
+
 function toggleMulti(current: string[], value: string): string[] {
   const normalized = value.trim().toLowerCase()
   if (normalized === 'none') {
@@ -180,34 +188,49 @@ export function ApiQuestionnaireStep({
   assessmentInstanceId,
   categoryId,
   theme = 'family',
+  initialAnswers,
+  initialIndex = 0,
   onBack,
   onComplete,
+  onDraftChange,
 }: {
   title: string
   questions: QuestionnaireQuestion[]
   assessmentInstanceId: number
   categoryId: number
   theme?: QuestionnaireTheme
+  initialAnswers?: Record<number, AnswerValue>
+  initialIndex?: number
   onBack?: () => void
   onComplete?: (answers: Record<number, AnswerValue>) => void
+  onDraftChange?: (answers: Record<number, AnswerValue>, index: number) => void
 }) {
-  const [visibleIndex, setVisibleIndex] = useState(0)
+  const [visibleIndex, setVisibleIndex] = useState(() => Math.max(0, initialIndex))
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>(() =>
-    seedAnswersFromQuestions(questions),
+    mergeDraftAnswers(seedAnswersFromQuestions(questions), initialAnswers),
   )
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [infoOpen, setInfoOpen] = useState(false)
 
   useEffect(() => {
-    setAnswers(seedAnswersFromQuestions(questions))
-    setVisibleIndex(0)
-    setSaveError('')
-    setInfoOpen(false)
+    setAnswers((prev) => mergeDraftAnswers(seedAnswersFromQuestions(questions), prev))
   }, [questions])
 
+  useEffect(() => {
+    setSaveError('')
+    setInfoOpen(false)
+  }, [categoryId])
+
+  const onDraftChangeRef = useRef(onDraftChange)
+  onDraftChangeRef.current = onDraftChange
+
+  useEffect(() => {
+    onDraftChangeRef.current?.(answers, visibleIndex)
+  }, [answers, visibleIndex])
+
   const visibleQuestions = useMemo(
-    () => filterOutInlinedOtherQuestions(filterVisibleQuestions(questions, answers), questions),
+    () => buildNavigableQuestionnaireQuestions(questions, answers),
     [questions, answers],
   )
 
@@ -224,12 +247,24 @@ export function ApiQuestionnaireStep({
   }, [visibleIndex])
 
   const total = visibleQuestions.length
-  const question = visibleQuestions[visibleIndex]
-  const nextQuestion = visibleQuestions[visibleIndex + 1]
+  const questionAtIndex = visibleQuestions[visibleIndex]
+  const parentQuestion = questionAtIndex
+    ? findParentForOtherFollowUp(questionAtIndex, questions)
+    : null
+  const parentVisibleIndex = parentQuestion
+    ? visibleQuestions.findIndex((item) => item.question_id === parentQuestion.question_id)
+    : -1
+  const displayIndex = parentVisibleIndex >= 0 ? parentVisibleIndex : visibleIndex
+  const question = visibleQuestions[displayIndex] ?? questionAtIndex
+  const nextNavIndex = adjacentNonInlinedIndex(visibleQuestions, questions, displayIndex, 1)
+  const nextQuestion =
+    nextNavIndex >= 0 && nextNavIndex < visibleQuestions.length
+      ? visibleQuestions[nextNavIndex]
+      : undefined
   const answer = question ? answers[question.question_id] : undefined
   const answered = question ? isAnswered(question, answer) : false
-  const percent = progressPercent(visibleIndex, total, answered)
-  const isLast = visibleIndex >= total - 1
+  const percent = progressPercent(displayIndex, total, answered)
+  const isLast = nextNavIndex < 0 || nextNavIndex >= total
   const nextPreview = useMemo(
     () => splitPreview(nextQuestion?.question_text || ''),
     [nextQuestion?.question_text],
@@ -247,6 +282,16 @@ export function ApiQuestionnaireStep({
   const otherAnswer = otherFollowUp ? answers[otherFollowUp.question_id] : undefined
   const otherText =
     typeof otherAnswer === 'string' || typeof otherAnswer === 'number' ? String(otherAnswer) : ''
+
+  useEffect(() => {
+    if (!questionAtIndex) return
+    const parent = findParentForOtherFollowUp(questionAtIndex, questions)
+    if (!parent) return
+    const parentIndex = visibleQuestions.findIndex((item) => item.question_id === parent.question_id)
+    if (parentIndex >= 0 && parentIndex !== visibleIndex) {
+      setVisibleIndex(parentIndex)
+    }
+  }, [questionAtIndex, questions, visibleQuestions, visibleIndex])
 
   const collectSaveIds = (throughIndex: number): number[] => {
     const ids: number[] = []
@@ -290,10 +335,13 @@ export function ApiQuestionnaireStep({
       return
     }
     setSaveError('')
-    if (visibleIndex > 0) {
-      setVisibleIndex((index) => index - 1)
+    const previous = adjacentNonInlinedIndex(visibleQuestions, questions, displayIndex, -1)
+    if (previous >= 0) {
+      setVisibleIndex(previous)
       return
     }
+    onDraftChangeRef.current?.(answers, displayIndex)
+    void saveCurrentProgress().catch(() => undefined)
     onBack?.()
   }
 
@@ -307,8 +355,11 @@ export function ApiQuestionnaireStep({
       await saveCurrentProgress()
 
       if (!isLast) {
-        setVisibleIndex((index) => index + 1)
-        return
+        const next = adjacentNonInlinedIndex(visibleQuestions, questions, displayIndex, 1)
+        if (next < visibleQuestions.length) {
+          setVisibleIndex(next)
+          return
+        }
       }
 
       const visibleIds = new Set(collectSaveIds(visibleQuestions.length - 1))
@@ -317,6 +368,7 @@ export function ApiQuestionnaireStep({
         const questionId = Number(id)
         if (visibleIds.has(questionId)) pruned[questionId] = value
       }
+      onDraftChangeRef.current?.(pruned, 0)
       onComplete?.(pruned)
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Unable to save your answer.')
@@ -409,7 +461,6 @@ export function ApiQuestionnaireStep({
   const progressColor = THEME_PROGRESS_COLOR[theme]
   const nextGradient = THEME_NEXT_GRADIENT[theme]
   const chipGradient = THEME_CHIP_GRADIENT[theme]
-  const otherExpandedGradient = THEME_OTHER_EXPANDED_GRADIENT[theme]
   const nextShadow = THEME_NEXT_SHADOW[theme]
 
   const selectedValues = Array.isArray(answer)
@@ -471,7 +522,7 @@ export function ApiQuestionnaireStep({
 
           {useLocationLayout ? (
             <FamilyHistoryLocationOptions
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -487,7 +538,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useSitDurationLayout ? (
             <LifestyleSitDurationQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -502,7 +553,7 @@ export function ApiQuestionnaireStep({
             />
           ) : usePhysicalActivityLayout ? (
             <LifestylePhysicalActivityQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -517,7 +568,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useWeeklyLeisureLayout ? (
             <LifestyleWeeklyLeisureQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -532,7 +583,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useActivityIntensityLayout ? (
             <LifestyleActivityIntensityQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -547,7 +598,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useDailyWalkingLayout ? (
             <LifestyleDailyWalkingQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -562,7 +613,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useSleepDurationLayout ? (
             <LifestyleSleepDurationQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -577,7 +628,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useSmokingFrequencyLayout ? (
             <LifestyleSmokingFrequencyQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -592,7 +643,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useAlcoholConsumptionLayout ? (
             <LifestyleAlcoholConsumptionQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -607,7 +658,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useWellnessPrioritiesLayout ? (
             <LifestyleWellnessPrioritiesQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -622,7 +673,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useLifestyleCommitmentLayout ? (
             <LifestyleCommitmentQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -637,7 +688,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useDietTypeLayout ? (
             <NutritionDietTypeQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -653,7 +704,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useDailyFoodGroupsLayout || useCoffeeTeaTypeLayout ? (
             <NutritionApiMultiSelectQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={displayedOptions}
               selectedValues={selectedValues}
@@ -667,7 +718,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useBreakfastFrequencyLayout ? (
             <NutritionApiCircularMeterQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               meterId={nutritionMeterIdForQuestion(question)}
               options={options}
@@ -684,7 +735,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useIllnessFrequencyLayout ? (
             <NutritionApiCircularMeterQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               meterId={nutritionMeterIdForQuestion(question)}
               options={options}
@@ -701,7 +752,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useWaterIntakeLayout ? (
             <NutritionApiWaterIntakeQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -716,7 +767,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useConsumptionFrequencyLayout ? (
             <NutritionApiConsumptionFrequencyQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               meterId={nutritionMeterIdForQuestion(question)}
               options={options}
@@ -732,7 +783,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useIodizedSaltLayout ? (
             <NutritionApiPillRowQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -748,7 +799,7 @@ export function ApiQuestionnaireStep({
             />
           ) : useExtraSaltLayout || useCoffeeTeaIntakeLayout ? (
             <NutritionApiPillRowQuestion
-              questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+              questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -766,7 +817,7 @@ export function ApiQuestionnaireStep({
             <>
               <McqQuestionHeader
                 theme={theme}
-                questionLabel={`Question ${visibleIndex + 1} of ${total}`}
+                questionLabel={`Question ${displayIndex + 1} of ${total}`}
                 onInfoClick={openInfo}
                 titleClassName="mt-2 text-[16px] font-semibold leading-6 tracking-[0.2px] text-white"
               >
@@ -774,85 +825,59 @@ export function ApiQuestionnaireStep({
               </McqQuestionHeader>
 
               {single || multi ? (
-                <div className="flex flex-wrap gap-2.5">
-                  {options.map((option) => {
-                    const value = getOptionValue(option)
-                    const label = getOptionLabel(option) || value
-                    if (!value && !label) return null
-                    const selected = selectedValues.includes(value)
-                    const isOther = isOtherOption(option)
-                    const isOtherExpanded = Boolean(isOther && selected && otherFollowUp)
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap gap-2.5">
+                    {options.map((option) => {
+                      const value = getOptionValue(option)
+                      const label = getOptionLabel(option) || value
+                      if (!value && !label) return null
+                      const selected = isOptionSelected({ value, label }, selectedValues)
 
-                    if (isOtherExpanded && otherFollowUp) {
                       return (
-                        <div
+                        <button
                           key={`${question.question_id}-${value}`}
-                          className="flex w-full basis-full flex-col rounded-[24px] border border-solid border-[#d0d0d0] px-6 pb-3 pt-1"
-                          style={{ backgroundImage: otherExpandedGradient }}
+                          type="button"
+                          disabled={question.is_read_only || isSaving}
+                          onClick={() => {
+                            if (multi) {
+                              applyChoiceSelection(toggleMulti(selectedValues, value))
+                              return
+                            }
+                            applyChoiceSelection([value])
+                          }}
+                          className={`${MCQ_PILL_CHIP_CLASS} flex items-center justify-center gap-2.5 rounded-full border px-3 py-2 text-left text-[12px] font-medium leading-4 text-white transition disabled:opacity-60`}
+                          style={{
+                            borderColor: selected ? MCQ_PILL_BORDER_SELECTED : MCQ_PILL_BORDER_IDLE,
+                            backgroundImage: selected ? chipGradient : undefined,
+                            backgroundColor: selected ? undefined : 'rgba(255,255,255,0.05)',
+                          }}
                         >
-                          <button
-                            type="button"
-                            disabled={question.is_read_only || isSaving}
-                            onClick={() => {
-                              if (multi) {
-                                applyChoiceSelection(toggleMulti(selectedValues, value))
-                                return
-                              }
-                              applyChoiceSelection([])
-                            }}
-                            className="flex items-center gap-2.5 py-0.5 text-left disabled:opacity-60"
-                            aria-pressed
-                          >
+                          {selected ? (
                             <img src={tickCircleIcon} alt="" className="size-3 shrink-0" aria-hidden />
-                            <span className="text-[12px] font-semibold leading-6 text-white">
-                              {label || 'Other'}
-                            </span>
-                          </button>
-                          <input
-                            type="text"
-                            value={otherText}
-                            disabled={question.is_read_only || isSaving}
-                            onChange={(event) => {
-                              setSaveError('')
-                              setAnswers((prev) => ({
-                                ...prev,
-                                [otherFollowUp.question_id]: event.target.value,
-                              }))
-                            }}
-                            placeholder="Please specify"
-                            className="ml-[22px] w-[calc(100%-22px)] border-0 border-b border-[rgba(255,255,255,0.35)] bg-transparent py-0.5 text-[16px] font-light leading-6 text-white outline-none placeholder:text-[#9a9a9a] disabled:opacity-60"
-                            aria-label={`Please specify for ${otherFollowUp.question_text}`}
-                          />
-                        </div>
+                          ) : null}
+                          <span>{label}</span>
+                        </button>
                       )
-                    }
-
-                    return (
-                      <button
-                        key={`${question.question_id}-${value}`}
-                        type="button"
-                        disabled={question.is_read_only || isSaving}
-                        onClick={() => {
-                          if (multi) {
-                            applyChoiceSelection(toggleMulti(selectedValues, value))
-                            return
-                          }
-                          applyChoiceSelection([value])
-                        }}
-                        className={`${MCQ_PILL_CHIP_CLASS} flex items-center justify-center gap-2.5 rounded-full border px-3 py-2 text-left text-[12px] font-medium leading-4 text-white transition disabled:opacity-60`}
-                        style={{
-                          borderColor: selected ? MCQ_PILL_BORDER_SELECTED : MCQ_PILL_BORDER_IDLE,
-                          backgroundImage: selected ? chipGradient : undefined,
-                          backgroundColor: selected ? undefined : 'rgba(255,255,255,0.05)',
-                        }}
-                      >
-                        {selected ? (
-                          <img src={tickCircleIcon} alt="" className="size-3 shrink-0" aria-hidden />
-                        ) : null}
-                        <span>{label}</span>
-                      </button>
-                    )
-                  })}
+                    })}
+                  </div>
+                  {otherFollowUp &&
+                  selectedIncludesOther(selectedValues, options) ? (
+                    <input
+                      type="text"
+                      value={otherText}
+                      disabled={question.is_read_only || isSaving}
+                      onChange={(event) => {
+                        setSaveError('')
+                        setAnswers((prev) => ({
+                          ...prev,
+                          [otherFollowUp.question_id]: event.target.value,
+                        }))
+                      }}
+                      placeholder="Please specify (optional)"
+                      className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-[16px] font-light leading-6 text-white outline-none placeholder:text-[#9a9a9a] focus:border-white/40 disabled:opacity-60"
+                      aria-label={`Please specify for ${otherFollowUp.question_text}`}
+                    />
+                  ) : null}
                 </div>
               ) : null}
 

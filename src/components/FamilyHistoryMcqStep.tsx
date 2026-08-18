@@ -49,9 +49,6 @@ function handleChipToggle(
   return next
 }
 
-const OTHER_EXPANDED_GRADIENT =
-  "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 296 64' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect x='0' y='0' height='100%' width='100%' fill='url(%23grad)' opacity='0.35'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(14.8 0 0 3.2 148 32)'><stop stop-color='rgba(164,86,234,1)' offset='0'/><stop stop-color='rgba(134,69,194,1)' offset='0.25'/><stop stop-color='rgba(103,52,153,1)' offset='0.5'/><stop stop-color='rgba(73,35,113,1)' offset='0.75'/><stop stop-color='rgba(42,18,72,1)' offset='1'/></radialGradient></defs></svg>\")"
-
 /** Family History MCQ flow — shared layout, per-question content */
 export function FamilyHistoryMcqStep({
   onBack,
@@ -297,57 +294,40 @@ function MultiSelectChipQuestion({
         <p className={MCQ_QUESTION_HINT_CLASS}>(Select multiple or none that apply)</p>
       </FamilyHistoryQuestionHeader>
 
-      <div className="flex flex-wrap content-center gap-4">
-        {options.map((option) => {
-          const isSelected = selected.includes(option.id)
-          const isOtherExpanded = option.id === 'other' && isSelected
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap content-center gap-4">
+          {options.map((option) => {
+            const isSelected = selected.includes(option.id)
 
-          if (isOtherExpanded) {
             return (
-              <div
+              <button
                 key={option.id}
-                className="flex w-full basis-full flex-col rounded-[24px] border-[0.5px] border-solid border-[#d0d0d0] px-6 pb-3 pt-1"
-                style={{ backgroundImage: OTHER_EXPANDED_GRADIENT }}
+                type="button"
+                onClick={() => onToggle(option.id)}
+                className={[
+                  `flex ${MCQ_PILL_CHIP_CLASS} items-center justify-center gap-2.5 rounded-[24px] border border-solid px-2.5 py-1`,
+                  isSelected ? 'border-[#d0d0d0] font-semibold' : 'border-[#969696] font-normal',
+                ].join(' ')}
+                style={isSelected ? { backgroundImage: CHIP_SELECTED_GRADIENT } : undefined}
               >
-                <button
-                  type="button"
-                  onClick={() => onToggle('other')}
-                  className="flex items-center gap-2.5 py-0.5 text-left"
-                  aria-pressed
-                >
+                {isSelected ? (
                   <img src={tickCircleIcon} alt="" className="size-3 shrink-0" aria-hidden />
-                  <span className="text-[12px] font-semibold leading-6 text-white">Other</span>
-                </button>
-                <input
-                  type="text"
-                  value={otherText}
-                  onChange={(event) => onOtherTextChange(event.target.value)}
-                  placeholder="Please specify"
-                  className="ml-[22px] w-[calc(100%-22px)] border-0 border-b border-[rgba(255,255,255,0.35)] bg-transparent py-0.5 text-[16px] font-light leading-6 text-white outline-none placeholder:text-[#9a9a9a]"
-                  aria-label="Please specify other condition"
-                />
-              </div>
+                ) : null}
+                <span className="whitespace-nowrap text-[12px] leading-6 text-white">{option.label}</span>
+              </button>
             )
-          }
-
-          return (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => onToggle(option.id)}
-              className={[
-                `flex ${MCQ_PILL_CHIP_CLASS} items-center justify-center gap-2.5 rounded-[24px] border border-solid px-2.5 py-1`,
-                isSelected ? 'border-[#d0d0d0] font-semibold' : 'border-[#969696] font-normal',
-              ].join(' ')}
-              style={isSelected ? { backgroundImage: CHIP_SELECTED_GRADIENT } : undefined}
-            >
-              {isSelected ? (
-                <img src={tickCircleIcon} alt="" className="size-3 shrink-0" aria-hidden />
-              ) : null}
-              <span className="whitespace-nowrap text-[12px] leading-6 text-white">{option.label}</span>
-            </button>
-          )
-        })}
+          })}
+        </div>
+        {selected.includes('other') ? (
+          <input
+            type="text"
+            value={otherText}
+            onChange={(event) => onOtherTextChange(event.target.value)}
+            placeholder="Please specify (optional)"
+            className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-[16px] font-light leading-6 text-white outline-none placeholder:text-[#9a9a9a]"
+            aria-label="Please specify other condition"
+          />
+        ) : null}
       </div>
     </div>
   )

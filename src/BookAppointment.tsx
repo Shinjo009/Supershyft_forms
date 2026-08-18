@@ -26,7 +26,9 @@ import {
   type OnboardUserForEngagementPayload,
 } from './api/onboard'
 import {
+  getAllBookableDates,
   getCabinDay,
+  getCabinsForDate,
   getSlotDisplays,
   loadEngagementSchedule,
   resolveCabinKey,
@@ -47,6 +49,7 @@ import {
 } from './api/questionnaire'
 import { getAccessToken } from './lib/authStorage'
 import { isFrontendOnly } from './lib/frontendOnly'
+import { applyAnswersToQuestions, type AnswerValue } from './lib/questionnaireVisibility'
 import { getMockQuestionnaireQuestions } from './data/mockApiQuestionnaires'
 /** Validate booking fields with the input regexes before continuing. */
 const ENFORCE_REQUIRED_FIELDS = true
@@ -63,6 +66,40 @@ import { AppointmentJourneyCompleteStep } from './components/AppointmentJourneyC
 import { OtpVerifyStep } from './components/OtpVerifyStep'
 import { Dropdown } from './components/ui/dropdown-01'
 import bookingSuccessGif from './assets/animation-gif.gif'
+import backgroundAssessmentSvg from './assets/Background.svg'
+import lastPageBackgroundSvg from './assets/lastpage BG.svg'
+import nutritionEndBackgroundSvg from './assets/nutritionend.svg'
+import nutritionLogBackgroundSvg from './assets/nutritionlogstart.svg'
+import familyHistoryBackgroundSvg from './assets/family history.svg'
+import lifestyleHabitsBackgroundSvg from './assets/lifestyle-habits/background.svg'
+
+function mergeQuestionnaireQuestions(
+  previous: QuestionnaireQuestion[] | undefined,
+  incoming: QuestionnaireQuestion[],
+): QuestionnaireQuestion[] {
+  if (!previous?.length) return incoming
+
+  const incomingById = new Map(incoming.map((question) => [question.question_id, question]))
+  const seen = new Set<number>()
+  const merged: QuestionnaireQuestion[] = []
+
+  for (const question of previous) {
+    const incomingQuestion = incomingById.get(question.question_id)
+    if (!incomingQuestion) {
+      merged.push(question)
+    } else {
+      const answer = incomingQuestion.answer ?? question.answer
+      merged.push(answer === undefined ? incomingQuestion : { ...incomingQuestion, answer })
+    }
+    seen.add(question.question_id)
+  }
+  for (const question of incoming) {
+    if (seen.has(question.question_id)) continue
+    merged.push(question)
+    seen.add(question.question_id)
+  }
+  return merged
+}
 
 const RELATION_OPTIONS = [
   'Parent',
@@ -113,25 +150,24 @@ function formatAddressForApi(form: FormData): string {
 type IconType = React.ComponentType<{ className?: string; strokeWidth?: number }>
 
 function applyScheduleDefaults(form: FormData, schedule: EngagementSchedule): FormData {
-  const cabins = schedule.cabins
-  if (cabins.length === 0) {
-    return { ...form, appointmentCabin: '', appointmentCabinName: '' }
-  }
-
+  const allDates = getAllBookableDates(schedule)
+  const dateOk = allDates.includes(form.appointmentDate)
+  const appointmentDate = dateOk ? form.appointmentDate : ''
+  const cabinsForDate = getCabinsForDate(schedule, appointmentDate)
   const selected =
-    cabins.find((cabin) => cabin.name === form.appointmentCabin || cabin.name === form.appointmentCabinName) ??
-    cabins[0]
-  const dates = schedule.datesByCabin[selected.name] ?? []
-  const dateOk = dates.includes(form.appointmentDate)
-  const day = dateOk ? getCabinDay(schedule, selected.name, form.appointmentDate) : null
+    cabinsForDate.find(
+      (cabin) => cabin.name === form.appointmentCabin || cabin.name === form.appointmentCabinName,
+    ) ?? null
+  const day =
+    selected && appointmentDate ? getCabinDay(schedule, selected.name, appointmentDate) : null
   const slots = getSlotDisplays(day)
-  const timeOk = dateOk && slots.includes(form.appointmentTime)
+  const timeOk = Boolean(selected) && slots.includes(form.appointmentTime)
 
   return {
     ...form,
-    appointmentCabin: selected.name,
-    appointmentCabinName: selected.name,
-    appointmentDate: dateOk ? form.appointmentDate : '',
+    appointmentDate,
+    appointmentCabin: selected?.name ?? '',
+    appointmentCabinName: selected?.name ?? '',
     appointmentTime: timeOk ? form.appointmentTime : '',
   }
 }
@@ -181,11 +217,19 @@ export default function BookAppointment() {
   const [completedCategoryIds, setCompletedCategoryIds] = useState<number[]>([])
   const [activeCategory, setActiveCategory] = useState<AssessmentCategoryStatus | null>(null)
   const [categoryQuestions, setCategoryQuestions] = useState<QuestionnaireQuestion[]>([])
+  const [questionsByCategoryId, setQuestionsByCategoryId] = useState<
+    Record<number, QuestionnaireQuestion[]>
+  >({})
+  const [answersByCategoryId, setAnswersByCategoryId] = useState<
+    Record<number, Record<number, AnswerValue>>
+  >({})
+  const [progressByCategoryId, setProgressByCategoryId] = useState<Record<number, number>>({})
   const [isLoadingQuestionnaire, setIsLoadingQuestionnaire] = useState(false)
   const [loadingCategoryId, setLoadingCategoryId] = useState<number | null>(null)
   const [isSubmittingAssessment, setIsSubmittingAssessment] = useState(false)
   const [hubVariant, setHubVariant] = useState<SectionCompleteVariant>('family')
   const [questionnaireReturnStep, setQuestionnaireReturnStep] = useState(6)
+  const [highestHubStep, setHighestHubStep] = useState(6)
   const [uiError, setUiError] = useState('')
   const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
   const [attemptedScheduleContinue, setAttemptedScheduleContinue] = useState(false)
@@ -403,16 +447,21 @@ export default function BookAppointment() {
       return
     }
     if (isLoadingSchedule) {
-      logClientError('Please wait for available cabins to load.')
+      logClientError('Please wait for available dates to load.')
+      return
+    }
+    const dates = getAllBookableDates(engagementSchedule)
+    if (!form.appointmentDate || !dates.includes(form.appointmentDate)) {
+      logClientError('Please select a schedule date.')
       return
     }
     if (!form.appointmentCabin) {
       logClientError('Please pick a cabin.')
       return
     }
-    const dates = engagementSchedule?.datesByCabin[form.appointmentCabin] ?? []
-    if (!form.appointmentDate || !dates.includes(form.appointmentDate)) {
-      logClientError('Please select a schedule date.')
+    const cabinsForDate = getCabinsForDate(engagementSchedule, form.appointmentDate)
+    if (!cabinsForDate.some((cabin) => cabin.name === form.appointmentCabin)) {
+      logClientError('Please pick a cabin for this date.')
       return
     }
     const day = engagementSchedule
@@ -476,13 +525,20 @@ export default function BookAppointment() {
         logClientError('Please select a department.')
         return
       }
+      if (!form.appointmentDate || !getAllBookableDates(engagementSchedule).includes(form.appointmentDate)) {
+        logClientError('Please select a schedule date.')
+        return
+      }
       if (!form.appointmentCabin) {
         logClientError('Please pick a cabin.')
         return
       }
-      const dates = engagementSchedule?.datesByCabin[form.appointmentCabin] ?? []
-      if (!form.appointmentDate || !dates.includes(form.appointmentDate)) {
-        logClientError('Please select a schedule date.')
+      if (
+        !getCabinsForDate(engagementSchedule, form.appointmentDate).some(
+          (cabin) => cabin.name === form.appointmentCabin,
+        )
+      ) {
+        logClientError('Please pick a cabin for this date.')
         return
       }
       const day = engagementSchedule
@@ -563,6 +619,36 @@ export default function BookAppointment() {
     return 'family'
   }
 
+  const variantForHubStep = (hubStep: number): SectionCompleteVariant => {
+    if (hubStep >= 12) return 'nutrition'
+    if (hubStep >= 10) return 'lifestyle'
+    return 'family'
+  }
+
+  const persistCategoryDraft = (
+    categoryId: number,
+    answers: Record<number, AnswerValue>,
+    index?: number,
+  ) => {
+    if (categoryId <= 0) return
+    setAnswersByCategoryId((prev) => ({ ...prev, [categoryId]: answers }))
+    if (typeof index === 'number' && Number.isFinite(index)) {
+      setProgressByCategoryId((prev) => ({ ...prev, [categoryId]: Math.max(0, index) }))
+    }
+    setQuestionsByCategoryId((prev) => {
+      const existing = prev[categoryId]
+      if (!existing) return prev
+      return { ...prev, [categoryId]: applyAnswersToQuestions(existing, answers) }
+    })
+  }
+
+  const openCategoryQuestions = (categoryId: number, questions: QuestionnaireQuestion[]) => {
+    const merged = mergeQuestionnaireQuestions(questionsByCategoryId[categoryId], questions)
+    const withDrafts = applyAnswersToQuestions(merged, answersByCategoryId[categoryId])
+    setQuestionsByCategoryId((prev) => ({ ...prev, [categoryId]: withDrafts }))
+    setCategoryQuestions(withDrafts)
+  }
+
   const handleContinueToAssessment = async () => {
     if (isLoadingAssessmentCategories) return
 
@@ -608,7 +694,18 @@ export default function BookAppointment() {
     setUiError('')
     setIsLoadingQuestionnaire(true)
     setLoadingCategoryId(categoryId)
-    setQuestionnaireReturnStep(options?.returnStep ?? hubStepForVariant(hubVariant))
+    const returnStep = options?.returnStep ?? hubStepForVariant(hubVariant)
+    setQuestionnaireReturnStep(returnStep)
+    if (returnStep === 8 || returnStep === 10 || returnStep === 12) {
+      setHighestHubStep((prev) => Math.max(prev, returnStep))
+    }
+
+    const cachedQuestions = questionsByCategoryId[categoryId]
+    const beginCategory = (questions: QuestionnaireQuestion[]) => {
+      setActiveCategory(category)
+      openCategoryQuestions(categoryId, questions)
+      setStep(7)
+    }
 
     try {
       // Frontend-only: use API-shaped mock questions so we can redesign layouts one-by-one.
@@ -617,14 +714,12 @@ export default function BookAppointment() {
         if (questions.length === 0) {
           throw new Error('No mock questions available for this category yet.')
         }
-        setActiveCategory(category)
-        setCategoryQuestions(questions)
+        beginCategory(questions)
         console.info('[frontend-only] opening API-shaped questionnaire', {
           categoryId,
           categoryKey: category.category_key,
           questionCount: questions.length,
         })
-        setStep(7)
         return
       }
 
@@ -636,19 +731,25 @@ export default function BookAppointment() {
       )
       const questions = questionnaire.questions
       if (!Array.isArray(questions) || questions.length === 0) {
+        if (cachedQuestions?.length) {
+          beginCategory(cachedQuestions)
+          return
+        }
         throw new Error('No questions returned for this category.')
       }
 
-      setActiveCategory(category)
-      setCategoryQuestions(questions)
+      beginCategory(questions)
       console.info('[assessment] category questionnaire loaded', {
         assessmentInstanceId,
         categoryId,
         categoryKey: category.category_key,
         questionCount: questions.length,
       })
-      setStep(7)
     } catch (error) {
+      if (cachedQuestions?.length) {
+        beginCategory(cachedQuestions)
+        return
+      }
       logClientError(
         error instanceof Error ? error.message : 'Unable to load questionnaire questions.',
       )
@@ -672,20 +773,24 @@ export default function BookAppointment() {
     await handleLoadCategory(nextCategory, { returnStep: 6 })
   }
 
-  const handleCategoryQuestionnaireComplete = () => {
+  const handleCategoryQuestionnaireComplete = (answers?: Record<number, AnswerValue>) => {
     if (!activeCategory) {
-      setStep(8)
+      setStep(Math.max(highestHubStep, 8))
       return
     }
 
     const categoryId = Number(activeCategory.category_id)
+    persistCategoryDraft(categoryId, answers ?? answersByCategoryId[categoryId] ?? {}, 0)
     setCompletedCategoryIds((prev) =>
       prev.includes(categoryId) ? prev : [...prev, categoryId],
     )
 
     const variant = variantForCategory(activeCategory)
-    setHubVariant(variant)
-    setStep(hubStepForVariant(variant))
+    const completedHubStep = hubStepForVariant(variant)
+    const nextHubStep = Math.max(highestHubStep, questionnaireReturnStep, completedHubStep)
+    setHighestHubStep(nextHubStep)
+    setHubVariant(variantForHubStep(nextHubStep))
+    setStep(nextHubStep)
   }
 
   const handleSubmitCompletedAssessment = async () => {
@@ -734,8 +839,29 @@ export default function BookAppointment() {
 
   const continueVariant = step === 3 ? 'mobileBar' : 'mobileBarCompact'
 
+  const isQuestionnaireFlow = step >= 6
+  const activeCategoryKey = normalizeCategoryKey(activeCategory?.category_key || '')
+  const questionnaireBackground = activeCategoryKey.includes('lifestyle')
+    ? lifestyleHabitsBackgroundSvg
+    : activeCategoryKey.includes('nutrition')
+      ? nutritionLogBackgroundSvg
+      : familyHistoryBackgroundSvg
+  const questionnaireWallpaper = isQuestionnaireFlow
+    ? step === 13
+      ? lastPageBackgroundSvg
+      : step === 6 || step === 8
+        ? backgroundAssessmentSvg
+        : step === 10
+          ? nutritionEndBackgroundSvg
+          : step === 12
+            ? nutritionLogBackgroundSvg
+            : step === 7
+              ? questionnaireBackground
+              : backgroundAssessmentSvg
+    : undefined
+
   return (
-    <PageBackdrop wide={step <= 4}>
+    <PageBackdrop wide={step <= 4} wallpaperSrc={questionnaireWallpaper}>
       <div className="flex h-full min-w-0 flex-col">
         {/* Header — Figma: p-20px */}
         {hideMainHeader ? null : (
@@ -755,7 +881,7 @@ export default function BookAppointment() {
           <h1 className="text-center text-[20px] font-semibold leading-6 text-white">
             {mobileScreenTitle}
           </h1>
-          {step === 5 || step === 13 ? (
+          {step === 13 ? (
             <button
               type="button"
               onClick={() => setStep(1)}
@@ -804,7 +930,7 @@ export default function BookAppointment() {
         >
           <div
             className={
-              step === 7
+              step === 6 || step === 7
                 ? 'min-h-0 min-w-0 flex-1 overflow-hidden'
                 : step === 5 || step === 8 || step === 10 || step === 12
                   ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
@@ -862,6 +988,7 @@ export default function BookAppointment() {
             )}
             {step === 7 && activeCategory && categoryQuestions.length > 0 ? (
               <ApiQuestionnaireStep
+                key={Number(activeCategory.category_id)}
                 title={activeCategory.display_name || 'Assessment'}
                 questions={categoryQuestions}
                 assessmentInstanceId={assessmentInstanceId ?? 1}
@@ -873,7 +1000,12 @@ export default function BookAppointment() {
                       ? 'nutrition'
                       : 'family'
                 }
-                onBack={() => setStep(questionnaireReturnStep)}
+                initialAnswers={answersByCategoryId[Number(activeCategory.category_id)]}
+                initialIndex={progressByCategoryId[Number(activeCategory.category_id)] ?? 0}
+                onDraftChange={(answers, index) =>
+                  persistCategoryDraft(Number(activeCategory.category_id), answers, index)
+                }
+                onBack={() => setStep(Math.max(highestHubStep, questionnaireReturnStep))}
                 onComplete={handleCategoryQuestionnaireComplete}
               />
             ) : null}
@@ -1133,7 +1265,7 @@ function PersonalStep({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(User, 'Doctor Consultation', undefined, isMissingDoctorConsultation)}
+        {labelRow(User, 'Do you want doctor consultation?', undefined, isMissingDoctorConsultation)}
         <div className="flex h-10 gap-6 overflow-visible">
           <button
             type="button"
@@ -1340,16 +1472,17 @@ function ScheduleStep({
   showMissingRequired?: boolean
 }) {
   const cabins = schedule?.cabins ?? []
-  const selectedCabin = cabins.find((cabin) => cabin.name === form.appointmentCabin) ?? cabins[0] ?? null
   const bookableDates = useMemo(() => {
-    const dates = selectedCabin ? schedule?.datesByCabin[selectedCabin.name] ?? [] : []
-    return dates.flatMap((iso) => {
+    return getAllBookableDates(schedule).flatMap((iso) => {
       const date = parseIsoDate(iso)
       return date ? [{ iso, date }] : []
     })
-  }, [schedule, selectedCabin])
+  }, [schedule])
 
-  const activeDate = form.appointmentDate || bookableDates[0]?.iso || ''
+  const activeDate = form.appointmentDate || ''
+  const cabinsForDate = getCabinsForDate(schedule, activeDate)
+  const selectedCabin =
+    cabinsForDate.find((cabin) => cabin.name === form.appointmentCabin) ?? null
   const cabinDay =
     schedule && selectedCabin && activeDate
       ? getCabinDay(schedule, selectedCabin.name, activeDate)
@@ -1368,72 +1501,120 @@ function ScheduleStep({
   const idleDateClass = 'bg-white/5'
   const sectionLabelClass = 'font-sans text-[14px] font-medium leading-normal text-[#9A9A9A]'
 
-  const pickCabin = (cabinName: string) => {
-    update('appointmentCabin', cabinName)
-    update('appointmentCabinName', cabinName)
-    const nextDates = schedule?.datesByCabin[cabinName] ?? []
-    if (!nextDates.includes(form.appointmentDate)) {
-      update('appointmentDate', '')
-      update('appointmentTime', '')
-      return
+  const pickDate = (iso: string) => {
+    update('appointmentDate', iso)
+    const nextCabins = getCabinsForDate(schedule, iso)
+    const cabinStillValid = nextCabins.some((cabin) => cabin.name === form.appointmentCabin)
+    if (!cabinStillValid) {
+      const autoCabin = nextCabins.length === 1 ? nextCabins[0].name : ''
+      update('appointmentCabin', autoCabin)
+      update('appointmentCabinName', autoCabin)
     }
     update('appointmentTime', '')
   }
 
+  const pickCabin = (cabinName: string) => {
+    update('appointmentCabin', cabinName)
+    update('appointmentCabinName', cabinName)
+    update('appointmentTime', '')
+  }
+
   return (
-    <div className="flex min-w-0 flex-col gap-6">
-      <section className="flex min-w-0 flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <PickCabinIcon />
-          <h2 className={sectionLabelClass}>
-            Pick Cabin
-            {showMissingRequired && !form.appointmentCabin ? (
-              <span className="text-[#ff6b6b]"> * Field is required</span>
-            ) : null}
-          </h2>
-        </div>
-        {isLoading ? (
-          <p className="text-[12px] font-light text-[#9a9a9a]">Loading cabins...</p>
-        ) : cabins.length === 0 ? (
-          <p className="text-[12px] font-light text-[#9a9a9a]">
-            No cabins are available for this city yet.
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-            {cabins.map((cabin) => {
-              const selected = form.appointmentCabin === cabin.name
-              return (
-                <button
-                  key={cabin.name}
-                  type="button"
-                  onClick={() => pickCabin(cabin.name)}
-                  aria-pressed={selected}
-                  className={[
-                    'flex h-12 min-w-0 origin-center items-center justify-center rounded-[8px] px-3 text-[14px] font-medium transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                    selected ? selectedDateClass : idleDateClass,
-                    selected ? 'text-white' : 'text-[#9a9a9a]',
-                  ].join(' ')}
-                >
-                  <span className="truncate">{cabin.name}</span>
-                </button>
-              )
-            })}
+    <div className="flex min-w-0 flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-8 lg:gap-y-6">
+      <div className="flex min-w-0 flex-col gap-6">
+        <section className="flex min-w-0 flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <PreferredDateIcon />
+            <h2 className={sectionLabelClass}>
+              Preferred Date
+              {showMissingRequired && !form.appointmentDate ? (
+                <span className="text-[#ff6b6b]"> * Field is required</span>
+              ) : null}
+            </h2>
           </div>
-        )}
-      </section>
+          {isLoading ? (
+            <p className="text-[12px] font-light text-[#9a9a9a]">Loading dates...</p>
+          ) : bookableDates.length === 0 ? (
+            <p className="text-[12px] font-light text-[#9a9a9a]">
+              {form.city
+                ? 'No dates are available yet.'
+                : 'Select a city on the previous page to see available dates.'}
+            </p>
+          ) : (
+            <div className="flex w-[72%] max-w-[220px] min-w-0 flex-col gap-2 lg:w-full lg:max-w-[280px]">
+              {bookableDates.map(({ iso, date }) => {
+                const selected = form.appointmentDate === iso
+                return (
+                  <button
+                    key={iso}
+                    type="button"
+                    onClick={() => pickDate(iso)}
+                    aria-pressed={selected}
+                    className={[
+                      'flex h-12 w-full origin-center items-center justify-between rounded-[8px] px-3 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                      selected ? selectedDateClass : idleDateClass,
+                    ].join(' ')}
+                  >
+                    <span className={selected ? 'text-[14px] font-medium text-white' : 'text-[14px] font-medium text-[#9a9a9a]'}>
+                      {DAY_LABELS[date.getDay()]}
+                    </span>
+                    <span className={selected ? 'text-[16px] font-semibold text-white' : 'text-[16px] font-semibold text-[#cccccc]'}>
+                      {date.getDate()} {date.toLocaleString('en-GB', { month: 'short' })}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </section>
 
-      <div className="flex min-w-0 flex-col gap-6 lg:grid lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:items-stretch lg:gap-x-8 lg:gap-y-3">
-        <div className="order-1 flex items-center gap-2 lg:col-start-1 lg:row-start-1">
-          <PreferredDateIcon />
-          <h2 className={sectionLabelClass}>
-            Preferred Date
-            {showMissingRequired && !form.appointmentDate ? (
-              <span className="text-[#ff6b6b]"> * Field is required</span>
-            ) : null}
-          </h2>
-        </div>
+        <section className="flex min-w-0 flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <PickCabinIcon />
+            <h2 className={sectionLabelClass}>
+              Pick Cabin
+              {showMissingRequired && !form.appointmentCabin ? (
+                <span className="text-[#ff6b6b]"> * Field is required</span>
+              ) : null}
+            </h2>
+          </div>
+          {isLoading ? (
+            <p className="text-[12px] font-light text-[#9a9a9a]">Loading cabins...</p>
+          ) : cabins.length === 0 ? (
+            <p className="text-[12px] font-light text-[#9a9a9a]">
+              No cabins are available for this city yet.
+            </p>
+          ) : !activeDate ? (
+            <p className="text-[12px] font-light text-[#9a9a9a]">Select a date to see available cabins.</p>
+          ) : cabinsForDate.length === 0 ? (
+            <p className="text-[12px] font-light text-[#9a9a9a]">No cabins are available on this date.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {cabinsForDate.map((cabin) => {
+                const selected = form.appointmentCabin === cabin.name
+                return (
+                  <button
+                    key={cabin.name}
+                    type="button"
+                    onClick={() => pickCabin(cabin.name)}
+                    aria-pressed={selected}
+                    className={[
+                      'flex h-12 min-w-0 origin-center items-center justify-center rounded-[8px] px-3 text-[14px] font-medium transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                      selected ? selectedDateClass : idleDateClass,
+                      selected ? 'text-white' : 'text-[#9a9a9a]',
+                    ].join(' ')}
+                  >
+                    <span className="truncate">{cabin.name}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      </div>
 
-        <div className="order-3 flex items-start gap-2 lg:col-start-2 lg:row-start-1">
+      <section className="flex min-w-0 flex-col gap-3">
+        <div className="flex items-start gap-2">
           <PreferredTimeSlotIcon />
           <div className="flex flex-col gap-0.5">
             <h2 className={sectionLabelClass}>
@@ -1445,71 +1626,40 @@ function ScheduleStep({
             {timeHint ? <p className="text-[10px] font-light text-[#ccc]">{timeHint}</p> : null}
           </div>
         </div>
-
-        <div className="order-2 flex w-[72%] max-w-[220px] min-w-0 flex-col gap-2 lg:col-start-1 lg:row-start-2">
-          {isLoading ? (
-            <p className="text-[12px] font-light text-[#9a9a9a]">Loading dates...</p>
-          ) : bookableDates.length === 0 ? (
-            <p className="text-[12px] font-light text-[#9a9a9a]">
-              {form.city ? 'No dates are available for this cabin.' : 'Select a city on the previous page to see available dates.'}
-            </p>
-          ) : (
-            bookableDates.map(({ iso, date }) => {
-              const selected = form.appointmentDate === iso
+        {!activeDate ? (
+          <p className="text-[12px] font-light text-[#9a9a9a]">Select a date to see time slots.</p>
+        ) : !selectedCabin ? (
+          <p className="text-[12px] font-light text-[#9a9a9a]">Select a cabin to see time slots.</p>
+        ) : (
+          <div className="grid w-full grid-cols-3 gap-x-2 gap-y-3 px-1 lg:grid-cols-4 xl:grid-cols-5">
+            {timeSlots.map((slot) => {
+              const selected = form.appointmentTime === slot.display
+              const remaining = slot.spotLeft
+              const isFull = remaining <= 0
               return (
-                <button
-                  key={iso}
-                  type="button"
-                  onClick={() => {
-                    update('appointmentDate', iso)
-                    update('appointmentTime', '')
-                  }}
-                  aria-pressed={selected}
-                  className={[
-                    'flex h-12 w-full origin-center items-center justify-between rounded-[8px] px-3 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                    selected ? selectedDateClass : idleDateClass,
-                  ].join(' ')}
-                >
-                  <span className={selected ? 'text-[14px] font-medium text-white' : 'text-[14px] font-medium text-[#9a9a9a]'}>
-                    {DAY_LABELS[date.getDay()]}
+                <div key={slot.hhmm} className="flex min-w-0 flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={isFull}
+                    onClick={() => update('appointmentTime', slot.display)}
+                    aria-pressed={selected}
+                    className={[
+                      'flex h-10 w-full items-center justify-center rounded-full border text-[12px] font-medium transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                      selected ? selectedSlotClass : idleSlotClass,
+                      isFull ? 'cursor-not-allowed opacity-40 hover:scale-100' : '',
+                    ].join(' ')}
+                  >
+                    <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>{slot.display}</span>
+                  </button>
+                  <span className="text-[9px] font-light leading-none text-[#41ab99]">
+                    {isFull ? 'Full' : `${remaining} slot${remaining === 1 ? '' : 's'} left`}
                   </span>
-                  <span className={selected ? 'text-[16px] font-semibold text-white' : 'text-[16px] font-semibold text-[#cccccc]'}>
-                    {date.getDate()} {date.toLocaleString('en-GB', { month: 'short' })}
-                  </span>
-                </button>
+                </div>
               )
-            })
-          )}
-        </div>
-
-        <div className="order-4 grid w-full grid-cols-3 gap-x-2 gap-y-3 px-1 lg:col-start-2 lg:row-start-2 lg:grid-cols-5">
-          {timeSlots.map((slot) => {
-            const selected = form.appointmentTime === slot.display
-            const remaining = slot.spotLeft
-            const isFull = remaining <= 0
-            return (
-              <div key={slot.hhmm} className="flex min-w-0 flex-col items-center gap-1">
-                <button
-                  type="button"
-                  disabled={isFull}
-                  onClick={() => update('appointmentTime', slot.display)}
-                  aria-pressed={selected}
-                  className={[
-                    'flex h-10 w-full items-center justify-center rounded-full border text-[12px] font-medium transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                    selected ? selectedSlotClass : idleSlotClass,
-                    isFull ? 'cursor-not-allowed opacity-40 hover:scale-100' : '',
-                  ].join(' ')}
-                >
-                  <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>{slot.display}</span>
-                </button>
-                <span className="text-[9px] font-light leading-none text-[#41ab99]">
-                  {isFull ? 'Full' : `${remaining} slot${remaining === 1 ? '' : 's'} left`}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+            })}
+          </div>
+        )}
+      </section>
     </div>
   )
 }
@@ -1531,7 +1681,10 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
     [form.firstName, form.lastName].filter(Boolean).join(' ') || '—'
   const bookingDate = formatShortBookingDate(form.appointmentDate)
   const bookingDateTime = `${bookingDate}  |  ${form.appointmentTime || '—'}`
-  const locationLabel = [form.city.trim(), form.department.trim()].filter(Boolean).join(' · ') || '—'
+  const locationLabel =
+    [form.city.trim(), form.appointmentCabinName.trim() || form.appointmentCabin.trim()]
+      .filter(Boolean)
+      .join(' · ') || '—'
 
   return (
     <div className="flex min-h-full w-full flex-col items-center gap-3">

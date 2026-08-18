@@ -93,41 +93,32 @@ export function SectionCompleteHub({
             const featured = !completed && category.category_id === nextIncompleteId
             const description = categoryDescriptionForKey(normalizeCategoryKey(category.category_key))
             const loading = isLoadingCategoryId === category.category_id
-
-            if (completed) {
-              return (
-                <div
-                  key={category.category_id}
-                  className="flex w-full items-center rounded-xl border border-[rgba(218,193,90,0.5)] bg-white/5 p-4 shadow-[0_0_5px_0_rgba(218,193,90,0.2)]"
-                >
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <img src={tickCircleSolid} alt="" className="size-[15px] shrink-0" aria-hidden />
-                    <span className="text-[14px] font-medium text-white">
-                      {category.display_name || category.category_key}
-                    </span>
-                  </div>
-                </div>
-              )
-            }
+            const title = category.display_name || category.category_key
 
             return (
               <button
                 key={category.category_id}
                 type="button"
-                disabled={loading || Boolean(isLoadingCategoryId)}
+                disabled={loading}
                 onClick={() => onSelectCategory(category)}
+                aria-label={completed ? `Review ${title}` : `Start ${title}`}
                 className={
-                  featured
-                    ? 'flex w-full flex-col gap-4 rounded-xl border border-[rgba(144,223,158,0.5)] bg-white/5 p-4 text-left shadow-[0_0_10px_0_rgba(144,223,158,0.5)] disabled:opacity-70'
-                    : 'flex w-full items-center rounded-xl bg-white/5 p-[15px] text-left disabled:opacity-70'
+                  completed
+                    ? 'flex w-full cursor-pointer items-center rounded-xl border border-[rgba(218,193,90,0.5)] bg-white/5 p-4 text-left shadow-[0_0_5px_0_rgba(218,193,90,0.2)] transition hover:bg-white/10 disabled:cursor-wait disabled:opacity-70'
+                    : featured
+                      ? 'flex w-full cursor-pointer flex-col gap-4 rounded-xl border border-[rgba(144,223,158,0.5)] bg-white/5 p-4 text-left shadow-[0_0_10px_0_rgba(144,223,158,0.5)] transition hover:bg-white/10 disabled:cursor-wait disabled:opacity-70'
+                      : 'flex w-full cursor-pointer items-center rounded-xl bg-white/5 p-[15px] text-left transition hover:bg-white/10 disabled:cursor-wait disabled:opacity-70'
                 }
               >
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <img src={assessmentRadioImg} alt="" className="size-[15px] shrink-0" aria-hidden />
-                  <span className="text-[14px] font-medium text-[#ccc]">
-                    {loading
-                      ? 'Loading...'
-                      : category.display_name || category.category_key}
+                  <img
+                    src={completed ? tickCircleSolid : assessmentRadioImg}
+                    alt=""
+                    className="size-[15px] shrink-0"
+                    aria-hidden
+                  />
+                  <span className={`text-[14px] font-medium ${completed ? 'text-white' : 'text-[#ccc]'}`}>
+                    {loading ? 'Loading...' : title}
                   </span>
                 </div>
                 {featured && description ? (

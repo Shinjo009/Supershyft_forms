@@ -97,6 +97,23 @@ export function getCabinDay(
   return schedule.days[dayLookupKey(cabinName, date)] ?? null
 }
 
+export function getAllBookableDates(schedule: EngagementSchedule | null): string[] {
+  if (!schedule) return []
+  const dates = new Set<string>()
+  for (const cabinDates of Object.values(schedule.datesByCabin)) {
+    for (const iso of cabinDates) dates.add(iso)
+  }
+  return [...dates].sort()
+}
+
+export function getCabinsForDate(
+  schedule: EngagementSchedule | null,
+  date: string,
+): EngagementCabin[] {
+  if (!schedule || !date) return []
+  return schedule.cabins.filter((cabin) => (schedule.datesByCabin[cabin.name] ?? []).includes(date))
+}
+
 export function getSlotDisplays(day: CabinDay | null): string[] {
   return day?.slots.map((slot) => slot.display) ?? []
 }

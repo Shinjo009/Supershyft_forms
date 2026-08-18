@@ -195,6 +195,27 @@ export function seedAnswersFromQuestions(
   return seeded
 }
 
+/** Overlay in-progress drafts on top of API-seeded answers. Draft wins for any question it contains. */
+export function mergeDraftAnswers(
+  seeded: Record<number, AnswerValue>,
+  draft?: Record<number, AnswerValue>,
+): Record<number, AnswerValue> {
+  if (!draft || Object.keys(draft).length === 0) return { ...seeded }
+  return { ...seeded, ...draft }
+}
+
+/** Write draft answers onto question.answer so a later reload still seeds them. */
+export function applyAnswersToQuestions(
+  questions: QuestionnaireQuestion[],
+  answers?: Record<number, AnswerValue>,
+): QuestionnaireQuestion[] {
+  if (!answers || Object.keys(answers).length === 0) return questions
+  return questions.map((question) => {
+    const answer = answers[question.question_id]
+    return answer === undefined ? question : { ...question, answer }
+  })
+}
+
 /**
  * Resolve whether a question should show:
  * - no `visibility_rules` → always show
@@ -262,6 +283,6 @@ export function filterVisibleQuestions(
   answersById: Record<number, AnswerValue>,
 ): QuestionnaireQuestion[] {
   return computeQuestionsWithVisibility(questions, answersById).filter(
-    (question) => question.is_visible !== false && question.is_read_only !== true,
+    (question) => question.is_visible !== false,
   )
 }
