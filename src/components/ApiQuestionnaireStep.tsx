@@ -47,7 +47,6 @@ import {
 import { parseHelpTextToInfoItems } from '../lib/parseHelpTextToInfoItems'
 import { filterFoodGroupOptionsByDiet } from '../lib/filterFoodGroupsByDiet'
 import {
-  applyAnswersToQuestions,
   mergeDraftAnswers,
   seedAnswersFromQuestions,
   type AnswerValue,
