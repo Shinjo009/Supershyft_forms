@@ -8,12 +8,15 @@ export type EmployeeCreateUserPayload = {
   first_name?: string | null
   last_name?: string | null
   email?: string | null
+  profile_photo?: string | null
+  date_of_birth?: string | null
   gender?: string | null
   address?: string | null
   pin_code?: string | null
   city?: string | null
   state?: string | null
   country?: string | null
+  referred_by?: string | null
   is_participant?: boolean | null
   status?: string | null
 }

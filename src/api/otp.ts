@@ -1,5 +1,6 @@
 import { isFrontendOnly } from '../lib/frontendOnly'
 import { applyAuthTokensFromResponse } from '../lib/authStorage'
+import { createEmployeeUser, type EmployeeCreateUserPayload } from './users'
 import { publicPost } from './http'
 
 export type BookingOtpTarget = {
@@ -93,4 +94,10 @@ export async function verifyBookingOtp(target: BookingOtpTarget, otp: string): P
   console.info('[otp] verify', { phone })
   const data = await publicPost('/auth/verify-otp', payload)
   applyAuthTokensFromResponse(data)
+}
+
+/** Create the user if needed, then send OTP. Existing users (409) still proceed to OTP. */
+export async function startBookingOtpFlow(userPayload: EmployeeCreateUserPayload): Promise<void> {
+  await createEmployeeUser(userPayload)
+  await sendBookingOtp({ phone: userPayload.phone })
 }

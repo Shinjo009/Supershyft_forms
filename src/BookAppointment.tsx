@@ -33,8 +33,7 @@ import {
   type EngagementSchedule,
 } from './api/engagements'
 import { resolveEngagementCode } from './lib/engagementCode'
-import { createEmployeeUser } from './api/users'
-import { resendBookingOtp, sendBookingOtp, verifyBookingOtp } from './api/otp'
+import { resendBookingOtp, startBookingOtpFlow, verifyBookingOtp } from './api/otp'
 import {
   isCategoryCompleted,
   loadAssessmentCategoriesForStep2,
@@ -193,7 +192,6 @@ export default function BookAppointment() {
   const [isSendingOtp, setIsSendingOtp] = useState(false)
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
   const [isResendingOtp, setIsResendingOtp] = useState(false)
-  const [hasCreatedUser, setHasCreatedUser] = useState(false)
   const [otpVerified, setOtpVerified] = useState(false)
   const [engagementSchedule, setEngagementSchedule] = useState<EngagementSchedule | null>(null)
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false)
@@ -202,7 +200,6 @@ export default function BookAppointment() {
     if (uiError) setUiError('')
     if (key === 'phone' || key === 'email') {
       setOtpVerified(false)
-      setHasCreatedUser(false)
     }
     setForm((f) => ({ ...f, [key]: value }))
   }, [uiError])
@@ -337,26 +334,21 @@ export default function BookAppointment() {
     setIsSendingOtp(true)
 
     try {
-      if (!hasCreatedUser) {
-        await createEmployeeUser({
-          age: confirmAge,
-          phone: trimmedPhone,
-          first_name: trimmedFirstName || null,
-          last_name: trimmedLastName || null,
-          email: EMAIL_REGEX.test(trimmedEmail) ? trimmedEmail : null,
-          gender: form.gender || null,
-          address: form.department.trim() || 'NA',
-          pin_code: form.pincode.trim() || cityMeta?.pincode || '000000',
-          city: form.city.trim() || 'NA',
-          state: form.state.trim() || cityMeta?.state || 'Maharashtra',
-          country: 'India',
-          is_participant: true,
-          status: 'active',
-        })
-        setHasCreatedUser(true)
-      }
-
-      await sendBookingOtp({ phone: trimmedPhone })
+      await startBookingOtpFlow({
+        age: confirmAge,
+        phone: trimmedPhone,
+        first_name: trimmedFirstName || null,
+        last_name: trimmedLastName || null,
+        email: EMAIL_REGEX.test(trimmedEmail) ? trimmedEmail : null,
+        gender: form.gender || null,
+        address: formatAddressForApi(form) || 'NA',
+        pin_code: form.pincode.trim() || cityMeta?.pincode || '000000',
+        city: form.city.trim() || 'NA',
+        state: form.state.trim() || cityMeta?.state || 'Maharashtra',
+        country: 'India',
+        is_participant: true,
+        status: 'active',
+      })
       setStep(2)
     } catch (error) {
       logClientError(error instanceof Error ? error.message : 'Unable to send OTP.')
@@ -400,7 +392,6 @@ export default function BookAppointment() {
   }
 
   const resetOtpFlow = () => {
-    setHasCreatedUser(false)
     setOtpVerified(false)
   }
 
