@@ -1,5 +1,5 @@
+import journeySuccessGif from '../assets/animation-gif.gif'
 import { ContinueButton } from './ContinueButton'
-import { SectionCompleteCelebration } from './SectionCompleteCelebration'
 import { JOURNEY_COMPLETE_CONTENT_CLASS, ASSESSMENT_CONTENT_MAX_CLASS } from './mcq/mcqLayout'
 
 /** Figma node 6120:15284 — final appointment journey complete (without coins) */
@@ -23,7 +23,12 @@ export function AppointmentJourneyCompleteStep({
       <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className={`${JOURNEY_COMPLETE_CONTENT_CLASS} gap-6`}>
           <div className="flex w-full flex-col items-center gap-3">
-            <SectionCompleteCelebration tone="booking" />
+            <img
+              src={journeySuccessGif}
+              alt=""
+              draggable={false}
+              className="mx-auto h-[148px] w-[148px] object-contain"
+            />
             <h2 className="pb-3 text-center text-[18px] font-semibold tracking-[0.2px] text-white">
               Appointment Booking Confirmed!
             </h2>

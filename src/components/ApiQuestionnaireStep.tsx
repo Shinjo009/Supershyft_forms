@@ -18,6 +18,7 @@ import {
   findOtherFollowUpForParent,
   findParentForOtherFollowUp,
   isInlinedOtherTextQuestion,
+  OTHER_SPECIFY_MAX_LENGTH,
   selectedIncludesOther,
 } from '../lib/apiOtherFollowUps'
 import {
@@ -864,6 +865,7 @@ export function ApiQuestionnaireStep({
                     <input
                       type="text"
                       value={otherText}
+                      maxLength={OTHER_SPECIFY_MAX_LENGTH}
                       disabled={question.is_read_only || isSaving}
                       onChange={(event) => {
                         setSaveError('')

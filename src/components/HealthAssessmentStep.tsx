@@ -1,4 +1,3 @@
-import { ContinueButton } from './ContinueButton'
 import { ASSESSMENT_CARD_STACK_CLASS, ASSESSMENT_SUBTITLE_CLASS } from './mcq/mcqLayout'
 import assessmentRadioImg from '../assets/Ellipse 13077.svg'
 import hourglassIcon from '../assets/Group.svg'
@@ -12,22 +11,36 @@ function AssessmentCard({
   title,
   description,
   featured,
+  onClick,
+  disabled = false,
+  loading = false,
 }: {
   title: string
   description?: string
   featured: boolean
+  onClick?: () => void
+  disabled?: boolean
+  loading?: boolean
 }) {
   if (featured) {
     return (
-      <div className="flex w-full flex-col gap-4 rounded-xl border border-[rgba(144,223,158,0.5)] bg-white/5 p-4 shadow-[0_0_10px_0_rgba(144,223,158,0.5)]">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={`Start ${title}`}
+        className="flex w-full cursor-pointer flex-col gap-4 rounded-xl border border-[rgba(144,223,158,0.5)] bg-white/5 p-4 text-left shadow-[0_0_10px_0_rgba(144,223,158,0.5)] transition hover:bg-white/10 disabled:cursor-wait disabled:opacity-70"
+      >
         <div className="flex items-center gap-1.5">
           <img src={assessmentRadioImg} alt="" className="size-[15px] shrink-0" aria-hidden />
-          <span className="text-[14px] font-medium text-[#ccc]">{title}</span>
+          <span className="text-[14px] font-medium text-[#ccc]">
+            {loading ? 'Loading...' : title}
+          </span>
         </div>
         {description ? (
           <p className="text-[11px] font-normal leading-normal text-[#9a9a9a]">{description}</p>
         ) : null}
-      </div>
+      </button>
     )
   }
 
@@ -65,7 +78,7 @@ export function HealthAssessmentStep({
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col">
       <div className="h-[74px] shrink-0" aria-hidden />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-y-auto px-6 pb-[108px] pt-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-y-auto px-6 pb-10 pt-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex w-full flex-col items-center">
           <div className="mb-6 flex size-14 items-center justify-center rounded-xl border border-[rgba(222,144,223,0.5)] p-px shadow-[0_4px_12px_0_rgba(16,185,129,0.1)]">
             <img src={heartRateIcon} alt="" className="size-7" aria-hidden />
@@ -93,22 +106,11 @@ export function HealthAssessmentStep({
               title={section.title}
               description={section.featured ? section.description : undefined}
               featured={section.featured}
+              onClick={section.featured ? onStartAssessment : undefined}
+              disabled={section.featured && (isStarting || categories.length === 0)}
+              loading={section.featured && isStarting}
             />
           ))}
-        </div>
-      </div>
-
-      <div className="absolute inset-x-0 bottom-10 z-10 px-6">
-        <div className={ASSESSMENT_CARD_STACK_CLASS}>
-          <ContinueButton
-            variant="mobileBar"
-            className="!h-[52px] w-full border border-[#969696] shadow-[0_12px_20px_rgba(255,255,255,0.15)]"
-            showChevron={false}
-            disabled={isStarting || categories.length === 0}
-            onClick={onStartAssessment}
-          >
-            {isStarting ? 'Loading...' : 'Start assessment'}
-          </ContinueButton>
         </div>
       </div>
     </div>

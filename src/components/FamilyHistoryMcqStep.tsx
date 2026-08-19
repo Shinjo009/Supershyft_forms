@@ -11,6 +11,7 @@ import {
   familyHistoryProgressPercent,
   type FamilyHistoryHealthCondition,
 } from '../data/familyHistoryQuestions'
+import { OTHER_SPECIFY_MAX_LENGTH } from '../lib/apiOtherFollowUps'
 import { FamilyHistoryInfoOverlay } from './family-history/FamilyHistoryInfoOverlay'
 import { FamilyHistoryQuestionHeader } from './family-history/FamilyHistoryQuestionHeader'
 import { MCQ_PILL_CHIP_CLASS, MCQ_QUESTION_HINT_CLASS } from './mcq/mcqLayout'
@@ -322,6 +323,7 @@ function MultiSelectChipQuestion({
           <input
             type="text"
             value={otherText}
+            maxLength={OTHER_SPECIFY_MAX_LENGTH}
             onChange={(event) => onOtherTextChange(event.target.value)}
             placeholder="Please specify (optional)"
             className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-[16px] font-light leading-6 text-white outline-none placeholder:text-[#9a9a9a]"

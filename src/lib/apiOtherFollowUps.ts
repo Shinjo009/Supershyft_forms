@@ -11,6 +11,8 @@ import {
   type AnswerValue,
 } from './questionnaireVisibility'
 
+export const OTHER_SPECIFY_MAX_LENGTH = 45
+
 function normalizeKey(value: unknown): string {
   return String(value ?? '')
     .trim()

@@ -20,7 +20,10 @@ export type OnboardUserForEngagementPayload = {
   blood_collection_cabin?: string | null
   participants_employee_id: string
   participant_blood_group: string
-  want_doctor_consultation: boolean
+  consultation: {
+    eye: boolean
+    doctor: boolean
+  }
 }
 
 export type OnboardTokens = {
@@ -110,28 +113,47 @@ function parseValidationMessage(data: unknown): string | null {
 }
 
 function parseOnboardSuccess(data: unknown, engagementCode: string): OnboardResult {
-  if (!data || typeof data !== 'object') {
-    throw new Error('Booking succeeded but response did not include auth tokens.')
+  let userId: number | undefined
+  let accessToken = ''
+  let refreshToken = ''
+  let tokenType = 'bearer'
+
+  if (data && typeof data === 'object') {
+    const response = data as OnboardSuccessResponse
+    const row = response.data
+    userId = row?.user_id
+    const tokens = row?.tokens
+    accessToken = tokens?.access_token?.trim() || ''
+    refreshToken = tokens?.refresh_token?.trim() || ''
+    tokenType = tokens?.token_type?.trim() || 'bearer'
+
+    const fromResponse = applyAuthTokensFromResponse(data)
+    if (fromResponse) {
+      accessToken = fromResponse.accessToken
+      refreshToken = fromResponse.refreshToken
+    }
   }
 
-  const response = data as OnboardSuccessResponse
-  const row = response.data
-  const tokens = row?.tokens
-  const accessToken = tokens?.access_token?.trim() || ''
-  const refreshToken = tokens?.refresh_token?.trim() || ''
+  if (!accessToken || !refreshToken) {
+    const stored = tokensFromStorage()
+    accessToken = accessToken || stored.accessToken
+    refreshToken = refreshToken || stored.refreshToken
+  }
 
   if (!accessToken || !refreshToken) {
-    throw new Error('Booking succeeded but access_token / refresh_token were missing in the response.')
+    throw new Error(
+      'Booking succeeded but no auth session was found. Please verify OTP and try again.',
+    )
   }
 
   return {
     message: 'Booking confirmed',
     engagementCode,
-    userId: row?.user_id,
+    userId,
     tokens: {
       accessToken,
       refreshToken,
-      tokenType: tokens?.token_type?.trim() || 'bearer',
+      tokenType,
     },
   }
 }
@@ -181,7 +203,7 @@ export async function onboardUserForEngagement(
     )
   }
 
-  const url = `${trimTrailingSlash(baseUrl)}/users/code/${encodeURIComponent(engagementCode)}/onboard/me`
+  const url = `${trimTrailingSlash(baseUrl)}/users/code/${encodeURIComponent(engagementCode)}/onboard`
 
   console.info('[onboard] booking', {
     engagementCode,
@@ -190,11 +212,13 @@ export async function onboardUserForEngagement(
     url,
   })
 
+  const accessToken = getAccessToken()
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
     body: JSON.stringify(apiPayload),
   })

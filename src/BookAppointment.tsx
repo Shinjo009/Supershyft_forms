@@ -4,13 +4,13 @@ import {
   Building2,
   Calendar,
   Clock,
+  Eye,
   Mail,
   MapPin,
   Mars,
   Phone,
   User,
   Venus,
-  X,
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
 import {
@@ -355,6 +355,10 @@ export default function BookAppointment() {
         logClientError('Please select doctor consultation preference.')
         return
       }
+      if (!form.eyeConsultation) {
+        logClientError('Please select eye consultation preference.')
+        return
+      }
     }
 
     if (!trimmedPhone || !PHONE_REGEX.test(trimmedPhone)) {
@@ -427,7 +431,7 @@ export default function BookAppointment() {
     setIsResendingOtp(true)
 
     try {
-      await resendBookingOtp({ phone: form.phone.trim(), email: form.email.trim() })
+      await resendBookingOtp({ phone: form.phone.trim() })
     } catch (error) {
       logClientError(error instanceof Error ? error.message : 'Unable to resend OTP.')
     } finally {
@@ -593,7 +597,10 @@ export default function BookAppointment() {
           resolveCabinKey(engagementSchedule, form.appointmentCabin, form.appointmentDate) || null,
         participants_employee_id: participantId,
         participant_blood_group: 'NA',
-        want_doctor_consultation: form.doctorConsultation === 'yes',
+        consultation: {
+          eye: form.eyeConsultation === 'yes',
+          doctor: form.doctorConsultation === 'yes',
+        },
       }
 
       await onboardUserForEngagement(payload)
@@ -826,7 +833,7 @@ export default function BookAppointment() {
 
   const mobileScreenTitle = 'Book Appointment'
 
-  const showBack = step > 1
+  const showBack = step > 1 && step !== 5 && step !== 13
   const hideGlobalContinue = step === 2 || step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 10 || step === 12 || step === 13
   const hideStepper = step >= 5
   const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 10 || step === 12
@@ -881,18 +888,7 @@ export default function BookAppointment() {
           <h1 className="text-center text-[20px] font-semibold leading-6 text-white">
             {mobileScreenTitle}
           </h1>
-          {step === 13 ? (
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="flex size-8 items-center justify-end text-white"
-              aria-label="Close"
-            >
-              <X className="size-6" strokeWidth={1.75} />
-            </button>
-          ) : (
-            <span className="size-8" aria-hidden />
-          )}
+          <span className="size-8" aria-hidden />
         </header>
         )}
 
@@ -1083,6 +1079,7 @@ function PersonalStep({
   const isMissing = (value: string) => showRequired && !value.trim()
   const isMissingGender = showRequired && !form.gender
   const isMissingDoctorConsultation = showRequired && !form.doctorConsultation
+  const isMissingEyeConsultation = showRequired && !form.eyeConsultation
   const fullNameError: 'missing' | 'invalid' | undefined = !showRequired
     ? undefined
     : !form.firstName.trim() || !form.lastName.trim()
@@ -1163,7 +1160,7 @@ function PersonalStep({
           placeholder="Phone"
           maxLength={10}
           pattern="^[6-9]\d{9}$"
-          title="10-digit Indian mobile number starting with 6-9"
+          title="10-digit mobile number starting with 6-9"
           value={form.phone}
           onChange={(e) => update('phone', sanitizePhone(e.target.value))}
         />
@@ -1265,7 +1262,7 @@ function PersonalStep({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(User, 'Do you want doctor consultation?', undefined, isMissingDoctorConsultation)}
+        {labelRow(User, 'Do you want complimentary doctor consultation?', undefined, isMissingDoctorConsultation)}
         <div className="flex h-10 gap-6 overflow-visible">
           <button
             type="button"
@@ -1285,6 +1282,36 @@ function PersonalStep({
             className={[
               'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[12px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
               form.doctorConsultation === 'no'
+                ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                : 'bg-white/5 text-[#999]',
+            ].join(' ')}
+          >
+            No
+          </button>
+        </div>
+      </div>
+
+      <div className="flex min-w-0 flex-col gap-1">
+        {labelRow(Eye, 'Do you want complimentary eye consultation?', undefined, isMissingEyeConsultation)}
+        <div className="flex h-10 gap-6 overflow-visible">
+          <button
+            type="button"
+            onClick={() => update('eyeConsultation', 'yes')}
+            className={[
+              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[12px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+              form.eyeConsultation === 'yes'
+                ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                : 'bg-white/5 text-[#999]',
+            ].join(' ')}
+          >
+            Yes
+          </button>
+          <button
+            type="button"
+            onClick={() => update('eyeConsultation', 'no')}
+            className={[
+              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[12px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+              form.eyeConsultation === 'no'
                 ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
                 : 'bg-white/5 text-[#999]',
             ].join(' ')}
@@ -1398,6 +1425,17 @@ function MemberSummary({
               member.doctorConsultation
                 ? `Doctor consultation: ${member.doctorConsultation === 'yes' ? 'Yes' : 'No'}`
                 : 'Doctor consultation: —'
+            }
+            dense={dense}
+          />
+        </div>
+        <div className="col-span-2">
+          <SummaryItem
+            Icon={Eye}
+            label={
+              member.eyeConsultation
+                ? `Eye consultation: ${member.eyeConsultation === 'yes' ? 'Yes' : 'No'}`
+                : 'Eye consultation: —'
             }
             dense={dense}
           />
@@ -1541,7 +1579,7 @@ function ScheduleStep({
                 : 'Select a city on the previous page to see available dates.'}
             </p>
           ) : (
-            <div className="flex w-[72%] max-w-[220px] min-w-0 flex-col gap-2 lg:w-full lg:max-w-[280px]">
+            <div className="grid w-full grid-cols-4 gap-2">
               {bookableDates.map(({ iso, date }) => {
                 const selected = form.appointmentDate === iso
                 return (
@@ -1551,15 +1589,27 @@ function ScheduleStep({
                     onClick={() => pickDate(iso)}
                     aria-pressed={selected}
                     className={[
-                      'flex h-12 w-full origin-center items-center justify-between rounded-[8px] px-3 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                      'flex h-20 w-full min-w-0 origin-center flex-col items-center justify-center gap-1 rounded-[8px] transition duration-200 hover:z-[1] hover:scale-[1.03]',
                       selected ? selectedDateClass : idleDateClass,
                     ].join(' ')}
                   >
-                    <span className={selected ? 'text-[14px] font-medium text-white' : 'text-[14px] font-medium text-[#9a9a9a]'}>
+                    <span
+                      className={
+                        selected
+                          ? 'text-[13px] font-medium leading-4 text-white'
+                          : 'text-[13px] font-medium leading-4 text-[#9a9a9a]'
+                      }
+                    >
                       {DAY_LABELS[date.getDay()]}
                     </span>
-                    <span className={selected ? 'text-[16px] font-semibold text-white' : 'text-[16px] font-semibold text-[#cccccc]'}>
-                      {date.getDate()} {date.toLocaleString('en-GB', { month: 'short' })}
+                    <span
+                      className={
+                        selected
+                          ? 'text-[22px] font-semibold leading-6 text-white'
+                          : 'text-[22px] font-semibold leading-6 text-[#cccccc]'
+                      }
+                    >
+                      {date.getDate()}
                     </span>
                   </button>
                 )
