@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Briefcase,
@@ -9,7 +9,6 @@ import {
   Phone,
   User,
   Venus,
-  X,
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
 import { formatShortBookingDate } from './lib/bookingDates'
@@ -32,6 +31,12 @@ import {
 } from './api/questionnaire'
 import { getAccessToken } from './lib/authStorage'
 import { isFrontendOnly } from './lib/frontendOnly'
+import { applyAnswersToQuestions, type AnswerValue } from './lib/questionnaireVisibility'
+import {
+  findQuestionnaireDraft,
+  upsertQuestionnaireDraft,
+  type CategoryQuestionnaireDraft,
+} from './lib/questionnaireDrafts'
 import { getMockQuestionnaireQuestions } from './data/mockApiQuestionnaires'
 import { PageBackdrop } from './components/PageBackdrop'
 import { Stepper } from './components'
@@ -63,8 +68,7 @@ const RELATION_OPTIONS = [
 
 const DEPARTMENT_OPTIONS = ['Sales', 'Marketing', 'Operations', 'Others'] as const
 
-/** Temporarily off so you can navigate freely. Set true to re-enable required-field checks. */
-const ENFORCE_REQUIRED_FIELDS = false
+const ENFORCE_REQUIRED_FIELDS = true
 const NAME_REGEX = /^[A-Za-z]+(?:[ .'-]+[A-Za-z]+)*$/
 const PHONE_REGEX = /^[6-9]\d{9}$/
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
@@ -83,6 +87,31 @@ const logClientError = (message: string) => {
 
 function generateEmployeeIdForApi(): string {
   return `HRM${Date.now()}`
+}
+
+function resolveCategoryId(category: AssessmentCategoryStatus): number {
+  for (const value of [category.category_id, category.id]) {
+    const id = Number(value)
+    if (Number.isFinite(id) && id > 0) return id
+  }
+  return 0
+}
+
+function categoryDraftKeys(category: AssessmentCategoryStatus): string[] {
+  const keys = [
+    String(category.category_id || ''),
+    String(category.id || ''),
+    normalizeCategoryKey(category.category_key),
+  ]
+  return [...new Set(keys.filter((key) => key && key !== '0' && key !== 'nan'))]
+}
+
+function withDraftAnswers(
+  questions: QuestionnaireQuestion[],
+  draft?: CategoryQuestionnaireDraft,
+): QuestionnaireQuestion[] {
+  if (!draft || Object.keys(draft.answers).length === 0) return questions
+  return applyAnswersToQuestions(questions, draft.answers)
 }
 
 function bookingAge(form: FormData, fallback = 25): number {
@@ -114,22 +143,23 @@ function buildOnboardPayload(
   }
 }
 
-/** Convert UI slots like "09:30 AM" to API "9:00" / "13:00" hour form. */
+/** Convert UI slots like "09:30 AM" to API "09:00" / "13:00" hour form. */
 function toApiTimeSlot(slot: string): string {
+  const formatHour = (hour: number) => `${String(hour).padStart(2, '0')}:00`
   const normalized = slot.trim()
-  if (!normalized) return '9:00'
+  if (!normalized) return '09:00'
   const match = normalized.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
   if (match) {
     let hour = Number.parseInt(match[1], 10)
     const meridiem = match[3].toUpperCase()
     if (meridiem === 'PM' && hour !== 12) hour += 12
     if (meridiem === 'AM' && hour === 12) hour = 0
-    return `${hour}:00`
+    return formatHour(hour)
   }
   const firstPart = normalized.split('-')[0]?.trim() || normalized
   const hour = Number.parseInt(firstPart.split(':')[0] || '', 10)
-  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return '9:00'
-  return `${hour}:00`
+  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return '09:00'
+  return formatHour(hour)
 }
 
 type IconType = React.ComponentType<{ className?: string; strokeWidth?: number }>
@@ -180,6 +210,11 @@ export default function BookAppointment() {
   const [completedCategoryIds, setCompletedCategoryIds] = useState<number[]>([])
   const [activeCategory, setActiveCategory] = useState<AssessmentCategoryStatus | null>(null)
   const [categoryQuestions, setCategoryQuestions] = useState<QuestionnaireQuestion[]>([])
+  const [categoryDrafts, setCategoryDrafts] = useState<Record<string, CategoryQuestionnaireDraft>>(
+    {},
+  )
+  const categoryDraftsRef = useRef(categoryDrafts)
+  categoryDraftsRef.current = categoryDrafts
   const [isLoadingQuestionnaire, setIsLoadingQuestionnaire] = useState(false)
   const [loadingCategoryId, setLoadingCategoryId] = useState<number | null>(null)
   const [isSubmittingAssessment, setIsSubmittingAssessment] = useState(false)
@@ -494,13 +529,33 @@ export default function BookAppointment() {
     }
   }
 
+  const persistCategoryDraft = (
+    category: AssessmentCategoryStatus,
+    questions: QuestionnaireQuestion[],
+    answers: Record<number, AnswerValue>,
+  ) => {
+    const keys = categoryDraftKeys(category)
+    const draft: CategoryQuestionnaireDraft = {
+      questions: applyAnswersToQuestions(questions, answers),
+      answers,
+    }
+    setCategoryDrafts((prev) => {
+      const next = { ...prev }
+      for (const key of keys) next[key] = draft
+      return next
+    })
+    if (assessmentInstanceId) {
+      upsertQuestionnaireDraft(assessmentInstanceId, keys, draft)
+    }
+  }
+
   const handleLoadCategory = async (
     category: AssessmentCategoryStatus,
     options?: { returnStep?: number },
   ) => {
     if (isLoadingQuestionnaire) return
 
-    const categoryId = Number(category.category_id || 0)
+    const categoryId = resolveCategoryId(category)
     if (!assessmentInstanceId || categoryId <= 0) {
       logClientError('Assessment category is missing. Go back and continue to Step 2 again.')
       return
@@ -511,44 +566,74 @@ export default function BookAppointment() {
     setLoadingCategoryId(categoryId)
     setQuestionnaireReturnStep(options?.returnStep ?? hubStepForVariant(hubVariant))
 
+    const draftKeys = categoryDraftKeys(category)
+    const draft = findQuestionnaireDraft(
+      assessmentInstanceId,
+      categoryDraftsRef.current,
+      draftKeys,
+    )
+
+    const openWithQuestions = (
+      questions: QuestionnaireQuestion[],
+      source = draft,
+    ) => {
+      const merged = withDraftAnswers(questions, source)
+      setActiveCategory(category)
+      setCategoryQuestions(merged)
+      persistCategoryDraft(category, merged, source?.answers ?? {})
+      setUiError('')
+      setStep(7)
+    }
+
     try {
-      // Frontend-only: use API-shaped mock questions so we can redesign layouts one-by-one.
+      if (draft?.questions.length) {
+        openWithQuestions(draft.questions, draft)
+        return
+      }
+
       if (isFrontendOnly()) {
         const questions = getMockQuestionnaireQuestions(category.category_key)
         if (questions.length === 0) {
           throw new Error('No mock questions available for this category yet.')
         }
-        setActiveCategory(category)
-        setCategoryQuestions(questions)
-        console.info('[frontend-only] opening API-shaped questionnaire', {
-          categoryId,
-          categoryKey: category.category_key,
-          questionCount: questions.length,
-        })
-        setStep(7)
+        openWithQuestions(questions)
         return
       }
 
       const accessToken = getAccessToken()
-      const questionnaire = await getCategoryQuestionnaire(
-        accessToken,
-        assessmentInstanceId,
-        categoryId,
-      )
-      const questions = questionnaire.questions
-      if (!Array.isArray(questions) || questions.length === 0) {
+      const idsToTry = [...new Set(
+        [categoryId, Number(category.category_id), Number(category.id)].filter(
+          (id) => Number.isFinite(id) && id > 0,
+        ),
+      )]
+
+      let questions: QuestionnaireQuestion[] = []
+      for (const id of idsToTry) {
+        try {
+          const questionnaire = await getCategoryQuestionnaire(
+            accessToken,
+            assessmentInstanceId,
+            id,
+          )
+          questions = Array.isArray(questionnaire.questions) ? questionnaire.questions : []
+          if (questions.length > 0) break
+        } catch (error) {
+          console.warn(
+            '[assessment] questionnaire fetch failed',
+            { categoryId: id, message: error instanceof Error ? error.message : error },
+          )
+        }
+      }
+
+      if (questions.length === 0) {
+        questions = getMockQuestionnaireQuestions(category.category_key)
+      }
+
+      if (questions.length === 0) {
         throw new Error('No questions returned for this category.')
       }
 
-      setActiveCategory(category)
-      setCategoryQuestions(questions)
-      console.info('[assessment] category questionnaire loaded', {
-        assessmentInstanceId,
-        categoryId,
-        categoryKey: category.category_key,
-        questionCount: questions.length,
-      })
-      setStep(7)
+      openWithQuestions(questions)
     } catch (error) {
       logClientError(
         error instanceof Error ? error.message : 'Unable to load questionnaire questions.',
@@ -573,16 +658,36 @@ export default function BookAppointment() {
     await handleLoadCategory(nextCategory, { returnStep: 6 })
   }
 
-  const handleCategoryQuestionnaireComplete = () => {
+  const handleCategoryQuestionnaireComplete = (
+    answers: Record<number, AnswerValue> = {},
+  ) => {
     if (!activeCategory) {
-      setStep(8)
+      setStep(questionnaireReturnStep || 8)
       return
     }
 
-    const categoryId = Number(activeCategory.category_id)
+    const categoryId = resolveCategoryId(activeCategory)
+    const wasAlreadyCompleted = isCategoryCompleted(activeCategory, completedCategoryIds)
+    const existing = findQuestionnaireDraft(
+      assessmentInstanceId,
+      categoryDraftsRef.current,
+      categoryDraftKeys(activeCategory),
+    )
+    const mergedAnswers = { ...existing?.answers, ...answers }
+    const sourceQuestions = existing?.questions?.length
+      ? existing.questions
+      : categoryQuestions
+    persistCategoryDraft(activeCategory, sourceQuestions, mergedAnswers)
     setCompletedCategoryIds((prev) =>
       prev.includes(categoryId) ? prev : [...prev, categoryId],
     )
+
+    // Re-editing a previous section should return to the hub the user came from
+    // (e.g. nutrition complete → family → finish → nutrition complete).
+    if (wasAlreadyCompleted) {
+      setStep(questionnaireReturnStep)
+      return
+    }
 
     const variant = variantForCategory(activeCategory)
     setHubVariant(variant)
@@ -622,7 +727,7 @@ export default function BookAppointment() {
 
   const mobileScreenTitle = 'Book Appointment'
 
-  const showBack = step > 1
+  const showBack = step > 1 && step !== 5 && step !== 13
   const hideGlobalContinue = step === 2 || step === 3 || step === 5 || step === 6 || step === 7 || step === 8 || step === 10 || step === 12 || step === 13
   const hideStepper = step >= 5
   const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 10 || step === 12
@@ -682,18 +787,7 @@ export default function BookAppointment() {
           <h1 className="text-center text-[20px] font-semibold leading-6 text-white">
             {mobileScreenTitle}
           </h1>
-          {step === 5 || step === 13 ? (
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="flex size-8 items-center justify-end text-white"
-              aria-label="Close"
-            >
-              <X className="size-6" strokeWidth={1.75} />
-            </button>
-          ) : (
-            <span className="size-8" aria-hidden />
-          )}
+          <span className="size-8" aria-hidden />
         </header>
         )}
 
@@ -787,10 +881,11 @@ export default function BookAppointment() {
             )}
             {step === 7 && activeCategory && categoryQuestions.length > 0 ? (
               <ApiQuestionnaireStep
+                key={`${resolveCategoryId(activeCategory)}-${normalizeCategoryKey(activeCategory.category_key)}`}
                 title={activeCategory.display_name || 'Assessment'}
                 questions={categoryQuestions}
                 assessmentInstanceId={assessmentInstanceId ?? 1}
-                categoryId={Number(activeCategory.category_id)}
+                categoryId={resolveCategoryId(activeCategory)}
                 theme={
                   normalizeCategoryKey(activeCategory.category_key).includes('lifestyle')
                     ? 'lifestyle'
@@ -800,6 +895,18 @@ export default function BookAppointment() {
                 }
                 onBack={() => setStep(questionnaireReturnStep)}
                 onComplete={handleCategoryQuestionnaireComplete}
+                onAnswersChange={(answers) => {
+                  const existing = findQuestionnaireDraft(
+                    assessmentInstanceId,
+                    categoryDraftsRef.current,
+                    categoryDraftKeys(activeCategory),
+                  )
+                  persistCategoryDraft(
+                    activeCategory,
+                    existing?.questions?.length ? existing.questions : categoryQuestions,
+                    { ...existing?.answers, ...answers },
+                  )
+                }}
               />
             ) : null}
             {(step === 8 || step === 10 || step === 12) && (

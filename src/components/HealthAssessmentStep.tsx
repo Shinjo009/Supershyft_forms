@@ -1,4 +1,3 @@
-import { ContinueButton } from './ContinueButton'
 import { ASSESSMENT_CARD_STACK_CLASS, ASSESSMENT_SUBTITLE_CLASS } from './mcq/mcqLayout'
 import assessmentRadioImg from '../assets/Ellipse 13077.svg'
 import hourglassIcon from '../assets/Group.svg'
@@ -12,33 +11,49 @@ function AssessmentCard({
   title,
   description,
   featured,
+  onClick,
+  disabled,
+  loading,
 }: {
   title: string
   description?: string
   featured: boolean
+  onClick?: () => void
+  disabled?: boolean
+  loading?: boolean
 }) {
-  if (featured) {
-    return (
-      <div className="flex w-full flex-col gap-4 rounded-xl border border-[rgba(144,223,158,0.5)] bg-white/5 p-4 shadow-[0_0_10px_0_rgba(144,223,158,0.5)]">
-        <div className="flex items-center gap-1.5">
-          <img src={assessmentRadioImg} alt="" className="size-[15px] shrink-0" aria-hidden />
-          <span className="text-[14px] font-medium text-[#ccc]">{title}</span>
-        </div>
-        {description ? (
-          <p className="text-[11px] font-normal leading-normal text-[#9a9a9a]">{description}</p>
-        ) : null}
+  const label = loading ? 'Loading...' : title
+  const featuredClass =
+    'flex w-full flex-col gap-4 rounded-xl border border-[rgba(144,223,158,0.5)] bg-white/5 p-4 text-left shadow-[0_0_10px_0_rgba(144,223,158,0.5)]'
+  const idleClass = 'flex w-full items-center rounded-xl bg-white/5 p-[15px] text-left'
+  const className = featured ? featuredClass : idleClass
+
+  const inner = (
+    <>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <img src={assessmentRadioImg} alt="" className="size-[15px] shrink-0" aria-hidden />
+        <span className="text-[14px] font-medium text-[#ccc]">{label}</span>
       </div>
+      {featured && description ? (
+        <p className="text-[11px] font-normal leading-normal text-[#9a9a9a]">{description}</p>
+      ) : null}
+    </>
+  )
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className={`${className} disabled:opacity-70`}
+      >
+        {inner}
+      </button>
     )
   }
 
-  return (
-    <div className="flex w-full items-center rounded-xl bg-white/5 p-[15px]">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <img src={assessmentRadioImg} alt="" className="size-[15px] shrink-0" aria-hidden />
-        <span className="text-[14px] font-medium text-[#ccc]">{title}</span>
-      </div>
-    </div>
-  )
+  return <div className={className}>{inner}</div>
 }
 
 /** Figma node 6120:15078 — Health Assessment intro (without coins) */
@@ -58,6 +73,7 @@ export function HealthAssessmentStep({
       title: category.display_name || category.category_key || 'Assessment',
       description: categoryDescriptionForKey(key),
       featured: index === 0,
+      isFamilyHistory: key.includes('family'),
     }
   })
 
@@ -93,19 +109,14 @@ export function HealthAssessmentStep({
               title={section.title}
               description={section.featured ? section.description : undefined}
               featured={section.featured}
+              onClick={section.isFamilyHistory ? onStartAssessment : undefined}
+              disabled={
+                section.isFamilyHistory && (isStarting || categories.length === 0)
+              }
+              loading={section.isFamilyHistory && isStarting}
             />
           ))}
         </div>
-
-        <ContinueButton
-          variant="mobileBar"
-          className="mt-auto !h-[52px] w-full border border-[#969696] shadow-[0_12px_20px_rgba(255,255,255,0.15)] lg:mx-auto lg:max-w-[400px]"
-          showChevron={false}
-          disabled={isStarting || categories.length === 0}
-          onClick={onStartAssessment}
-        >
-          {isStarting ? 'Loading...' : 'Start assessment'}
-        </ContinueButton>
       </div>
     </div>
   )

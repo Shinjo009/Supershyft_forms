@@ -176,6 +176,7 @@ export function ApiQuestionnaireStep({
   theme = 'family',
   onBack,
   onComplete,
+  onAnswersChange,
 }: {
   title: string
   questions: QuestionnaireQuestion[]
@@ -184,6 +185,7 @@ export function ApiQuestionnaireStep({
   theme?: QuestionnaireTheme
   onBack?: () => void
   onComplete?: (answers: Record<number, AnswerValue>) => void
+  onAnswersChange?: (answers: Record<number, AnswerValue>) => void
 }) {
   const [visibleIndex, setVisibleIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>(() =>
@@ -278,7 +280,10 @@ export function ApiQuestionnaireStep({
     const idsToSave = collectSaveIds(answeredThroughIndex)
     const responses = buildQuestionnaireResponses(answers, idsToSave)
 
-    if (responses.length === 0) return
+    if (responses.length === 0) {
+      onAnswersChange?.(answers)
+      return
+    }
 
     const accessToken = getAccessToken()
     await submitQuestionnaireResponses(
@@ -287,6 +292,7 @@ export function ApiQuestionnaireStep({
       categoryId,
       responses,
     )
+    onAnswersChange?.(answers)
   }
 
   const handleBack = () => {

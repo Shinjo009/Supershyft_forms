@@ -181,6 +181,19 @@ function coerceStoredAnswer(question: QuestionnaireQuestion, raw: unknown): Answ
   return String(raw)
 }
 
+/** Copy saved answers onto questions when the API left `answer` empty. */
+export function applyAnswersToQuestions(
+  questions: QuestionnaireQuestion[],
+  answersById: Record<number, AnswerValue>,
+): QuestionnaireQuestion[] {
+  return questions.map((question) => {
+    if (!isEmptyAnswer(question.answer)) return question
+    const fromState = answersById[question.question_id]
+    if (isEmptyAnswer(fromState)) return question
+    return { ...question, answer: fromState }
+  })
+}
+
 /** Seed local answers from API `answer` fields when present. */
 export function seedAnswersFromQuestions(
   questions: QuestionnaireQuestion[],

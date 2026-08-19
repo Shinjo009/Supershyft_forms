@@ -53,7 +53,103 @@ export type QuestionnaireResponseItem = {
 }
 
 type CategoryQuestionnaireResponse = {
-  data?: CategoryQuestionnaire
+  data?: CategoryQuestionnaire & {
+    items?: QuestionnaireQuestion[]
+    responses?: Array<{ question_id?: number; id?: number; answer?: unknown; value?: unknown }>
+    answers?: Array<{ question_id?: number; id?: number; answer?: unknown; value?: unknown }>
+  }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+function asQuestionList(value: unknown): QuestionnaireQuestion[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is QuestionnaireQuestion => {
+    if (!item || typeof item !== 'object') return false
+    const row = item as QuestionnaireQuestion
+    return Number(row.question_id) > 0 || Boolean(row.question_text)
+  })
+}
+
+function extractQuestionnaireQuestions(payload: unknown): QuestionnaireQuestion[] {
+  const root = asRecord(payload)
+  if (!root) return []
+  const data = asRecord(root.data) ?? root
+  const nested = asRecord(data.data)
+  const questionnaire = asRecord(data.questionnaire)
+
+  const buckets = [
+    data.questions,
+    root.questions,
+    data.items,
+    questionnaire?.questions,
+    nested?.questions,
+    data.answered_questions,
+    data.category_questions,
+  ]
+  for (const bucket of buckets) {
+    const questions = asQuestionList(bucket)
+    if (questions.length > 0) return questions
+  }
+  return []
+}
+
+function extractResponseMap(payload: unknown): Record<number, unknown> {
+  const root = asRecord(payload)
+  if (!root) return {}
+  const data = asRecord(root.data) ?? root
+  const lists = [data.responses, data.answers, root.responses, root.answers]
+  const mapped: Record<number, unknown> = {}
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue
+    for (const item of list) {
+      const row = asRecord(item)
+      if (!row) continue
+      const id = Number(row.question_id ?? row.id)
+      if (!Number.isFinite(id) || id <= 0) continue
+      const answer = row.answer ?? row.value ?? row.response
+      if (answer !== undefined) mapped[id] = answer
+    }
+  }
+  return mapped
+}
+
+function mergeInlineAnswers(
+  questions: QuestionnaireQuestion[],
+  answersById: Record<number, unknown>,
+): QuestionnaireQuestion[] {
+  if (Object.keys(answersById).length === 0) return questions
+  return questions.map((question) => {
+    if (!isEmptyAnswer(question.answer)) return question
+    const fromResponses = answersById[question.question_id]
+    if (isEmptyAnswer(fromResponses)) return question
+    return { ...question, answer: fromResponses }
+  })
+}
+
+export async function getCategoryQuestionnaire(
+  accessToken: string,
+  assessmentInstanceId: number,
+  categoryId: number,
+): Promise<CategoryQuestionnaire> {
+  const response = await authorizedGet<CategoryQuestionnaireResponse>(
+    `/questionnaire/${assessmentInstanceId}/category/${categoryId}`,
+    accessToken,
+  )
+
+  const questions = mergeInlineAnswers(
+    extractQuestionnaireQuestions(response),
+    extractResponseMap(response),
+  )
+  const data = asRecord(asRecord(response)?.data) ?? asRecord(response) ?? {}
+
+  return {
+    ...(data as CategoryQuestionnaire),
+    questions,
+  }
 }
 
 function isEmptyAnswer(value: unknown): boolean {
@@ -162,27 +258,6 @@ export function isScaleType(questionType: string): boolean {
     .trim()
     .toLowerCase()
   return type === 'scale' || type === 'numeric_scale'
-}
-
-export async function getCategoryQuestionnaire(
-  accessToken: string,
-  assessmentInstanceId: number,
-  categoryId: number,
-): Promise<CategoryQuestionnaire> {
-  const response = await authorizedGet<CategoryQuestionnaireResponse>(
-    `/questionnaire/${assessmentInstanceId}/category/${categoryId}`,
-    accessToken,
-  )
-
-  const data = response?.data
-  if (!data || !Array.isArray(data.questions)) {
-    throw new Error('Questionnaire response did not include questions.')
-  }
-
-  return {
-    ...data,
-    questions: data.questions,
-  }
 }
 
 export async function submitQuestionnaireResponses(
