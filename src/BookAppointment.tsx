@@ -371,7 +371,7 @@ export default function BookAppointment() {
     setIsResendingOtp(true)
 
     try {
-      await resendBookingOtp({ phone: form.phone.trim(), email: form.email.trim() })
+      await resendBookingOtp({ phone: form.phone.trim() })
     } catch (error) {
       logClientError(error instanceof Error ? error.message : 'Unable to resend OTP.')
     } finally {

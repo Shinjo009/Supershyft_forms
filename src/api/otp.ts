@@ -8,7 +8,6 @@ export type BookingOtpTarget = {
 }
 
 const PHONE_REGEX = /^[6-9]\d{9}$/
-const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
 
 function normalizePhone(phone: string | undefined): string | undefined {
   const digits = String(phone || '')
@@ -21,27 +20,10 @@ function normalizePhone(phone: string | undefined): string | undefined {
   return digits
 }
 
-function normalizeEmail(email: string | undefined): string | undefined {
-  const trimmed = String(email || '').trim()
-  if (!trimmed) return undefined
-  if (!EMAIL_REGEX.test(trimmed) || trimmed.length < 3 || trimmed.length > 254) {
-    throw new Error('Please enter a valid email address.')
-  }
-  return trimmed
-}
-
 function requirePhone(phone: string | undefined): string {
   const normalized = normalizePhone(phone)
   if (!normalized) {
     throw new Error('Phone is required to send OTP.')
-  }
-  return normalized
-}
-
-function requireEmail(email: string | undefined): string {
-  const normalized = normalizeEmail(email)
-  if (!normalized) {
-    throw new Error('Email is required to resend OTP.')
   }
   return normalized
 }
@@ -60,10 +42,7 @@ export async function sendBookingOtp(target: BookingOtpTarget): Promise<void> {
 }
 
 export async function resendBookingOtp(target: BookingOtpTarget): Promise<void> {
-  const payload = {
-    phone: requirePhone(target.phone),
-    email: requireEmail(target.email),
-  }
+  const payload = { phone: requirePhone(target.phone) }
 
   if (isFrontendOnly()) {
     console.info('[frontend-only] skipped resend-otp', payload)
