@@ -4,6 +4,7 @@ import nextChevronIcon from '../../assets/nutrition-log/next-chevron.svg'
 import type { NutritionQuestionPreview } from '../../data/nutritionLogQuestions'
 import {
   MCQ_SHELL_CLASS,
+  MCQ_SHELL_FOOTER_CLASS,
   MCQ_SHELL_FOOTER_INNER_CLASS,
   MCQ_SHELL_SCROLL_CLASS,
   formatNextQuestionPreview,
@@ -58,7 +59,7 @@ export function NutritionLogMcqShell({
 
       <div className={MCQ_SHELL_SCROLL_CLASS}>{children}</div>
 
-      <footer className="fixed inset-x-0 bottom-0 z-10 bg-[rgba(255,255,255,0.05)] backdrop-blur-[25px]">
+      <footer className={MCQ_SHELL_FOOTER_CLASS}>
         <div className={`${MCQ_SHELL_FOOTER_INNER_CLASS}${isLastQuestion ? ' justify-end' : ''}`}>
           {!isLastQuestion ? (
             <div className="min-w-0 max-w-[200px] flex-1">

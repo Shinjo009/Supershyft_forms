@@ -78,6 +78,7 @@ import {
   MCQ_PILL_BORDER_SELECTED,
   MCQ_PILL_CHIP_CLASS,
   MCQ_SHELL_CLASS,
+  MCQ_SHELL_FOOTER_CLASS,
   MCQ_SHELL_FOOTER_INNER_CLASS,
   MCQ_SHELL_SCROLL_CLASS,
 } from './mcq/mcqLayout'
@@ -158,7 +159,7 @@ function adjacentNonInlinedIndex(
   return next
 }
 
-function toggleMulti(current: string[], value: string): string[] {
+function toggleMulti(current: string[], value: string, maxSelections?: number): string[] {
   const normalized = value.trim().toLowerCase()
   if (normalized === 'none') {
     return current.includes(value) ? [] : [value]
@@ -167,7 +168,30 @@ function toggleMulti(current: string[], value: string): string[] {
   if (withoutNone.includes(value)) {
     return withoutNone.filter((item) => item !== value)
   }
+  if (typeof maxSelections === 'number' && maxSelections > 0 && withoutNone.length >= maxSelections) {
+    return withoutNone
+  }
   return [...withoutNone, value]
+}
+
+/** Ensure multi-choice / wellness answers are always arrays before POST. */
+function coerceAnswersForSubmit(
+  answersById: Record<number, AnswerValue>,
+  allQuestions: QuestionnaireQuestion[],
+): Record<number, AnswerValue> {
+  const next: Record<number, AnswerValue> = { ...answersById }
+  for (const item of allQuestions) {
+    const mustBeList =
+      isMultiChoiceType(item.question_type) || isLifestyleWellnessPrioritiesQuestion(item)
+    if (!mustBeList) continue
+    const value = next[item.question_id]
+    if (value == null || Array.isArray(value)) continue
+    if (typeof value === 'string' || typeof value === 'number') {
+      const text = String(value).trim()
+      next[item.question_id] = text ? [text] : []
+    }
+  }
+  return next
 }
 
 function hasAnswerValue(answer: AnswerValue | undefined): boolean {
@@ -316,7 +340,10 @@ export function ApiQuestionnaireStep({
   const saveCurrentProgress = async () => {
     const answeredThroughIndex = Math.min(visibleIndex, visibleQuestions.length - 1)
     const idsToSave = collectSaveIds(answeredThroughIndex)
-    const responses = buildQuestionnaireResponses(answers, idsToSave)
+    const responses = buildQuestionnaireResponses(
+      coerceAnswersForSubmit(answers, questions),
+      idsToSave,
+    )
 
     if (responses.length === 0) return
 
@@ -473,9 +500,11 @@ export function ApiQuestionnaireStep({
   const applyChoiceSelection = (nextSelected: string[]) => {
     setSaveError('')
     setAnswers((prev) => {
+      // Wellness priorities must always POST as a list (min 1 / max 2).
+      const storeAsList = multi || useWellnessPrioritiesLayout
       const next: Record<number, AnswerValue> = {
         ...prev,
-        [question.question_id]: multi ? nextSelected : (nextSelected[0] ?? ''),
+        [question.question_id]: storeAsList ? nextSelected : (nextSelected[0] ?? ''),
       }
 
       // Keep typed Other text while Other stays selected; clear only when Other is off.
@@ -672,14 +701,10 @@ export function ApiQuestionnaireStep({
               questionText={question.question_text}
               subText={question.sub_text}
               options={options}
-              selectedValue={selectedValues[0] ?? null}
+              selectedValues={selectedValues}
               onInfoClick={openInfo}
-              onSelect={(value) => {
-                setSaveError('')
-                setAnswers((prev) => ({
-                  ...prev,
-                  [question.question_id]: value,
-                }))
+              onToggle={(value) => {
+                applyChoiceSelection(toggleMulti(selectedValues, value, 2))
               }}
             />
           ) : useLifestyleCommitmentLayout ? (
@@ -932,7 +957,7 @@ export function ApiQuestionnaireStep({
         onClose={() => setInfoOpen(false)}
       />
 
-      <footer className="fixed inset-x-0 bottom-0 z-10 bg-[rgba(255,255,255,0.05)] backdrop-blur-[25px]">
+      <footer className={MCQ_SHELL_FOOTER_CLASS}>
         <div className={`${MCQ_SHELL_FOOTER_INNER_CLASS}${isLast ? ' justify-end' : ''}`}>
           {!isLast ? (
             <div className="min-w-0 max-w-[200px] flex-1">

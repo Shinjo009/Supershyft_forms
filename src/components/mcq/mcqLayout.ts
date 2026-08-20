@@ -13,8 +13,12 @@ export const MCQ_SHELL_CLASS =
 export const MCQ_SHELL_SCROLL_CLASS =
   'mt-2 min-h-0 flex-1 overflow-y-auto px-[17px] lg:px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
 
+/** Bottom bar — same max width as the app column / wallpaper (not full viewport). */
+export const MCQ_SHELL_FOOTER_CLASS =
+  'fixed bottom-0 left-1/2 z-10 w-full max-w-[360px] -translate-x-1/2 bg-[rgba(255,255,255,0.05)] backdrop-blur-[25px] lg:max-w-[480px] xl:max-w-[520px]'
+
 export const MCQ_SHELL_FOOTER_INNER_CLASS =
-  'mx-auto flex w-full max-w-[360px] lg:max-w-[480px] xl:max-w-[520px] items-center justify-between gap-3 px-6 py-2 lg:px-8'
+  'flex w-full items-center justify-between gap-3 px-6 py-2 lg:px-8'
 
 /** One-line next-question preview; truncates with ".." when too long. */
 export function formatNextQuestionPreview(line1: string, line2: string, maxChars = 28): string {

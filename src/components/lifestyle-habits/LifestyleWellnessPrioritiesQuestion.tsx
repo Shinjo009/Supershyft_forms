@@ -3,22 +3,22 @@ import { LifestyleHabitsQuestionHeader } from './LifestyleHabitsQuestionHeader'
 import { LifestyleApiPillGrid } from './LifestyleApiPillGrid'
 import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 
-/** Designed Lifestyle Q9 — wellness priorities driven by all API options. */
+/** Designed Lifestyle Q9 — wellness priorities (multi-select, min 1 / max 2). */
 export function LifestyleWellnessPrioritiesQuestion({
   questionLabel,
   questionText,
   subText,
   options,
-  selectedValue,
-  onSelect,
+  selectedValues,
+  onToggle,
   onInfoClick,
 }: {
   questionLabel: string
   questionText: string
   subText?: string | null
   options: QuestionnaireOption[]
-  selectedValue: string | null
-  onSelect: (value: string) => void
+  selectedValues: string[]
+  onToggle: (value: string) => void
   onInfoClick?: () => void
 }) {
   return (
@@ -29,8 +29,8 @@ export function LifestyleWellnessPrioritiesQuestion({
 
       <LifestyleApiPillGrid
         options={options}
-        selectedValue={selectedValue}
-        onSelect={onSelect}
+        selectedValues={selectedValues}
+        onSelect={onToggle}
         layout="wellness"
         showTick
       />

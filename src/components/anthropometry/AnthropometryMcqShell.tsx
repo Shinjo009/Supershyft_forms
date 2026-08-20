@@ -3,6 +3,7 @@ import backIcon from '../../assets/family-history/back-icon.svg'
 import nextChevronIcon from '../../assets/family-history/next-chevron.svg'
 import {
   MCQ_SHELL_CLASS,
+  MCQ_SHELL_FOOTER_CLASS,
   MCQ_SHELL_FOOTER_INNER_CLASS,
   MCQ_SHELL_SCROLL_CLASS,
   formatNextQuestionPreview,
@@ -51,7 +52,7 @@ export function AnthropometryMcqShell({
       <div className={MCQ_SHELL_SCROLL_CLASS}>{children}</div>
 
       {onNext ? (
-        <footer className="fixed inset-x-0 bottom-0 z-10 bg-[rgba(255,255,255,0.05)] backdrop-blur-[25px]">
+        <footer className={MCQ_SHELL_FOOTER_CLASS}>
           <div className={`${MCQ_SHELL_FOOTER_INNER_CLASS}${showNextPreview ? '' : ' justify-end'}`}>
             {showNextPreview && nextQuestionPreview ? (
               <div className="min-w-0 max-w-[200px] flex-1">

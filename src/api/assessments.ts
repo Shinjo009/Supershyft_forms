@@ -177,7 +177,7 @@ export function getAssessmentEngagementId(
 export async function submitAssessmentCategory(
   accessToken: string,
   assessmentInstanceId: number,
-  category: 'diet-lifestyle-parameters' | 'fitness-parameters',
+  category: 'physical-measurements' | 'diet-lifestyle-parameters' | 'fitness-parameters',
 ): Promise<unknown> {
   const id = Number(assessmentInstanceId)
   if (!Number.isFinite(id) || id <= 0) {
@@ -196,17 +196,25 @@ export async function submitAssessmentCategory(
 }
 
 /**
- * Finalize diet/lifestyle on Metsights Pro/Basic, and fitness on FitPrint when present.
+ * Finalize Metsights (physical + diet/lifestyle) and FitPrint fitness when present.
  */
 export async function submitCompletedAssessmentFlow(
   accessToken: string,
   metsightsAssessmentInstanceId: number,
-): Promise<{ metsightsSubmitted: boolean; fitprintSubmitted: boolean }> {
+): Promise<{
+  physicalSubmitted: boolean
+  dietLifestyleSubmitted: boolean
+  fitprintSubmitted: boolean
+}> {
   if (isFrontendOnly()) {
     console.info('[frontend-only] skipped completed assessment submit', {
       metsightsAssessmentInstanceId,
     })
-    return { metsightsSubmitted: true, fitprintSubmitted: false }
+    return {
+      physicalSubmitted: true,
+      dietLifestyleSubmitted: true,
+      fitprintSubmitted: false,
+    }
   }
 
   const rows = await listMyAssessments(accessToken)
@@ -215,6 +223,7 @@ export async function submitCompletedAssessmentFlow(
     throw new Error('Missing Metsights assessment instance id.')
   }
 
+  await submitAssessmentCategory(accessToken, metsightsId, 'physical-measurements')
   await submitAssessmentCategory(accessToken, metsightsId, 'diet-lifestyle-parameters')
 
   const engagementId = getAssessmentEngagementId(rows, metsightsId)
@@ -226,7 +235,11 @@ export async function submitCompletedAssessmentFlow(
     fitprintSubmitted = true
   }
 
-  return { metsightsSubmitted: true, fitprintSubmitted }
+  return {
+    physicalSubmitted: true,
+    dietLifestyleSubmitted: true,
+    fitprintSubmitted,
+  }
 }
 
 export function filterAssessmentCategoriesForUi(

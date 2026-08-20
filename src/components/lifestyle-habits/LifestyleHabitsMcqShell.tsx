@@ -4,6 +4,7 @@ import nextChevronIcon from '../../assets/lifestyle-habits/next-chevron.svg'
 import type { LifestyleQuestionPreview } from '../../data/lifestyleHabitsQuestions'
 import {
   MCQ_SHELL_CLASS,
+  MCQ_SHELL_FOOTER_CLASS,
   MCQ_SHELL_FOOTER_INNER_CLASS,
   MCQ_SHELL_SCROLL_CLASS,
   formatNextQuestionPreview,
@@ -60,7 +61,7 @@ export function LifestyleHabitsMcqShell({
 
       <div className={MCQ_SHELL_SCROLL_CLASS}>{children}</div>
 
-      <footer className="fixed inset-x-0 bottom-0 z-10 bg-[rgba(255,255,255,0.05)] backdrop-blur-[25px]">
+      <footer className={MCQ_SHELL_FOOTER_CLASS}>
         <div className={`${MCQ_SHELL_FOOTER_INNER_CLASS}${isLastQuestion ? ' justify-end' : ''}`}>
           {!isLastQuestion ? (
             <div className="min-w-0 max-w-[200px] flex-1">
