@@ -10,16 +10,16 @@ export function parseIsoDate(iso: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
-/** Sole bookable camp date: 21 August 2026. */
-export const BOOKING_CAMP_ISO = '2026-08-21'
+/** Sole bookable camp date: 24 August 2026 (Monday). */
+export const BOOKING_CAMP_ISO = '2026-08-24'
 
 export function getCampDate(): Date {
-  const camp = new Date(2026, 7, 21)
+  const camp = new Date(2026, 7, 24)
   camp.setHours(0, 0, 0, 0)
   return camp
 }
 
-/** Only 21 August 2026 is selectable. */
+/** Only 24 August 2026 is selectable. */
 export function getBookingDateBounds(): { min: Date; max: Date } {
   const camp = getCampDate()
   return { min: camp, max: camp }
