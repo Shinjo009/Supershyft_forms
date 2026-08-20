@@ -56,6 +56,7 @@ import {
 import { AppointmentJourneyCompleteStep } from './components/AppointmentJourneyCompleteStep'
 import { OtpVerifyStep } from './components/OtpVerifyStep'
 import bookingSuccessGif from './assets/animation-gif.gif'
+import superShyftLogo from './assets/SuperShyft - Logo [Final]-03 7 (1).svg'
 
 const RELATION_OPTIONS = [
   'Parent',
@@ -784,9 +785,26 @@ export default function BookAppointment() {
           ) : (
             <span className="size-8" aria-hidden />
           )}
-          <h1 className="text-center text-[20px] font-semibold leading-6 text-white">
-            {mobileScreenTitle}
-          </h1>
+          {step === 1 || step === 2 || step === 3 || step === 5 || step === 13 ? (
+            <div className="flex items-center justify-center gap-2.5">
+              <img
+                src={superShyftLogo}
+                alt="SuperShyft"
+                width={44}
+                height={44}
+                decoding="async"
+                className="h-11 w-11 shrink-0 object-contain"
+                style={{ imageRendering: 'auto' }}
+              />
+              <h1 className="text-[20px] font-semibold leading-6 text-white">
+                {mobileScreenTitle}
+              </h1>
+            </div>
+          ) : (
+            <h1 className="text-center text-[20px] font-semibold leading-6 text-white">
+              {mobileScreenTitle}
+            </h1>
+          )}
           <span className="size-8" aria-hidden />
         </header>
         )}
