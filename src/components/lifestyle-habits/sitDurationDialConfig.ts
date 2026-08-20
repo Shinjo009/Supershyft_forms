@@ -71,7 +71,7 @@ export const SIT_DURATION_DIAL_CONFIG: RadialDialConfig<SitDurationOption> = {
     },
     activeArcStrokeWidth: 4,
   },
-  arcGlowBounds: { x: 0, y: -20, width: 170, height: 120 },
+  arcGlowBounds: { x: -40, y: -40, width: 254, height: 254 },
   rotationByOption: {
     'under-1h': 0,
     '1-4h': 106,

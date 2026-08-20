@@ -34,7 +34,8 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
       'Do any of your close blood relatives (i.e., parents or siblings) have the following health conditions?',
     question_type: 'multi_choice',
     is_required: true,
-    help_text: '(Select multiple or none that apply)',
+    help_text: null,
+    sub_text: '(Select multiple or None that apply)',
     options: [
       { option_id: 11, option_value: 'type_2_diabetes', display_name: 'Type 2 diabetes' },
       { option_id: 12, option_value: 'fatty_liver', display_name: 'Fatty liver' },
@@ -48,7 +49,8 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
     question_text: 'Are you diagnosed with the following diseases?',
     question_type: 'multi_choice',
     is_required: true,
-    help_text: '(Select multiple or none that apply)',
+    help_text: null,
+    sub_text: '(Select multiple or None that apply)',
     options: [
       { option_id: 21, option_value: 'type_2_diabetes', display_name: 'Type 2 diabetes' },
       { option_id: 22, option_value: 'fatty_liver', display_name: 'Fatty liver' },
@@ -62,7 +64,8 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
     question_text: 'Are you taking medications for the following diseases?',
     question_type: 'multi_choice',
     is_required: true,
-    help_text: '(Select multiple or none that apply)',
+    help_text: null,
+    sub_text: '(Select multiple or None that apply)',
     options: [
       { option_id: 31, option_value: 'type_2_diabetes', display_name: 'Type 2 diabetes' },
       { option_id: 32, option_value: 'fatty_liver', display_name: 'Fatty liver' },

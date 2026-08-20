@@ -10,11 +10,13 @@ import { NutritionCircularMeter } from './NutritionCircularMeter'
 import { NutritionConsumptionFrequencySelector } from './NutritionConsumptionFrequencySelector'
 import { NutritionFrequencyPill } from './NutritionFrequencyPill'
 import { EMPTY_METER_READING } from './consumptionFrequencyConfig'
+import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 
 /** Designed consumption ring + 2-col pills (fruits, veg, baked goods, etc.). */
 export function NutritionApiConsumptionFrequencyQuestion({
   questionLabel,
   questionText,
+  subText,
   meterId,
   options,
   selectedValue,
@@ -23,6 +25,7 @@ export function NutritionApiConsumptionFrequencyQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   meterId: string
   options: QuestionnaireOption[]
   selectedValue: string | null
@@ -34,7 +37,7 @@ export function NutritionApiConsumptionFrequencyQuestion({
   return (
     <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader theme="nutrition" questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </McqQuestionHeader>
 
       <NutritionConsumptionFrequencySelector
@@ -52,6 +55,7 @@ export function NutritionApiConsumptionFrequencyQuestion({
 export function NutritionApiCircularMeterQuestion({
   questionLabel,
   questionText,
+  subText,
   meterId,
   options,
   selectedValue,
@@ -61,6 +65,7 @@ export function NutritionApiCircularMeterQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   meterId: string
   options: QuestionnaireOption[]
   selectedValue: string | null
@@ -82,7 +87,7 @@ export function NutritionApiCircularMeterQuestion({
   return (
     <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader theme="nutrition" questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </McqQuestionHeader>
 
       <div

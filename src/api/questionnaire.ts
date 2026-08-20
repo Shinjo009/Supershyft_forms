@@ -20,6 +20,8 @@ export type QuestionnaireQuestion = {
   is_required?: boolean
   is_read_only?: boolean
   help_text?: string | null
+  /** Optional helper line shown directly under the question title. */
+  sub_text?: string | null
   options?: QuestionnaireOption[] | null
   visibility_rules?: {
     match?: string

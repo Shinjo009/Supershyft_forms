@@ -1,11 +1,13 @@
 import type { QuestionnaireOption } from '../../api/questionnaire'
 import { LifestyleHabitsQuestionHeader } from './LifestyleHabitsQuestionHeader'
 import { LifestyleApiPillGrid } from './LifestyleApiPillGrid'
+import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 
 /** Designed Lifestyle Q9 — wellness priorities driven by all API options. */
 export function LifestyleWellnessPrioritiesQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -13,6 +15,7 @@ export function LifestyleWellnessPrioritiesQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -21,7 +24,7 @@ export function LifestyleWellnessPrioritiesQuestion({
   return (
     <div className="flex w-full flex-col gap-8">
       <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </LifestyleHabitsQuestionHeader>
 
       <LifestyleApiPillGrid
@@ -29,6 +32,7 @@ export function LifestyleWellnessPrioritiesQuestion({
         selectedValue={selectedValue}
         onSelect={onSelect}
         layout="wellness"
+        showTick
       />
     </div>
   )

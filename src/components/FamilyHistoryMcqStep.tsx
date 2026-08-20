@@ -19,9 +19,27 @@ import { CHIP_SELECTED_GRADIENT, FamilyHistoryMcqShell } from './family-history/
 
 type LocationOption = 'inland' | 'coastal'
 
-const LOCATION_OPTIONS: { id: LocationOption; label: string; image: string; imageTop: string }[] = [
-  { id: 'inland', label: 'Inland', image: inlandImg, imageTop: '-61px' },
-  { id: 'coastal', label: 'Coastal', image: coastalImg, imageTop: '-65px' },
+const LOCATION_OPTIONS: {
+  id: LocationOption
+  label: string
+  image: string
+  imageTop: string
+  description: string
+}[] = [
+  {
+    id: 'inland',
+    label: 'Inland',
+    image: inlandImg,
+    imageTop: '-61px',
+    description: 'An area entirely surrounded by land or mountains',
+  },
+  {
+    id: 'coastal',
+    label: 'Coastal',
+    image: coastalImg,
+    imageTop: '-65px',
+    description: 'An area entirely or partially surrounded by sea',
+  },
 ]
 
 function toggleChipSelection(
@@ -211,7 +229,7 @@ function Question1Location({
         <p>Where have you lived most of your life?</p>
       </FamilyHistoryQuestionHeader>
 
-      <div className="flex h-[254px] w-full max-w-[267px] flex-col gap-[16px] lg:max-w-[320px]">
+      <div className="flex h-[280px] w-full max-w-[267px] flex-col gap-[16px] lg:max-w-[320px]">
         {LOCATION_OPTIONS.map((option) => {
           const isSelected = selected === option.id
           const isInland = option.id === 'inland'
@@ -249,14 +267,19 @@ function Question1Location({
                     : 'left-[-2px] top-[-17px] h-[136px] w-[269px]',
                 ].join(' ')}
               />
-              <span
-                className={[
-                  'relative whitespace-nowrap text-[14px] leading-[15px] text-white',
-                  isSelected ? 'font-semibold' : 'font-normal',
-                ].join(' ')}
-              >
-                {option.label}
-              </span>
+              <div className="relative flex max-w-[160px] flex-col items-end gap-1 text-right">
+                <span
+                  className={[
+                    'whitespace-nowrap text-[14px] leading-[15px] text-white',
+                    isSelected ? 'font-semibold' : 'font-normal',
+                  ].join(' ')}
+                >
+                  {option.label}
+                </span>
+                <span className="text-[10px] font-normal leading-[13px] text-white/90">
+                  {option.description}
+                </span>
+              </div>
             </button>
           )
         })}

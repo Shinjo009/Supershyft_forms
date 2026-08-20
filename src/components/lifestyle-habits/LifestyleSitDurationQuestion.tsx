@@ -5,6 +5,7 @@ import { LifestyleApiPillGrid } from './LifestyleApiPillGrid'
 import { RadialDialSelector } from './RadialDialSelector'
 import { fitApiOptionsToFixedDial } from './fitApiOptionsToDial'
 import { SIT_DURATION_SLOT_ARCS } from './sitDurationDialConfig'
+import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 
 const SIT_MATCHERS = [
   {
@@ -40,6 +41,7 @@ const SIT_MATCHERS = [
 export function LifestyleSitDurationQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -47,6 +49,7 @@ export function LifestyleSitDurationQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -58,7 +61,7 @@ export function LifestyleSitDurationQuestion({
         {
           idPrefix: 'sit-duration',
           width: 300,
-          height: 230,
+          height: 250,
           dialOffsetX: 63,
           dialOffsetY: 36,
           dialSize: 174,
@@ -72,7 +75,7 @@ export function LifestyleSitDurationQuestion({
           },
           preferredMatchers: SIT_MATCHERS,
           activeArcStrokeWidth: 4,
-          arcGlowBounds: { x: 0, y: -20, width: 170, height: 120 },
+          arcGlowBounds: { x: -40, y: -40, width: 254, height: 254 },
         },
         options,
       ),
@@ -82,7 +85,7 @@ export function LifestyleSitDurationQuestion({
   return (
     <div className="flex w-full flex-col gap-16">
       <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </LifestyleHabitsQuestionHeader>
 
       <div className="overflow-visible">

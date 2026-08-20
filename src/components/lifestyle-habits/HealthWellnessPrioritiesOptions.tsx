@@ -3,6 +3,7 @@ import {
   HEALTH_WELLNESS_PRIORITY_OPTIONS,
   type HealthWellnessPriorityOption,
 } from '../../data/lifestyleHabitsQuestions'
+import tickCircleIcon from '../../assets/family-history/tick-circle-outline.svg'
 import {
   ALCOHOL_PILL_GRADIENT_FULL,
   ALCOHOL_PILL_GRADIENT_HALF,
@@ -32,7 +33,9 @@ function WellnessPill({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center rounded-[24px] border border-solid px-[10px] py-2 text-center text-[12px] leading-6 text-white ${widthClass}`}
+      className={`relative flex items-center justify-center rounded-[24px] border border-solid px-[10px] py-2 text-center text-[12px] leading-6 text-white ${widthClass} ${
+        selected ? 'font-semibold' : 'font-normal'
+      }`}
       style={
         selected
           ? {
@@ -46,6 +49,14 @@ function WellnessPill({
             }
       }
     >
+      <img
+        src={tickCircleIcon}
+        alt=""
+        className={`pointer-events-none absolute left-[10px] size-3 shrink-0 ${
+          selected ? 'opacity-100' : 'opacity-0'
+        }`}
+        aria-hidden
+      />
       <span className="whitespace-nowrap">{label}</span>
     </button>
   )

@@ -105,10 +105,10 @@ export function NutritionMultiSelectGridOptions<T extends string>({
         const isCruciferousOption =
           String(option.id).toLowerCase() === 'cruciferous' ||
           option.label.toLowerCase().includes('cruciferous')
+        // Cruciferous / long labels span the row, but keep the same 32px pill height as peers.
         const isFullWidth = option.fullWidth || isCruciferousOption || autoFullWidth
-        const effectiveShowFullOptionLabels = showFullOptionLabels || Boolean(option.fullWidth)
         const effectiveReserveTickSpaceForSelectedLabels =
-          reserveTickSpaceForSelectedLabels || Boolean(option.fullWidth) || isCruciferousOption
+          reserveTickSpaceForSelectedLabels || isFullWidth
 
         return (
           <div key={option.id} className={isFullWidth ? 'col-span-2' : undefined}>
@@ -117,7 +117,7 @@ export function NutritionMultiSelectGridOptions<T extends string>({
               fullWidth={isFullWidth}
               selected={selected.includes(option.id)}
               reserveTickSpaceForSelectedLabels={effectiveReserveTickSpaceForSelectedLabels}
-              showFullOptionLabels={effectiveShowFullOptionLabels || isCruciferousOption}
+              showFullOptionLabels={showFullOptionLabels}
               onClick={() => onToggle(option.id)}
             />
           </div>

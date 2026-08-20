@@ -18,7 +18,7 @@ export function FamilySectionCompleteStep({
           </div>
           <div className="flex flex-col items-center pb-3">
             <h2 className="text-center text-[18px] font-semibold tracking-[0.2px] text-white">
-              Family Section Complete!
+              Family History Section Complete
             </h2>
             <p className="text-center text-[12px] leading-4 text-[#9a9a9a]">
               Only 2 more sections left

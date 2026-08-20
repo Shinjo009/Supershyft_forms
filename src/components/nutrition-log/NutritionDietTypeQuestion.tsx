@@ -3,6 +3,7 @@ import {
   getOptionValue,
   type QuestionnaireOption,
 } from '../../api/questionnaire'
+import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 import { McqQuestionHeader } from '../mcq/McqQuestionHeader'
 import {
   MCQ_PILL_BORDER_IDLE,
@@ -50,6 +51,7 @@ function DietPill({
 export function NutritionDietTypeQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -58,6 +60,7 @@ export function NutritionDietTypeQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -67,7 +70,7 @@ export function NutritionDietTypeQuestion({
   return (
     <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader theme="nutrition" questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </McqQuestionHeader>
 
       <div className="flex flex-wrap content-center gap-4">

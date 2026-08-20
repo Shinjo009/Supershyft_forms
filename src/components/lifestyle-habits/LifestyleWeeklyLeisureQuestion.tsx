@@ -11,6 +11,7 @@ import {
 import { DAILY_WALKING_SLOT_ARCS } from './dailyWalkingDialConfig'
 import { PHYSICAL_ACTIVITY_BASE_ARC } from './physicalActivityDialConfig'
 import { WEEKLY_LEISURE_FIVE_PILL_ORBIT } from './weeklyLeisureDialConfig'
+import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 
 const LEISURE_MATCHERS_4 = [
   {
@@ -88,6 +89,7 @@ const LEISURE_MATCHERS_5 = [
 export function LifestyleWeeklyLeisureQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -95,6 +97,7 @@ export function LifestyleWeeklyLeisureQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -161,7 +164,7 @@ export function LifestyleWeeklyLeisureQuestion({
   return (
     <div className="flex w-full flex-col gap-16">
       <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </LifestyleHabitsQuestionHeader>
 
       <div className="overflow-visible">

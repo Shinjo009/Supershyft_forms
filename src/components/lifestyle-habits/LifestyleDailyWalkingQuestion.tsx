@@ -5,6 +5,7 @@ import { LifestyleApiPillGrid } from './LifestyleApiPillGrid'
 import { RadialDialSelector } from './RadialDialSelector'
 import { fitApiOptionsToFixedDial } from './fitApiOptionsToDial'
 import { DAILY_WALKING_SLOT_ARCS } from './dailyWalkingDialConfig'
+import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 
 const WALKING_MATCHERS = [
   {
@@ -53,6 +54,7 @@ const WALKING_MATCHERS = [
 export function LifestyleDailyWalkingQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -60,6 +62,7 @@ export function LifestyleDailyWalkingQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -97,7 +100,7 @@ export function LifestyleDailyWalkingQuestion({
   return (
     <div className="flex w-full flex-col gap-8">
       <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </LifestyleHabitsQuestionHeader>
 
       <div className="overflow-visible">

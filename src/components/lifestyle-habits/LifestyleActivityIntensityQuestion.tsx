@@ -3,6 +3,7 @@ import type { QuestionnaireOption } from '../../api/questionnaire'
 import { ActivityIntensityMeter } from './ActivityIntensityMeter'
 import { LifestyleHabitsQuestionHeader } from './LifestyleHabitsQuestionHeader'
 import { collectApiDialOptions } from './fitApiOptionsToDial'
+import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 
 const TOTAL_BARS = 15
 
@@ -24,6 +25,7 @@ function matchIntensityRank(text: string): number | null {
 export function LifestyleActivityIntensityQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -31,6 +33,7 @@ export function LifestyleActivityIntensityQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -61,7 +64,7 @@ export function LifestyleActivityIntensityQuestion({
   return (
     <div className="flex w-full flex-col gap-8">
       <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </LifestyleHabitsQuestionHeader>
 
       <ActivityIntensityMeter

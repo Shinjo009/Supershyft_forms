@@ -3,11 +3,13 @@ import type { QuestionnaireOption } from '../../api/questionnaire'
 import { McqQuestionHeader } from '../mcq/McqQuestionHeader'
 import { collectNutritionApiOptions } from './fitApiOptionsToNutrition'
 import { NutritionMultiSelectGridOptions } from './NutritionMultiSelectGridOptions'
+import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 
 /** Designed nutrition multi-select grid driven by API options. */
 export function NutritionApiMultiSelectQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValues,
   onToggle,
@@ -17,6 +19,7 @@ export function NutritionApiMultiSelectQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValues: string[]
   onToggle: (value: string) => void
@@ -31,7 +34,7 @@ export function NutritionApiMultiSelectQuestion({
   return (
     <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader theme="nutrition" questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </McqQuestionHeader>
 
       <NutritionMultiSelectGridOptions

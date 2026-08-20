@@ -23,7 +23,7 @@ export function NutritionSectionCompleteStep({
             </span>
           </div>
           <h2 className="pb-3 text-center text-[18px] font-semibold tracking-[0.2px] text-white">
-            Nutrition Section Complete!
+            Nutrition Log Section Complete
           </h2>
         </div>
 

@@ -83,6 +83,7 @@ import {
 } from './mcq/mcqLayout'
 import { McqInfoOverlay } from './mcq/McqInfoOverlay'
 import { McqProgressBar } from './mcq/McqProgressBar'
+import { McqQuestionCopy } from './mcq/McqQuestionCopy'
 import { McqQuestionHeader } from './mcq/McqQuestionHeader'
 
 const FAMILY_NEXT_BUTTON_GRADIENT =
@@ -524,6 +525,7 @@ export function ApiQuestionnaireStep({
             <FamilyHistoryLocationOptions
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               disabled={Boolean(question.is_read_only) || isSaving}
@@ -540,6 +542,7 @@ export function ApiQuestionnaireStep({
             <LifestyleSitDurationQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -555,6 +558,7 @@ export function ApiQuestionnaireStep({
             <LifestylePhysicalActivityQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -570,6 +574,7 @@ export function ApiQuestionnaireStep({
             <LifestyleWeeklyLeisureQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -585,6 +590,7 @@ export function ApiQuestionnaireStep({
             <LifestyleActivityIntensityQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -600,6 +606,7 @@ export function ApiQuestionnaireStep({
             <LifestyleDailyWalkingQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -615,6 +622,7 @@ export function ApiQuestionnaireStep({
             <LifestyleSleepDurationQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -630,6 +638,7 @@ export function ApiQuestionnaireStep({
             <LifestyleSmokingFrequencyQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -645,6 +654,7 @@ export function ApiQuestionnaireStep({
             <LifestyleAlcoholConsumptionQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -660,6 +670,7 @@ export function ApiQuestionnaireStep({
             <LifestyleWellnessPrioritiesQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -675,6 +686,7 @@ export function ApiQuestionnaireStep({
             <LifestyleCommitmentQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -690,6 +702,7 @@ export function ApiQuestionnaireStep({
             <NutritionDietTypeQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               disabled={Boolean(question.is_read_only) || isSaving}
@@ -706,6 +719,7 @@ export function ApiQuestionnaireStep({
             <NutritionApiMultiSelectQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={displayedOptions}
               selectedValues={selectedValues}
               onInfoClick={openInfo}
@@ -720,6 +734,7 @@ export function ApiQuestionnaireStep({
             <NutritionApiCircularMeterQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               meterId={nutritionMeterIdForQuestion(question)}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -737,6 +752,7 @@ export function ApiQuestionnaireStep({
             <NutritionApiCircularMeterQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               meterId={nutritionMeterIdForQuestion(question)}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -754,6 +770,7 @@ export function ApiQuestionnaireStep({
             <NutritionApiWaterIntakeQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               onInfoClick={openInfo}
@@ -769,6 +786,7 @@ export function ApiQuestionnaireStep({
             <NutritionApiConsumptionFrequencyQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               meterId={nutritionMeterIdForQuestion(question)}
               options={options}
               selectedValue={selectedValues[0] ?? null}
@@ -785,6 +803,7 @@ export function ApiQuestionnaireStep({
             <NutritionApiPillRowQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               layout="row"
@@ -801,6 +820,7 @@ export function ApiQuestionnaireStep({
             <NutritionApiPillRowQuestion
               questionLabel={`Question ${displayIndex + 1} of ${total}`}
               questionText={question.question_text}
+              subText={question.sub_text}
               options={options}
               selectedValue={selectedValues[0] ?? null}
               layout={useCoffeeTeaIntakeLayout ? 'coffee-intake' : 'wrap'}
@@ -821,7 +841,7 @@ export function ApiQuestionnaireStep({
                 onInfoClick={openInfo}
                 titleClassName="mt-2 text-[16px] font-semibold leading-6 tracking-[0.2px] text-white"
               >
-                <p>{question.question_text}</p>
+                <McqQuestionCopy text={question.question_text} subText={question.sub_text} />
               </McqQuestionHeader>
 
               {single || multi ? (

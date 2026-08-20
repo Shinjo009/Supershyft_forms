@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { QuestionnaireOption } from '../../api/questionnaire'
+import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 import { McqQuestionHeader } from '../mcq/McqQuestionHeader'
 import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
 import { buildWaterReadingsFromApi } from './fitApiOptionsToNutrition'
@@ -42,6 +43,7 @@ function WaterIntakePill({
 export function NutritionApiWaterIntakeQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -49,6 +51,7 @@ export function NutritionApiWaterIntakeQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -63,7 +66,7 @@ export function NutritionApiWaterIntakeQuestion({
   return (
     <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader theme="nutrition" questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </McqQuestionHeader>
 
       <div className="flex w-full items-center justify-between gap-2">

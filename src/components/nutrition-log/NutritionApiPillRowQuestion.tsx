@@ -3,6 +3,7 @@ import type { QuestionnaireOption } from '../../api/questionnaire'
 import { McqQuestionHeader } from '../mcq/McqQuestionHeader'
 import { collectNutritionApiOptions } from './fitApiOptionsToNutrition'
 import { NutritionFrequencyPill } from './NutritionFrequencyPill'
+import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 
 /**
  * Coffee intake layout — matches the Figma design:
@@ -65,6 +66,7 @@ function CoffeeIntakeGrid({
 export function NutritionApiPillRowQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -73,6 +75,7 @@ export function NutritionApiPillRowQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -84,7 +87,7 @@ export function NutritionApiPillRowQuestion({
   return (
     <div className="flex w-full flex-col gap-8">
       <McqQuestionHeader theme="nutrition" questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </McqQuestionHeader>
 
       {layout === 'coffee-intake' ? (

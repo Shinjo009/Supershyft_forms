@@ -7,13 +7,24 @@ import {
 } from '../../api/questionnaire'
 import { resolveLocationCardKind } from '../../lib/apiQuestionLayouts'
 import { FamilyHistoryQuestionHeader } from './FamilyHistoryQuestionHeader'
+import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 
 const CARD_META: Record<
   'inland' | 'coastal',
-  { image: string; imageTop: string; isInland: boolean }
+  { image: string; imageTop: string; isInland: boolean; description: string }
 > = {
-  inland: { image: inlandImg, imageTop: '-61px', isInland: true },
-  coastal: { image: coastalImg, imageTop: '-65px', isInland: false },
+  inland: {
+    image: inlandImg,
+    imageTop: '-61px',
+    isInland: true,
+    description: 'An area entirely surrounded by land or mountains',
+  },
+  coastal: {
+    image: coastalImg,
+    imageTop: '-65px',
+    isInland: false,
+    description: 'An area entirely or partially surrounded by sea',
+  },
 }
 
 /** Warm the location card images into browser cache as soon as this module loads. */
@@ -28,6 +39,7 @@ if (typeof document !== 'undefined') {
 export function FamilyHistoryLocationOptions({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -36,6 +48,7 @@ export function FamilyHistoryLocationOptions({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -45,10 +58,10 @@ export function FamilyHistoryLocationOptions({
   return (
     <div className="mx-auto flex w-full flex-col items-center gap-[32px]">
       <FamilyHistoryQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </FamilyHistoryQuestionHeader>
 
-      <div className="flex h-[254px] w-full max-w-[267px] flex-col gap-[16px] lg:max-w-[320px]">
+      <div className="flex h-[280px] w-full max-w-[267px] flex-col gap-[16px] lg:max-w-[320px]">
         {options.map((option) => {
           const value = getOptionValue(option)
           const label = getOptionLabel(option) || value
@@ -97,14 +110,21 @@ export function FamilyHistoryLocationOptions({
                   />
                 </>
               ) : null}
-              <span
-                className={[
-                  'relative whitespace-nowrap text-[14px] leading-[15px] text-white',
-                  isSelected ? 'font-semibold' : 'font-normal',
-                ].join(' ')}
-              >
-                {label}
-              </span>
+              <div className="relative flex max-w-[160px] flex-col items-end gap-1 text-right">
+                <span
+                  className={[
+                    'whitespace-nowrap text-[14px] leading-[15px] text-white',
+                    isSelected ? 'font-semibold' : 'font-normal',
+                  ].join(' ')}
+                >
+                  {label}
+                </span>
+                {meta?.description ? (
+                  <span className="text-[10px] font-normal leading-[13px] text-white/90">
+                    {meta.description}
+                  </span>
+                ) : null}
+              </div>
             </button>
           )
         })}

@@ -67,13 +67,20 @@ function NestedOrangeArcGlow({
   glowId: string
   strokeWidth?: number
 }) {
+  // Pad the nested SVG so Gaussian blur isn't clipped at the arc tip.
+  const pad = 28
+  const scaleX = layout.vbW / Math.max(layout.w, 1)
+  const scaleY = layout.vbH / Math.max(layout.h, 1)
+  const padVbX = pad * scaleX
+  const padVbY = pad * scaleY
+
   return (
     <svg
-      x={layout.x}
-      y={layout.y}
-      width={layout.w}
-      height={layout.h}
-      viewBox={`0 0 ${layout.vbW} ${layout.vbH}`}
+      x={layout.x - pad}
+      y={layout.y - pad}
+      width={layout.w + pad * 2}
+      height={layout.h + pad * 2}
+      viewBox={`${-padVbX} ${-padVbY} ${layout.vbW + padVbX * 2} ${layout.vbH + padVbY * 2}`}
       overflow="visible"
     >
       <g filter={`url(#${glowId})`}>
@@ -895,7 +902,8 @@ export function RadialDialSelector<T extends string>({
     >
       <svg
         viewBox={`0 0 ${config.width} ${config.height}`}
-        className="pointer-events-none absolute inset-0 size-full"
+        className="pointer-events-none absolute inset-0 size-full overflow-visible"
+        overflow="visible"
         aria-hidden
       >
         <defs>
@@ -925,14 +933,13 @@ export function RadialDialSelector<T extends string>({
             <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow" />
             <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape" />
           </filter>
-          {/* Shared slot-arc glow (stdDeviation 8) — avoid recreating filters per frame */}
+          {/* Shared slot-arc glow — objectBoundingBox so tall arcs (e.g. left) aren't clipped */}
           <filter
             id={`${config.idPrefix}-slot-arc-glow`}
-            x={arcGlow.x - 20}
-            y={arcGlow.y - 20}
-            width={arcGlow.width + 40}
-            height={arcGlow.height + 40}
-            filterUnits="userSpaceOnUse"
+            x="-100%"
+            y="-100%"
+            width="300%"
+            height="300%"
             colorInterpolationFilters="sRGB"
           >
             <feFlood floodOpacity="0" result="BackgroundImageFix" />

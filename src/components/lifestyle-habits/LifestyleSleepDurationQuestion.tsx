@@ -4,6 +4,7 @@ import { LifestyleHabitsQuestionHeader } from './LifestyleHabitsQuestionHeader'
 import { SleepDurationMeter } from './SleepDurationMeter'
 import { abbreviateDialLabel, collectApiDialOptions } from './fitApiOptionsToDial'
 import { SLEEP_MOON_FILL } from './sleepDurationConfig'
+import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 
 function matchSleepHours(text: string): number | null {
   const normalized = text.toLowerCase()
@@ -48,6 +49,7 @@ function sleepDisplayLabel(label: string, hours: number | null): string {
 export function LifestyleSleepDurationQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -55,6 +57,7 @@ export function LifestyleSleepDurationQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -103,7 +106,7 @@ export function LifestyleSleepDurationQuestion({
   return (
     <div className="flex w-full flex-col gap-8">
       <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
-        <p>{questionText}</p>
+        <McqQuestionCopy text={questionText} subText={subText} />
       </LifestyleHabitsQuestionHeader>
 
       <SleepDurationMeter
