@@ -1,6 +1,7 @@
 import {
   getOptionLabel,
   getOptionValue,
+  type QuestionnaireOption,
   type QuestionnaireQuestion,
   type QuestionnaireResponseItem,
 } from '../../api/questionnaire'

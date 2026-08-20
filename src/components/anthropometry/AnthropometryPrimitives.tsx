@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import infoIcon from '../../assets/family-history/info-icon.svg'
 
