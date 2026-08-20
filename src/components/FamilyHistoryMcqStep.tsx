@@ -321,7 +321,8 @@ function MultiSelectChipQuestion({
                 <input
                   type="text"
                   value={otherText}
-                  onChange={(event) => onOtherTextChange(event.target.value)}
+                  maxLength={75}
+                  onChange={(event) => onOtherTextChange(event.target.value.slice(0, 75))}
                   placeholder="Please specify"
                   className="ml-[22px] w-[calc(100%-22px)] border-0 border-b border-[rgba(255,255,255,0.35)] bg-transparent py-0.5 text-[16px] font-light leading-6 text-white outline-none placeholder:text-[#9a9a9a]"
                   aria-label="Please specify other condition"

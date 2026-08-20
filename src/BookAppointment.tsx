@@ -73,7 +73,7 @@ const ENFORCE_REQUIRED_FIELDS = true
 const NAME_REGEX = /^[A-Za-z]+(?:[ .'-]+[A-Za-z]+)*$/
 const PHONE_REGEX = /^[6-9]\d{9}$/
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
-const AGE_REGEX = /^(?:[1-9]|[1-9]\d)$/
+const AGE_REGEX = /^(?:1[89]|[2-9]\d)$/
 const sanitizeName = (value: string) => value.replace(/[^A-Za-z .'-]/g, '').replace(/\s+/g, ' ')
 const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
@@ -298,7 +298,7 @@ export default function BookAppointment() {
       return
     }
     if (!AGE_REGEX.test(trimmedAge)) {
-      logClientError('Enter a valid age between 1 and 99.')
+      logClientError('Enter a valid age between 18 and 99.')
       return
     }
     if (!form.gender) {
@@ -423,7 +423,7 @@ export default function BookAppointment() {
         return
       }
       if (!AGE_REGEX.test(trimmedAge) || !Number.isFinite(safeAge)) {
-        logClientError('Enter a valid age between 1 and 99.')
+        logClientError('Enter a valid age between 18 and 99.')
         return
       }
       if (!form.appointmentDate) {
@@ -1084,7 +1084,8 @@ function PersonalStep({
           className={mobileFieldInput}
           inputMode="numeric"
           placeholder="Age"
-          pattern="[1-9][0-9]?"
+          pattern="(?:1[89]|[2-9][0-9])"
+          title="Age must be between 18 and 99"
           maxLength={2}
           value={form.age}
           onChange={(e) => update('age', sanitizeAge(e.target.value))}

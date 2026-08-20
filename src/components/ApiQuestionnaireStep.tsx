@@ -824,11 +824,16 @@ export function ApiQuestionnaireStep({
                             type="text"
                             value={otherText}
                             disabled={question.is_read_only || isSaving}
+                            maxLength={theme === 'family' ? 75 : undefined}
                             onChange={(event) => {
                               setSaveError('')
+                              const nextValue =
+                                theme === 'family'
+                                  ? event.target.value.slice(0, 75)
+                                  : event.target.value
                               setAnswers((prev) => ({
                                 ...prev,
-                                [otherFollowUp.question_id]: event.target.value,
+                                [otherFollowUp.question_id]: nextValue,
                               }))
                             }}
                             placeholder="Please specify"
