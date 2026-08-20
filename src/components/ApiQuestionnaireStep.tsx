@@ -168,6 +168,39 @@ function isAnswered(_question: QuestionnaireQuestion, answer: AnswerValue | unde
   return String(answer).trim().length > 0
 }
 
+/** Wellness priorities is multi-choice for the API — always store/send a list (max 2). */
+function coerceWellnessPrioritiesAnswers(
+  questions: QuestionnaireQuestion[],
+  answers: Record<number, AnswerValue>,
+): Record<number, AnswerValue> {
+  let changed = false
+  const next: Record<number, AnswerValue> = { ...answers }
+
+  for (const question of questions) {
+    if (!isLifestyleWellnessPrioritiesQuestion(question)) continue
+    const existing = next[question.question_id]
+    if (existing == null || existing === '') continue
+
+    const asList = Array.isArray(existing)
+      ? existing.map((item) => String(item ?? '').trim()).filter(Boolean)
+      : typeof existing === 'string' || typeof existing === 'number'
+        ? [String(existing).trim()].filter(Boolean)
+        : []
+
+    const limited = asList.slice(0, 2)
+    if (
+      !Array.isArray(existing) ||
+      existing.length !== limited.length ||
+      existing.some((item, index) => String(item) !== limited[index])
+    ) {
+      changed = true
+      next[question.question_id] = limited
+    }
+  }
+
+  return changed ? next : answers
+}
+
 export function ApiQuestionnaireStep({
   title,
   questions,
@@ -189,14 +222,14 @@ export function ApiQuestionnaireStep({
 }) {
   const [visibleIndex, setVisibleIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>(() =>
-    seedAnswersFromQuestions(questions),
+    coerceWellnessPrioritiesAnswers(questions, seedAnswersFromQuestions(questions)),
   )
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [infoOpen, setInfoOpen] = useState(false)
 
   useEffect(() => {
-    setAnswers(seedAnswersFromQuestions(questions))
+    setAnswers(coerceWellnessPrioritiesAnswers(questions, seedAnswersFromQuestions(questions)))
     setVisibleIndex(0)
     setSaveError('')
     setInfoOpen(false)
@@ -278,10 +311,12 @@ export function ApiQuestionnaireStep({
   const saveCurrentProgress = async () => {
     const answeredThroughIndex = Math.min(visibleIndex, visibleQuestions.length - 1)
     const idsToSave = collectSaveIds(answeredThroughIndex)
-    const responses = buildQuestionnaireResponses(answers, idsToSave)
+    const answersForSave = coerceWellnessPrioritiesAnswers(questions, answers)
+    if (answersForSave !== answers) setAnswers(answersForSave)
+    const responses = buildQuestionnaireResponses(answersForSave, idsToSave)
 
     if (responses.length === 0) {
-      onAnswersChange?.(answers)
+      onAnswersChange?.(answersForSave)
       return
     }
 
@@ -292,7 +327,7 @@ export function ApiQuestionnaireStep({
       categoryId,
       responses,
     )
-    onAnswersChange?.(answers)
+    onAnswersChange?.(answersForSave)
   }
 
   const handleBack = () => {
@@ -325,7 +360,9 @@ export function ApiQuestionnaireStep({
 
       const visibleIds = new Set(collectSaveIds(visibleQuestions.length - 1))
       const pruned: Record<number, AnswerValue> = {}
-      for (const [id, value] of Object.entries(answers)) {
+      for (const [id, value] of Object.entries(
+        coerceWellnessPrioritiesAnswers(questions, answers),
+      )) {
         const questionId = Number(id)
         if (visibleIds.has(questionId)) pruned[questionId] = value
       }
