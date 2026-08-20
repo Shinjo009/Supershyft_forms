@@ -94,17 +94,20 @@ select {
 }
 
 .booking-field-input::placeholder {
-  color: #9a9a9a;
+  color: rgba(211, 211, 211, 0.5);
+  font-size: 14px;
   opacity: 1;
 }
 
 .booking-field-input::-webkit-input-placeholder {
-  color: #9a9a9a;
-  -webkit-text-fill-color: #9a9a9a;
+  color: rgba(211, 211, 211, 0.5);
+  -webkit-text-fill-color: rgba(211, 211, 211, 0.5);
+  font-size: 14px;
   opacity: 1;
 }
 
 .booking-field-input::-moz-placeholder {
-  color: #9a9a9a;
+  color: rgba(211, 211, 211, 0.5);
+  font-size: 14px;
   opacity: 1;
 }

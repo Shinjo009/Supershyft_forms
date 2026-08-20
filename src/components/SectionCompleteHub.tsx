@@ -12,12 +12,16 @@ import {
 import { ContinueButton } from './ContinueButton'
 import { ASSESSMENT_CARD_STACK_CLASS, ASSESSMENT_CONTENT_MAX_CLASS } from './mcq/mcqLayout'
 
-export type SectionCompleteVariant = 'family' | 'lifestyle' | 'nutrition'
+export type SectionCompleteVariant = 'anthropometry' | 'family' | 'lifestyle' | 'nutrition'
 
 const VARIANT_COPY: Record<
   SectionCompleteVariant,
   { title: string; subtitle?: string }
 > = {
+  anthropometry: {
+    title: 'Anthropometry Section Complete!',
+    subtitle: 'Only 3 more sections left',
+  },
   family: {
     title: 'Family Section Complete!',
     subtitle: 'Only 2 more sections left',
@@ -32,6 +36,7 @@ const VARIANT_COPY: Record<
 }
 
 const VARIANT_SUCCESS_GIF: Record<SectionCompleteVariant, string> = {
+  anthropometry: sectionSuccessGif,
   family: sectionSuccessGif,
   lifestyle: lifestyleSuccessGif,
   nutrition: nutritionSuccessGif,
@@ -87,7 +92,7 @@ export function SectionCompleteHub({
           </div>
         </div>
 
-        <div className={ASSESSMENT_CARD_STACK_CLASS}>
+        <div className={`${ASSESSMENT_CARD_STACK_CLASS} ${categories.length >= 4 ? '!gap-3' : ''}`}>
           {categories.map((category) => {
             const completed = isCategoryCompleted(category, completedCategoryIds)
             const featured = !completed && category.category_id === nextIncompleteId

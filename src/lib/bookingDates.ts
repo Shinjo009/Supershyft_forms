@@ -46,13 +46,6 @@ export function clampBookingDate(iso: string, bounds = getBookingDateBounds()): 
 export const BOOKING_CITIES = ['Pune', 'Bangalore', 'Gurugram', 'Hyderabad'] as const
 export type BookingCity = (typeof BOOKING_CITIES)[number]
 
-export const BOOKING_DEPARTMENTS = [
-  'Department 1',
-  'Department 2',
-  'Department 3',
-  'Department 4',
-] as const
-
 export const CITY_LOCATION: Record<BookingCity, { state: string; pincode: string }> = {
   Pune: { state: 'Maharashtra', pincode: '411001' },
   Bangalore: { state: 'Karnataka', pincode: '560001' },

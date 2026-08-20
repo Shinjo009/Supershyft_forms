@@ -67,9 +67,11 @@ export function Dropdown({
         onClick={() => setIsOpen((open) => !open)}
         className={`${triggerClass} ${isOpen ? 'border-[#4b8d83]' : ''}`}
       >
-        <span className={`truncate ${value ? 'text-[#cccccc]' : 'text-[#9a9a9a]'}`}>{label}</span>
+        <span className={`truncate ${value ? 'text-[#cccccc]' : 'text-[14px] text-[rgba(211,211,211,0.5)]'}`}>
+          {label}
+        </span>
         <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
-          <ChevronDown className="size-4 shrink-0 text-[#9a9a9a]" />
+          <ChevronDown className="size-4 shrink-0 text-[rgba(211,211,211,0.5)]" />
         </motion.div>
       </button>
 

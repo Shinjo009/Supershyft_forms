@@ -11,7 +11,6 @@ export type FormData = {
   pincode: string
   city: string
   state: string
-  department: string
   doctorConsultation: '' | 'yes' | 'no'
   eyeConsultation: '' | 'yes' | 'no'
   relation: string
@@ -35,7 +34,6 @@ export const defaultFormData: FormData = {
   pincode: '',
   city: '',
   state: '',
-  department: '',
   doctorConsultation: '',
   eyeConsultation: '',
   relation: 'spouse',

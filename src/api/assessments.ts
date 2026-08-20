@@ -30,9 +30,13 @@ type AssessmentStatusResponse = {
   data?: AssessmentCategoryStatus[]
 }
 
-const EXCLUDED_CATEGORY_KEYS = new Set(['anthropometry', 'health_vitals', 'vitals'])
+const EXCLUDED_CATEGORY_KEYS = new Set(['health_vitals', 'vitals'])
+
+const CATEGORY_UI_ORDER = ['anthro', 'family', 'lifestyle', 'nutrition'] as const
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  anthropometry:
+    'Your measurements power our AI to generate accurate metabolic and wellness scores.',
   family_history:
     "Knowing your family's health patterns helps us predict risks more accurately.",
   lifestyle_habits:
@@ -49,6 +53,22 @@ export function normalizeCategoryKey(categoryKey: string): string {
   return String(categoryKey || '')
     .trim()
     .toLowerCase()
+}
+
+export function isAnthropometryCategory(categoryKey: string): boolean {
+  return normalizeCategoryKey(categoryKey).includes('anthro')
+}
+
+export function sortAssessmentCategoriesForUi(
+  categories: AssessmentCategoryStatus[],
+): AssessmentCategoryStatus[] {
+  return [...categories].sort((a, b) => {
+    const rank = (key: string) => {
+      const index = CATEGORY_UI_ORDER.findIndex((part) => normalizeCategoryKey(key).includes(part))
+      return index === -1 ? 99 : index
+    }
+    return rank(a.category_key) - rank(b.category_key)
+  })
 }
 
 export function isCategoryCompleted(
@@ -212,12 +232,14 @@ export async function submitCompletedAssessmentFlow(
 export function filterAssessmentCategoriesForUi(
   categories: AssessmentCategoryStatus[],
 ): AssessmentCategoryStatus[] {
-  return categories.filter((category) => {
-    const key = String(category.category_key || '')
-      .trim()
-      .toLowerCase()
-    return key.length > 0 && !EXCLUDED_CATEGORY_KEYS.has(key)
-  })
+  return sortAssessmentCategoriesForUi(
+    categories.filter((category) => {
+      const key = String(category.category_key || '')
+        .trim()
+        .toLowerCase()
+      return key.length > 0 && !EXCLUDED_CATEGORY_KEYS.has(key)
+    }),
+  )
 }
 
 export async function listMyAssessments(accessToken: string): Promise<AssessmentRow[]> {
@@ -256,20 +278,27 @@ export async function loadAssessmentCategoriesForStep2(
         {
           id: 1,
           category_id: 1,
-          category_key: 'family_history',
-          display_name: 'Family History',
+          category_key: 'anthropometry',
+          display_name: 'Anthropometry',
           status: 'pending',
         },
         {
           id: 2,
           category_id: 2,
-          category_key: 'lifestyle_habits',
-          display_name: 'Lifestyle & Habits',
+          category_key: 'family_history',
+          display_name: 'Family History',
           status: 'pending',
         },
         {
           id: 3,
           category_id: 3,
+          category_key: 'lifestyle_habits',
+          display_name: 'Lifestyle & Habits',
+          status: 'pending',
+        },
+        {
+          id: 4,
+          category_id: 4,
           category_key: 'nutrition_log',
           display_name: 'Nutrition Log',
           status: 'pending',

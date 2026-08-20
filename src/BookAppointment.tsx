@@ -5,6 +5,7 @@ import {
   Calendar,
   Clock,
   Eye,
+  Hash,
   Mail,
   MapPin,
   Mars,
@@ -15,7 +16,6 @@ import {
 import { ContinueButton } from './components/ContinueButton'
 import {
   BOOKING_CITIES,
-  BOOKING_DEPARTMENTS,
   CITY_LOCATION,
   formatShortBookingDate,
   isBookingCity,
@@ -37,6 +37,7 @@ import {
 import { resolveEngagementCode } from './lib/engagementCode'
 import { resendBookingOtp, startBookingOtpFlow, verifyBookingOtp } from './api/otp'
 import {
+  isAnthropometryCategory,
   isCategoryCompleted,
   loadAssessmentCategoriesForStep2,
   normalizeCategoryKey,
@@ -45,6 +46,7 @@ import {
 } from './api/assessments'
 import {
   getCategoryQuestionnaire,
+  submitQuestionnaireResponses,
   type QuestionnaireQuestion,
 } from './api/questionnaire'
 import { getAccessToken } from './lib/authStorage'
@@ -53,10 +55,16 @@ import { applyAnswersToQuestions, type AnswerValue } from './lib/questionnaireVi
 import { getMockQuestionnaireQuestions } from './data/mockApiQuestionnaires'
 /** Validate booking fields with the input regexes before continuing. */
 const ENFORCE_REQUIRED_FIELDS = true
-import { PageBackdrop } from './components/PageBackdrop'
+import { ANTHRO_PAGE_BACKGROUND, PageBackdrop } from './components/PageBackdrop'
 import { Stepper } from './components'
 import { defaultFormData, type FormData } from './types'
 import { ApiQuestionnaireStep } from './components/ApiQuestionnaireStep'
+import { AnthropometryStep } from './components/anthropometry/AnthropometryStep'
+import {
+  buildAnthropometryResponses,
+  type AnthropometryFollowupValues,
+  type AnthropometryPrimaryValues,
+} from './components/anthropometry/anthropometryConfig'
 import { HealthAssessmentStep } from './components/HealthAssessmentStep'
 import {
   SectionCompleteHub,
@@ -72,6 +80,7 @@ import nutritionEndBackgroundSvg from './assets/nutritionend.svg'
 import nutritionLogBackgroundSvg from './assets/nutritionlogstart.svg'
 import familyHistoryBackgroundSvg from './assets/family history.svg'
 import lifestyleHabitsBackgroundSvg from './assets/lifestyle-habits/background.svg'
+import superShyftLogo from './assets/SuperShyft - Logo [Final]-03 7 (1).svg'
 
 function mergeQuestionnaireQuestions(
   previous: QuestionnaireQuestion[] | undefined,
@@ -118,6 +127,7 @@ const sanitizeName = (value: string) => value.replace(/[^A-Za-z\s]/g, '').replac
 const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
 const sanitizeEmail = (value: string) => value.replace(/\s/g, '')
+const sanitizeEmployeeId = (value: string) => value.replace(/\s/g, '').slice(0, 40)
 const generateParticipantId = (phone: string) => `HRM${phone || String(Date.now()).slice(-10)}`
 const BOOK_APPOINTMENT_ERROR_EVENT = 'book-appointment:error'
 const logClientError = (message: string) => {
@@ -144,7 +154,7 @@ function toApiTimeSlot(slot: string): string {
 }
 
 function formatAddressForApi(form: FormData): string {
-  return [form.department, form.city].map((part) => part.trim()).filter(Boolean).join(', ')
+  return form.city.trim()
 }
 
 type IconType = React.ComponentType<{ className?: string; strokeWidth?: number }>
@@ -347,8 +357,8 @@ export default function BookAppointment() {
         logClientError('Please select a city.')
         return
       }
-      if (!form.department.trim()) {
-        logClientError('Please select a department.')
+      if (!form.employeeId.trim()) {
+        logClientError('Employee ID is required.')
         return
       }
       if (!form.doctorConsultation) {
@@ -489,7 +499,7 @@ export default function BookAppointment() {
     const trimmedAge = form.age.trim()
     const parsedAge = Number.parseInt(form.age, 10)
     const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
-    const participantId = generateParticipantId(trimmedPhone)
+    const participantId = form.employeeId.trim() || generateParticipantId(trimmedPhone)
     const cityMeta = isBookingCity(form.city) ? CITY_LOCATION[form.city] : null
     const apiAddress = formatAddressForApi(form)
     const apiPincode = form.pincode.trim() || cityMeta?.pincode || ''
@@ -525,8 +535,8 @@ export default function BookAppointment() {
         logClientError('Please select a city.')
         return
       }
-      if (!form.department.trim()) {
-        logClientError('Please select a department.')
+      if (!form.employeeId.trim()) {
+        logClientError('Employee ID is required.')
         return
       }
       if (!form.appointmentDate || !getAllBookableDates(engagementSchedule).includes(form.appointmentDate)) {
@@ -604,7 +614,6 @@ export default function BookAppointment() {
       }
 
       await onboardUserForEngagement(payload)
-      setForm((current) => ({ ...current, employeeId: participantId }))
       setStep(5)
     } catch (error) {
       logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
@@ -614,6 +623,7 @@ export default function BookAppointment() {
   }
 
   const hubStepForVariant = (variant: SectionCompleteVariant) => {
+    if (variant === 'anthropometry') return 9
     if (variant === 'lifestyle') return 10
     if (variant === 'nutrition') return 12
     return 8
@@ -621,14 +631,9 @@ export default function BookAppointment() {
 
   const variantForCategory = (category: AssessmentCategoryStatus): SectionCompleteVariant => {
     const key = normalizeCategoryKey(category.category_key)
+    if (key.includes('anthro')) return 'anthropometry'
     if (key.includes('lifestyle')) return 'lifestyle'
     if (key.includes('nutrition')) return 'nutrition'
-    return 'family'
-  }
-
-  const variantForHubStep = (hubStep: number): SectionCompleteVariant => {
-    if (hubStep >= 12) return 'nutrition'
-    if (hubStep >= 10) return 'lifestyle'
     return 'family'
   }
 
@@ -703,7 +708,7 @@ export default function BookAppointment() {
     setLoadingCategoryId(categoryId)
     const returnStep = options?.returnStep ?? hubStepForVariant(hubVariant)
     setQuestionnaireReturnStep(returnStep)
-    if (returnStep === 8 || returnStep === 10 || returnStep === 12) {
+    if (returnStep === 8 || returnStep === 9 || returnStep === 10 || returnStep === 12) {
       setHighestHubStep((prev) => Math.max(prev, returnStep))
     }
 
@@ -718,7 +723,7 @@ export default function BookAppointment() {
       // Frontend-only: use API-shaped mock questions so we can redesign layouts one-by-one.
       if (isFrontendOnly()) {
         const questions = getMockQuestionnaireQuestions(category.category_key)
-        if (questions.length === 0) {
+        if (questions.length === 0 && !isAnthropometryCategory(category.category_key)) {
           throw new Error('No mock questions available for this category yet.')
         }
         beginCategory(questions)
@@ -738,6 +743,10 @@ export default function BookAppointment() {
       )
       const questions = questionnaire.questions
       if (!Array.isArray(questions) || questions.length === 0) {
+        if (isAnthropometryCategory(category.category_key)) {
+          beginCategory([])
+          return
+        }
         if (cachedQuestions?.length) {
           beginCategory(cachedQuestions)
           return
@@ -794,10 +803,51 @@ export default function BookAppointment() {
 
     const variant = variantForCategory(activeCategory)
     const completedHubStep = hubStepForVariant(variant)
-    const nextHubStep = Math.max(highestHubStep, questionnaireReturnStep, completedHubStep)
-    setHighestHubStep(nextHubStep)
-    setHubVariant(variantForHubStep(nextHubStep))
-    setStep(nextHubStep)
+    setHighestHubStep((prev) => Math.max(prev, questionnaireReturnStep, completedHubStep))
+    setHubVariant(variant)
+    setStep(completedHubStep)
+  }
+
+  const handleAnthropometryComplete = async (payload: {
+    primary: AnthropometryPrimaryValues
+    followup: AnthropometryFollowupValues
+  }) => {
+    if (!activeCategory) {
+      setHubVariant('anthropometry')
+      setStep(9)
+      return
+    }
+
+    const categoryId = Number(activeCategory.category_id)
+    const responses = buildAnthropometryResponses(
+      categoryQuestions,
+      payload.primary,
+      payload.followup,
+    )
+
+    if (assessmentInstanceId && responses.length > 0) {
+      try {
+        const accessToken = getAccessToken()
+        await submitQuestionnaireResponses(
+          accessToken,
+          assessmentInstanceId,
+          categoryId,
+          responses,
+        )
+      } catch (error) {
+        console.warn(
+          '[assessment] anthropometry submit reported an error; continuing anyway',
+          error instanceof Error ? error.message : error,
+        )
+      }
+    }
+
+    setCompletedCategoryIds((prev) =>
+      prev.includes(categoryId) ? prev : [...prev, categoryId],
+    )
+    setHighestHubStep((prev) => Math.max(prev, questionnaireReturnStep, 9))
+    setHubVariant('anthropometry')
+    setStep(9)
   }
 
   const handleSubmitCompletedAssessment = async () => {
@@ -834,9 +884,9 @@ export default function BookAppointment() {
   const mobileScreenTitle = 'Book Appointment'
 
   const showBack = step > 1 && step !== 5 && step !== 13
-  const hideGlobalContinue = step === 2 || step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 10 || step === 12 || step === 13
+  const hideGlobalContinue = step === 2 || step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12 || step === 13
   const hideStepper = step >= 5
-  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 10 || step === 12
+  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12
   const confirmStepperBorder = step === 4
 
   const handleStepContinue = () => {
@@ -848,15 +898,17 @@ export default function BookAppointment() {
 
   const isQuestionnaireFlow = step >= 6
   const activeCategoryKey = normalizeCategoryKey(activeCategory?.category_key || '')
+  const isAnthroActive = isAnthropometryCategory(activeCategoryKey)
   const questionnaireBackground = activeCategoryKey.includes('lifestyle')
     ? lifestyleHabitsBackgroundSvg
     : activeCategoryKey.includes('nutrition')
       ? nutritionLogBackgroundSvg
       : familyHistoryBackgroundSvg
-  const questionnaireWallpaper = isQuestionnaireFlow
+  const isAnthroSection = step === 6 || (step === 7 && isAnthroActive)
+  const questionnaireWallpaper = isQuestionnaireFlow && !isAnthroSection
     ? step === 13
       ? lastPageBackgroundSvg
-      : step === 6 || step === 8
+      : step === 6 || step === 8 || step === 9
         ? backgroundAssessmentSvg
         : step === 10
           ? nutritionEndBackgroundSvg
@@ -868,7 +920,11 @@ export default function BookAppointment() {
     : undefined
 
   return (
-    <PageBackdrop wide={step <= 4} wallpaperSrc={questionnaireWallpaper}>
+    <PageBackdrop
+      wide={step <= 4}
+      wallpaperSrc={questionnaireWallpaper}
+      cssWallpaper={isAnthroSection ? ANTHRO_PAGE_BACKGROUND : undefined}
+    >
       <div className="flex h-full min-w-0 flex-col">
         {/* Header — Figma: p-20px */}
         {hideMainHeader ? null : (
@@ -885,7 +941,13 @@ export default function BookAppointment() {
           ) : (
             <span className="size-8" aria-hidden />
           )}
-          <h1 className="text-center text-[20px] font-semibold leading-6 text-white">
+          <h1 className="flex items-center justify-center gap-4 overflow-visible text-center text-[20px] font-semibold leading-6 text-white">
+            <img
+              src={superShyftLogo}
+              alt=""
+              className="h-10 w-10 shrink-0 object-contain"
+              aria-hidden
+            />
             {mobileScreenTitle}
           </h1>
           <span className="size-8" aria-hidden />
@@ -919,7 +981,7 @@ export default function BookAppointment() {
           className={`flex min-h-0 min-w-0 flex-1 flex-col ${
             step === 5
               ? 'flex min-h-0 min-w-0 flex-1 flex-col justify-between px-6 pb-6 pt-4'
-              : step === 6 || step === 7 || step === 8 || step === 10 || step === 12 || step === 13
+              : step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12 || step === 13
                 ? 'px-0 pb-0 pt-0'
                 : 'px-6 pb-4 pt-8'
           }`}
@@ -928,7 +990,7 @@ export default function BookAppointment() {
             className={
               step === 6 || step === 7
                 ? 'min-h-0 min-w-0 flex-1 overflow-hidden'
-                : step === 5 || step === 8 || step === 10 || step === 12
+                : step === 5 || step === 8 || step === 9 || step === 10 || step === 12
                   ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
                   : 'min-h-0 min-w-0 flex-1 overflow-x-visible overflow-y-auto px-2 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
             }
@@ -982,7 +1044,14 @@ export default function BookAppointment() {
                 onStartAssessment={handleStartAssessment}
               />
             )}
-            {step === 7 && activeCategory && categoryQuestions.length > 0 ? (
+            {step === 7 && activeCategory && isAnthroActive ? (
+              <AnthropometryStep
+                questions={categoryQuestions}
+                onBack={() => setStep(Math.max(highestHubStep, questionnaireReturnStep))}
+                onComplete={handleAnthropometryComplete}
+              />
+            ) : null}
+            {step === 7 && activeCategory && !isAnthroActive && categoryQuestions.length > 0 ? (
               <ApiQuestionnaireStep
                 key={Number(activeCategory.category_id)}
                 title={activeCategory.display_name || 'Assessment'}
@@ -1005,9 +1074,9 @@ export default function BookAppointment() {
                 onComplete={handleCategoryQuestionnaireComplete}
               />
             ) : null}
-            {(step === 8 || step === 10 || step === 12) && (
+            {(step === 8 || step === 9 || step === 10 || step === 12) && (
               <SectionCompleteHub
-                variant={step === 8 ? 'family' : step === 10 ? 'lifestyle' : 'nutrition'}
+                variant={hubVariant}
                 categories={assessmentCategories}
                 completedCategoryIds={completedCategoryIds}
                 isLoadingCategoryId={loadingCategoryId}
@@ -1015,7 +1084,7 @@ export default function BookAppointment() {
                 onSelectCategory={(category) =>
                   handleLoadCategory(category, { returnStep: step })
                 }
-                onContinue={step === 12 ? handleSubmitCompletedAssessment : undefined}
+                onContinue={handleSubmitCompletedAssessment}
               />
             )}
             {step === 13 && (
@@ -1209,7 +1278,7 @@ function PersonalStep({
               update('appointmentTime', '')
             }}
             className={[
-              'flex flex-1 origin-center items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+              'flex flex-1 origin-center items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
               form.gender === 'male'
                 ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
                 : 'bg-white/5 text-[#999]',
@@ -1229,7 +1298,7 @@ function PersonalStep({
               update('appointmentTime', '')
             }}
             className={[
-              'flex flex-1 origin-center items-center justify-center gap-2.5 rounded-full px-2.5 py-1 text-[12px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+              'flex flex-1 origin-center items-center justify-center gap-2.5 rounded-full px-2.5 py-1 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
               form.gender === 'female'
                 ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
                 : 'bg-white/5 text-[#999]',
@@ -1252,23 +1321,24 @@ function PersonalStep({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(Building2, 'Department', undefined, isMissing(form.department))}
-        <Dropdown
-          value={form.department}
-          placeholder="Select department"
-          options={BOOKING_DEPARTMENTS}
-          onChange={(value) => update('department', value)}
+        {labelRow(Hash, 'Employee ID', undefined, isMissing(form.employeeId))}
+        <input
+          className={mobileFieldInput}
+          placeholder="Employee ID"
+          autoComplete="off"
+          value={form.employeeId}
+          onChange={(e) => update('employeeId', sanitizeEmployeeId(e.target.value))}
         />
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(User, 'Do you want complimentary doctor consultation?', undefined, isMissingDoctorConsultation)}
+        {labelRow(User, 'Do you want doctor consultation? (2nd week of Sept)', undefined, isMissingDoctorConsultation)}
         <div className="flex h-10 gap-6 overflow-visible">
           <button
             type="button"
             onClick={() => update('doctorConsultation', 'yes')}
             className={[
-              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[12px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
               form.doctorConsultation === 'yes'
                 ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
                 : 'bg-white/5 text-[#999]',
@@ -1280,7 +1350,7 @@ function PersonalStep({
             type="button"
             onClick={() => update('doctorConsultation', 'no')}
             className={[
-              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[12px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
               form.doctorConsultation === 'no'
                 ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
                 : 'bg-white/5 text-[#999]',
@@ -1292,13 +1362,13 @@ function PersonalStep({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(Eye, 'Do you want complimentary eye consultation?', undefined, isMissingEyeConsultation)}
+        {labelRow(Eye, 'Do you want eye consultation? (2nd week of Sept)', undefined, isMissingEyeConsultation)}
         <div className="flex h-10 gap-6 overflow-visible">
           <button
             type="button"
             onClick={() => update('eyeConsultation', 'yes')}
             className={[
-              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[12px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
               form.eyeConsultation === 'yes'
                 ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
                 : 'bg-white/5 text-[#999]',
@@ -1310,7 +1380,7 @@ function PersonalStep({
             type="button"
             onClick={() => update('eyeConsultation', 'no')}
             className={[
-              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[12px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
               form.eyeConsultation === 'no'
                 ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
                 : 'bg-white/5 text-[#999]',
@@ -1413,7 +1483,7 @@ function MemberSummary({
         <SummaryItem Icon={Calendar} label={member.age ? `${member.age} Years` : '—'} dense={dense} />
         <SummaryItem Icon={MapPin} label={member.city || '—'} dense={dense} />
         <div className="col-span-2">
-          <SummaryItem Icon={Building2} label={member.department || '—'} dense={dense} />
+          <SummaryItem Icon={Hash} label={member.employeeId || '—'} dense={dense} />
         </div>
         <div className="col-span-2">
           <SummaryItem Icon={Mail} label={member.email || '—'} dense={dense} />

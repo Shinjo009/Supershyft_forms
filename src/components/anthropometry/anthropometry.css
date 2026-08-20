@@ -1,0 +1,905 @@
+/* Picker + info-popup styles — copied from HealthAssessmentPage so scroll/GIF match production. */
+
+.ndq-anthro__box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  width: 100%;
+  min-width: 0;
+  border-radius: 16px;
+  border: 0.838px solid rgba(221, 219, 219, 0.1);
+  background: rgba(4, 251, 206, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.ndq-anthro__height-box,
+.ndq-anthro__weight-box,
+.ndq-anthro__waist-box,
+.ndq-anthro__hip-box {
+  height: 144px;
+}
+
+.ndq-anthro__height-box,
+.ndq-anthro__waist-box,
+.ndq-anthro__hip-box {
+  touch-action: none;
+}
+
+.ndq-anthro__height-box {
+  padding: 28px 16px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.ndq-anthro__weight-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 16px 10px;
+}
+
+.ndq-anthro__waist-box,
+.ndq-anthro__hip-box {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ndq-anthro__fat-box {
+  height: 96px;
+  padding: 14px 11px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ndq-anthro__unit-wrap {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
+
+.ndq-anthro__unit,
+.ndq-anthro__unit-option {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 300;
+  font-style: normal;
+  letter-spacing: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ndq-anthro__unit {
+  display: inline-flex;
+  min-height: 18px;
+  padding: 4px 8px;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  background: rgba(136, 136, 136, 0.2);
+  color: #fff;
+  border: 0.1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+}
+
+.ndq-anthro__unit-label {
+  font: inherit;
+}
+
+.ndq-anthro__unit-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  display: flex;
+  min-width: 100%;
+  width: max-content;
+  padding: 4px 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  background: rgba(136, 136, 136, 0.2);
+  border: none;
+  border-radius: 8px;
+  list-style: none;
+  margin: 0;
+  box-sizing: border-box;
+  z-index: 20;
+}
+
+.ndq-anthro__unit-menu li {
+  width: 100%;
+}
+
+.ndq-anthro__unit-option {
+  display: block;
+  width: 100%;
+  padding: 2px 0;
+  background: none;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  text-align: center;
+}
+
+.ndq-anthro__unit-option.is-active {
+  color: #fff;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.ndq-anthro__faded {
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.ndq-anthro__faded--inline {
+  min-width: 24px;
+}
+
+.ndq-anthro__faded--near {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.ndq-anthro__faded--far {
+  font-size: 16px;
+}
+
+.ndq-anthro__row-centered,
+.ndq-anthro__h-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ndq-anthro__h-row {
+  justify-content: space-evenly;
+}
+
+.ndq-anthro__arrow-wrap {
+  width: 13px;
+  height: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ndq-anthro__selected-box {
+  display: inline-flex;
+  padding: 8px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  box-sizing: border-box;
+}
+
+.ndq-anthro__selected-box--weight {
+  position: absolute;
+  left: 50%;
+  top: 55px;
+  transform: translateX(-50%);
+  width: 64px;
+  min-width: 64px;
+}
+
+.ndq-anthro__selected-value,
+.ndq-anthro__height-dual-input,
+.ndq-anthro__fat-value {
+  color: #fff;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.ndq-anthro__fat-value {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.ndq-anthro__weight-dial-stack {
+  position: relative;
+  width: 100%;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ndq-anthro__weight-dial-display {
+  color: #fff;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 25.38px;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.ndq-anthro__weight-dial-display--empty {
+  color: #bbb;
+  font-weight: 400;
+}
+
+.ndq-anthro__weight-dial-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: text;
+  color: transparent;
+  caret-color: #bbb;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 24px !important;
+  font-style: normal;
+  font-weight: 700 !important;
+  line-height: 25.38px;
+  letter-spacing: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.ndq-anthro__weight-dial-input--empty {
+  font-weight: 400 !important;
+  caret-color: #bbb;
+}
+
+.ndq-anthro__weight-dial-input::-webkit-outer-spin-button,
+.ndq-anthro__weight-dial-input::-webkit-inner-spin-button,
+.ndq-anthro__height-dual-input::-webkit-outer-spin-button,
+.ndq-anthro__height-dual-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ndq-anthro__dial {
+  display: block;
+  width: min(100%, 240px);
+  height: auto;
+  max-height: 120px;
+  margin: 2px auto 0;
+  object-fit: contain;
+}
+
+.ndq-anthro__indicator {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 25px;
+}
+
+.ndq-anthro__indicator-needle {
+  transition: transform 1600ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.ndq-anthro__height-dual-boxes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ndq-anthro__selected-box--height-dual {
+  position: relative;
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  padding: 8px;
+}
+
+.ndq-anthro__height-dual-scroll {
+  touch-action: none;
+}
+
+.ndq-anthro__height-dual-input {
+  width: 100%;
+  height: 100%;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #fff;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 24px !important;
+  font-style: normal;
+  font-weight: 700 !important;
+  line-height: 24px;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.ndq-anthro__height-dual-mark {
+  position: absolute;
+  left: calc(50% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.ndq-anthro__height-dual-mark--double {
+  left: calc(50% + 7px);
+}
+
+.ndq-anthro__height-dual-faded-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ndq-anthro__height-dual-faded-cell {
+  display: flex;
+  width: 52px;
+  justify-content: center;
+  align-items: center;
+}
+
+.ndq-anthro__question-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0;
+}
+
+.ndq-anthro__info-btn {
+  position: absolute;
+  right: 0;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ndq-anthro__info-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10040;
+  display: flex;
+  justify-content: center;
+}
+
+.ndq-anthro__info-column {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  height: 100%;
+}
+
+@media (min-width: 1024px) {
+  .ndq-anthro__info-column {
+    max-width: 480px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .ndq-anthro__info-column {
+    max-width: 520px;
+  }
+}
+
+.ndq-anthro__info-popup {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  width: 100%;
+  height: 285px;
+  padding: 20px 20px calc(40px + env(safe-area-inset-bottom, 0px));
+  flex-direction: column;
+  align-items: center;
+  border-radius: 24px 24px 0 0;
+  border: 1px solid rgba(153, 153, 153, 0.5);
+  border-bottom: none;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+  box-sizing: border-box;
+  z-index: 10050;
+}
+
+.ndq-anthro__info-handle {
+  width: 50px;
+  height: 1px;
+  background: rgba(204, 204, 204, 0.5);
+  margin-top: -2px;
+}
+
+.ndq-anthro__info-close {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.ndq-anthro__info-gif {
+  width: 200px;
+  height: 200px;
+  margin-top: 18px;
+  aspect-ratio: 1 / 1;
+  background-position: 50%;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.ndq-anthro__fat-slider-wrap {
+  position: relative;
+  width: 100%;
+  height: 32px;
+  overflow: hidden;
+  border-radius: 100px;
+  border: 1px solid #064e3b;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.ndq-anthro__fat-slider-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(32px + (100% - 32px) * var(--fat-progress, 0.6154));
+  border-radius: 100px;
+  background: linear-gradient(90deg, #064e3b 0%, #172554 100%);
+  pointer-events: none;
+}
+
+.ndq-anthro__fat-slider {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  appearance: none;
+  border: none;
+  border-radius: 100px;
+  background: transparent;
+  outline: none;
+}
+
+.ndq-anthro__fat-slider::-webkit-slider-runnable-track {
+  height: 32px;
+  border-radius: 100px;
+  background: transparent;
+}
+
+.ndq-anthro__fat-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 6px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.ndq-anthro__fat-slider::-moz-range-track {
+  height: 32px;
+  border: none;
+  border-radius: 100px;
+  background: transparent;
+}
+
+.ndq-anthro__fat-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.ndq-anthro__required {
+  color: #f5a9a9;
+}
+
+/* Vertical height ruler — Figma scale, inertial scroll */
+
+.ndq-ruler {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 24px;
+  padding: 24px;
+  border-radius: 16px;
+  background: rgba(45, 212, 191, 0.05);
+  outline: 0.84px solid rgba(212, 212, 216, 0.1);
+  outline-offset: -0.84px;
+}
+
+.ndq-ruler__viewport {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: ns-resize;
+  user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: contain;
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 86%, transparent 100%);
+}
+
+.ndq-ruler__track {
+  position: relative;
+  width: 100%;
+  height: 0;
+  will-change: transform;
+}
+
+.ndq-ruler__row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.ndq-ruler__label {
+  width: 28px;
+  flex-shrink: 0;
+  color: #a3a3a3;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.ndq-ruler__label:not(.is-major) {
+  visibility: hidden;
+}
+
+.ndq-ruler__tick {
+  display: block;
+  width: 28px;
+  height: 1px;
+  background: #a3a3a3;
+}
+
+.ndq-ruler__tick.is-mid {
+  width: 36px;
+}
+
+.ndq-ruler__tick.is-major {
+  width: 80px;
+  height: 3px;
+  border-radius: 1px;
+}
+
+.ndq-ruler__center {
+  position: absolute;
+  left: 36px;
+  width: 80px;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.ndq-ruler__hairline {
+  height: 8px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #059669 0%, #22d3ee 100%);
+  box-shadow: 0 0 10px 0 rgba(144, 223, 158, 0.35);
+}
+
+.ndq-ruler__readout {
+  display: flex;
+  width: 8rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ndq-ruler__caret {
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 11px solid #a3a3a3;
+}
+
+.ndq-ruler__value-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.ndq-ruler__value {
+  margin: 0;
+  color: #fff;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 30px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.ndq-ruler__unit {
+  margin: 0;
+  color: #d6d3d1;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* Semi-circular weight gauge — Figma scale, inertial drag */
+
+.ndq-weight {
+  position: relative;
+  width: 100%;
+  padding: 16px 4px 8px;
+  border-radius: 16px;
+  background: rgba(45, 212, 191, 0.05);
+  outline: 0.84px solid rgba(212, 212, 216, 0.1);
+  outline-offset: -0.84px;
+}
+
+.ndq-weight__stage {
+  position: relative;
+  width: 100%;
+}
+
+.ndq-weight__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+}
+
+.ndq-weight__svg:active {
+  cursor: grabbing;
+}
+
+.ndq-weight__readout {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  display: flex;
+  width: 4.5rem;
+  transform: translate(-50%, -50%);
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.ndq-weight__value {
+  margin: 0;
+  color: #fff;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 30px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.ndq-weight__unit {
+  margin: 0;
+  color: #9a9a9a;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.ndq-weight__slider {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Horizontal waist/hip ruler — Figma scale, inertial scroll */
+
+.ndq-hruler {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.ndq-hruler__readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.ndq-hruler__value {
+  margin: 0;
+  color: #fff;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 30px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.ndq-hruler__unit {
+  margin: 0;
+  color: #9a9a9a;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.ndq-hruler__scale {
+  width: 100%;
+  touch-action: none;
+  cursor: ew-resize;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+}
+
+.ndq-hruler__card {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(6, 78, 59, 0.5) 0%, rgba(23, 37, 84, 0.5) 100%);
+}
+
+.ndq-hruler__viewport {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 76px;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.ndq-hruler__track {
+  position: relative;
+  height: 100%;
+  width: 0;
+  will-change: transform;
+}
+
+.ndq-hruler__col {
+  position: absolute;
+  top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.ndq-hruler__tick {
+  display: block;
+  width: 1px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.ndq-hruler__tick.is-major {
+  height: 56px;
+  width: 1.5px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.ndq-hruler__labels {
+  position: relative;
+  height: 22px;
+  margin-top: 8px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ndq-hruler__label {
+  position: absolute;
+  top: 0;
+  color: #9a9a9a;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+  transform: translateX(-50%);
+}
+
+.ndq-hruler__hairline {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 50%;
+  z-index: 2;
+  width: 8px;
+  transform: translateX(-50%);
+  border-radius: 99px;
+  background: #fff;
+  pointer-events: none;
+}
