@@ -622,14 +622,27 @@ export function ApiQuestionnaireStep({
               questionLabel={`Question ${visibleIndex + 1} of ${total}`}
               questionText={question.question_text}
               options={options}
-              selectedValue={selectedValues[0] ?? null}
+              selectedValues={selectedValues}
               onInfoClick={openInfo}
-              onSelect={(value) => {
+              onToggle={(value) => {
                 setSaveError('')
-                setAnswers((prev) => ({
-                  ...prev,
-                  [question.question_id]: value,
-                }))
+                setAnswers((prev) => {
+                  const existing = prev[question.question_id]
+                  const current = Array.isArray(existing)
+                    ? existing.map(String)
+                    : typeof existing === 'string' || typeof existing === 'number'
+                      ? [String(existing)]
+                      : []
+                  const next = current.includes(value)
+                    ? current.filter((item) => item !== value)
+                    : current.length >= 2
+                      ? current
+                      : [...current, value]
+                  return {
+                    ...prev,
+                    [question.question_id]: next,
+                  }
+                })
               }}
             />
           ) : useLifestyleCommitmentLayout ? (

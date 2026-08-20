@@ -260,13 +260,16 @@ function rowsFromSimplePairs(items: PillItem[]): PillRow[] {
  */
 export function LifestyleApiPillGrid({
   options,
-  selectedValue,
+  selectedValue = null,
+  selectedValues,
   onSelect,
   layout = 'pairs',
   showTick = false,
 }: {
   options: QuestionnaireOption[]
-  selectedValue: string | null
+  selectedValue?: string | null
+  /** When set, pills treat selection as multi (includes check). */
+  selectedValues?: string[]
   onSelect: (value: string) => void
   layout?: 'pairs' | 'stack' | 'alcohol' | 'wellness' | 'smoking'
   showTick?: boolean
@@ -283,6 +286,9 @@ export function LifestyleApiPillGrid({
             ? smokingLockedRows(items)
             : rowsFromSimplePairs(items)
 
+  const isSelected = (value: string) =>
+    selectedValues ? selectedValues.includes(value) : selectedValue === value
+
   return (
     <div className="flex w-full flex-col gap-4">
       {rows.map((row, rowIndex) => (
@@ -294,7 +300,7 @@ export function LifestyleApiPillGrid({
             <DesignedPill
               key={item.value}
               label={item.label}
-              selected={selectedValue === item.value}
+              selected={isSelected(item.value)}
               width={row.items.length > 1 ? 'flex' : row.width}
               showTick={showTick}
               onClick={() => onSelect(item.value)}
