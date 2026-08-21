@@ -99,7 +99,7 @@ export function HealthAssessmentStep({
               Health Assessment
             </h2>
             <p className={ASSESSMENT_SUBTITLE_CLASS}>
-              Help our Bio-AI create a more personalized view of your lifestyle and health risks.
+              Help our Bio-AI personalize the view of your lifestyle & health risks.
             </p>
           </div>
 

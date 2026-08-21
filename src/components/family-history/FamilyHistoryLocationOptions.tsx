@@ -17,7 +17,7 @@ const CARD_META: Record<
     image: inlandImg,
     imageTop: '-61px',
     isInland: true,
-    description: 'Along or near the Coast',
+    description: 'Away from the Coastline',
   },
   coastal: {
     image: coastalImg,
@@ -120,7 +120,7 @@ export function FamilyHistoryLocationOptions({
                   {label}
                 </span>
                 {meta?.description ? (
-                  <span className="text-[10px] font-normal leading-[13px] text-white/90">
+                  <span className="text-[10px] font-normal leading-[13px] text-[#D3D3D3] opacity-60">
                     {meta.description}
                   </span>
                 ) : null}

@@ -90,7 +90,7 @@ export const FAMILY_HISTORY_LOCATION_INFO_ITEMS: FamilyHistoryInfoItem[] = [
   },
   {
     term: 'Inland',
-    description: 'Along or near the Coast',
+    description: 'Away from the Coastline',
   },
 ]
 

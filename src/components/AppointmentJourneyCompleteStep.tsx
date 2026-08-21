@@ -29,9 +29,14 @@ export function AppointmentJourneyCompleteStep({
               draggable={false}
               className="mx-auto h-[148px] w-[148px] object-contain"
             />
-            <h2 className="pb-3 text-center text-[18px] font-semibold tracking-[0.2px] text-white">
-              Appointment Booking Confirmed!
-            </h2>
+            <div className="flex w-full flex-col items-center gap-1">
+              <h2 className="text-center text-[18px] font-semibold tracking-[0.2px] text-white">
+                Appointment Booking Confirmed!
+              </h2>
+              <p className="text-center text-xs font-normal leading-5 text-neutral-400 font-['Lato']">
+                Congratulations! Your Bio-AI Test is booked successfully.
+              </p>
+            </div>
           </div>
 
           <div className="flex w-full flex-col items-center gap-6 rounded-xl border border-white/10 bg-white/5 p-[13px] backdrop-blur-[12px]">
@@ -72,7 +77,7 @@ export function AppointmentJourneyCompleteStep({
           showChevron={false}
           onClick={handleDownloadApp}
         >
-          Download the app
+          Install Supershyft
         </ContinueButton>
         <p className="text-center text-[14px] font-medium leading-[22.5px] text-[#999]">OR</p>
         <p className="text-center text-[11px] font-medium leading-[22.5px] text-[#999]">

@@ -852,7 +852,7 @@ export default function BookAppointment() {
   const showBack = step > 1 && step !== 5 && step !== 13
   const hideGlobalContinue = step === 2 || step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12 || step === 13
   const hideStepper = step >= 5
-  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12
+  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12 || step === 13
   const confirmStepperBorder = step === 4
 
   const handleStepContinue = () => {
@@ -1793,7 +1793,7 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
             Slot Confirmed!
           </h2>
           <p className="text-[12px] leading-4 text-[#9a9a9a]">
-            Complete the health assessment to confirm your booking.
+            Congratulations! You have completed the first step.
           </p>
         </div>
       </div>

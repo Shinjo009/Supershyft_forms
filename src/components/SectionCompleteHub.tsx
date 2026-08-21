@@ -16,25 +16,22 @@ export type SectionCompleteVariant = 'anthropometry' | 'family' | 'lifestyle' | 
 
 const VARIANT_COPY: Record<
   SectionCompleteVariant,
-  { title: string; subtitle?: string; keyPart: string }
+  { title: string; keyPart: string }
 > = {
   anthropometry: {
-    title: 'Anthropometry Section Complete',
+    title: 'Anthropometry Section Completed',
     keyPart: 'anthro',
   },
   family: {
-    title: 'Family History Section Complete',
-    subtitle: 'Only 3 more sections left',
+    title: 'Family History Section Completed',
     keyPart: 'family',
   },
   lifestyle: {
-    title: 'Lifestyle & Habits Section Complete',
-    subtitle: 'Only 2 more sections left',
+    title: 'Lifestyle & Habits Section Completed',
     keyPart: 'lifestyle',
   },
   nutrition: {
-    title: 'Nutrition Log Section Complete',
-    subtitle: 'Only 1 more section left',
+    title: 'Nutrition Log Section Completed',
     keyPart: 'nutrition',
   },
 }
@@ -48,7 +45,7 @@ function sectionCompleteTitle(
     normalizeCategoryKey(category.category_key).includes(keyPart),
   )
   const fullName = String(match?.display_name || '').trim()
-  if (fullName) return `${fullName} Section Complete`
+  if (fullName) return `${fullName} Section Completed`
   return VARIANT_COPY[variant].title
 }
 
@@ -132,14 +129,9 @@ export function SectionCompleteHub({
           />
           <div className="flex flex-col items-center gap-1 pb-1">
             <p className={headline.className}>{headline.text}</p>
-            <h2 className="text-center text-[18px] font-semibold tracking-[0.2px] text-white">
+            <h2 className="text-center text-xs font-normal leading-4 text-neutral-400 font-['Lato']">
               {title}
             </h2>
-            {!allComplete && remaining > 0 ? (
-              <p className="text-center text-[12px] leading-4 text-[#9a9a9a]">
-                {remaining === 1 ? 'Only 1 more section left' : `Only ${remaining} more sections left`}
-              </p>
-            ) : null}
           </div>
         </div>
 

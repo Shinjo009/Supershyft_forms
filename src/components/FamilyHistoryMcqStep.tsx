@@ -31,7 +31,7 @@ const LOCATION_OPTIONS: {
     label: 'Inland',
     image: inlandImg,
     imageTop: '-61px',
-    description: 'Along or near the Coast',
+    description: 'Away from the Coastline',
   },
   {
     id: 'coastal',
