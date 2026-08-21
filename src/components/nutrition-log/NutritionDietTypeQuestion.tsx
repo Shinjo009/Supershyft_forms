@@ -50,6 +50,7 @@ function DietPill({
 export function NutritionDietTypeQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -58,6 +59,7 @@ export function NutritionDietTypeQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -66,7 +68,12 @@ export function NutritionDietTypeQuestion({
 }) {
   return (
     <div className="flex w-full flex-col gap-8">
-      <McqQuestionHeader theme="nutrition" questionLabel={questionLabel} onInfoClick={onInfoClick}>
+      <McqQuestionHeader
+        theme="nutrition"
+        questionLabel={questionLabel}
+        onInfoClick={onInfoClick}
+        subText={subText}
+      >
         <p>{questionText}</p>
       </McqQuestionHeader>
 

@@ -20,6 +20,7 @@ export type QuestionnaireQuestion = {
   is_required?: boolean
   is_read_only?: boolean
   help_text?: string | null
+  sub_text?: string | null
   options?: QuestionnaireOption[] | null
   visibility_rules?: {
     match?: string

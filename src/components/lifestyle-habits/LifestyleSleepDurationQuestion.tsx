@@ -48,6 +48,7 @@ function sleepDisplayLabel(label: string, hours: number | null): string {
 export function LifestyleSleepDurationQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -55,6 +56,7 @@ export function LifestyleSleepDurationQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -102,7 +104,11 @@ export function LifestyleSleepDurationQuestion({
 
   return (
     <div className="flex w-full flex-col gap-8">
-      <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
+      <LifestyleHabitsQuestionHeader
+        questionLabel={questionLabel}
+        onInfoClick={onInfoClick}
+        subText={subText}
+      >
         <p>{questionText}</p>
       </LifestyleHabitsQuestionHeader>
 

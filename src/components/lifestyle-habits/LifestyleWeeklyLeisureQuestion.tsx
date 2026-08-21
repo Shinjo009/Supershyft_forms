@@ -88,6 +88,7 @@ const LEISURE_MATCHERS_5 = [
 export function LifestyleWeeklyLeisureQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -95,6 +96,7 @@ export function LifestyleWeeklyLeisureQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -160,7 +162,11 @@ export function LifestyleWeeklyLeisureQuestion({
 
   return (
     <div className="flex w-full flex-col gap-16">
-      <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
+      <LifestyleHabitsQuestionHeader
+        questionLabel={questionLabel}
+        onInfoClick={onInfoClick}
+        subText={subText}
+      >
         <p>{questionText}</p>
       </LifestyleHabitsQuestionHeader>
 

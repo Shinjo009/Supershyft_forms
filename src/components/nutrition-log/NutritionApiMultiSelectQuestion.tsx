@@ -8,6 +8,7 @@ import { NutritionMultiSelectGridOptions } from './NutritionMultiSelectGridOptio
 export function NutritionApiMultiSelectQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValues,
   onToggle,
@@ -17,6 +18,7 @@ export function NutritionApiMultiSelectQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValues: string[]
   onToggle: (value: string) => void
@@ -30,7 +32,12 @@ export function NutritionApiMultiSelectQuestion({
 
   return (
     <div className="flex w-full flex-col gap-8">
-      <McqQuestionHeader theme="nutrition" questionLabel={questionLabel} onInfoClick={onInfoClick}>
+      <McqQuestionHeader
+        theme="nutrition"
+        questionLabel={questionLabel}
+        onInfoClick={onInfoClick}
+        subText={subText}
+      >
         <p>{questionText}</p>
       </McqQuestionHeader>
 

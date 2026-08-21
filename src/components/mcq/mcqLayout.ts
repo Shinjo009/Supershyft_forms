@@ -39,6 +39,10 @@ export const MCQ_PILL_CHIP_CLASS = 'w-[155px] lg:w-[calc(50%-8px)]'
 /** Helper / example line under a question title (! overrides parent text-white) */
 export const MCQ_QUESTION_HINT_CLASS = 'mt-0 text-[12px] !text-[#9a9a9a]'
 
+/** API `sub_text` shown just below the question title */
+export const MCQ_QUESTION_SUBTEXT_CLASS =
+  "mt-1 text-xs font-normal font-['Lato'] tracking-tight text-zinc-400"
+
 /** Solid borders — avoids 0.25/0.5px anti-alias fade by position on dark gradients */
 export const MCQ_PILL_BORDER_IDLE = '#969696'
 export const MCQ_PILL_BORDER_SELECTED = '#d0d0d0'

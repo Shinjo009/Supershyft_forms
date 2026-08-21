@@ -24,6 +24,7 @@ function matchIntensityRank(text: string): number | null {
 export function LifestyleActivityIntensityQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -31,6 +32,7 @@ export function LifestyleActivityIntensityQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -60,7 +62,11 @@ export function LifestyleActivityIntensityQuestion({
 
   return (
     <div className="flex w-full flex-col gap-8">
-      <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
+      <LifestyleHabitsQuestionHeader
+        questionLabel={questionLabel}
+        onInfoClick={onInfoClick}
+        subText={subText}
+      >
         <p>{questionText}</p>
       </LifestyleHabitsQuestionHeader>
 

@@ -65,6 +65,7 @@ function CoffeeIntakeGrid({
 export function NutritionApiPillRowQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValue,
   onSelect,
@@ -73,6 +74,7 @@ export function NutritionApiPillRowQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValue: string | null
   onSelect: (value: string) => void
@@ -83,7 +85,12 @@ export function NutritionApiPillRowQuestion({
 
   return (
     <div className="flex w-full flex-col gap-8">
-      <McqQuestionHeader theme="nutrition" questionLabel={questionLabel} onInfoClick={onInfoClick}>
+      <McqQuestionHeader
+        theme="nutrition"
+        questionLabel={questionLabel}
+        onInfoClick={onInfoClick}
+        subText={subText}
+      >
         <p>{questionText}</p>
       </McqQuestionHeader>
 

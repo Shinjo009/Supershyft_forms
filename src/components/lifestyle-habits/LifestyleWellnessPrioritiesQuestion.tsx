@@ -6,6 +6,7 @@ import { LifestyleApiPillGrid } from './LifestyleApiPillGrid'
 export function LifestyleWellnessPrioritiesQuestion({
   questionLabel,
   questionText,
+  subText,
   options,
   selectedValues,
   onToggle,
@@ -13,6 +14,7 @@ export function LifestyleWellnessPrioritiesQuestion({
 }: {
   questionLabel: string
   questionText: string
+  subText?: string | null
   options: QuestionnaireOption[]
   selectedValues: string[]
   onToggle: (value: string) => void
@@ -22,7 +24,11 @@ export function LifestyleWellnessPrioritiesQuestion({
 
   return (
     <div className="flex w-full flex-col gap-8">
-      <LifestyleHabitsQuestionHeader questionLabel={questionLabel} onInfoClick={onInfoClick}>
+      <LifestyleHabitsQuestionHeader
+        questionLabel={questionLabel}
+        onInfoClick={onInfoClick}
+        subText={subText}
+      >
         <p>{questionText}</p>
       </LifestyleHabitsQuestionHeader>
 

@@ -1,16 +1,19 @@
 import type { ReactNode } from 'react'
 import infoIcon from '../../assets/family-history/info-icon.svg'
+import { QuestionSubText } from '../mcq/QuestionSubText'
 
 /** Figma 5629:14282 — question counter with clickable info icon */
 export function LifestyleHabitsQuestionHeader({
   questionLabel,
   onInfoClick,
   children,
+  subText,
   titleClassName = 'mt-2 text-[16px] leading-normal tracking-[0.08px] text-white',
 }: {
   questionLabel: string
   onInfoClick?: () => void
   children: ReactNode
+  subText?: string | null
   titleClassName?: string
 }) {
   return (
@@ -19,6 +22,7 @@ export function LifestyleHabitsQuestionHeader({
         {questionLabel}
       </p>
       <div className={titleClassName}>{children}</div>
+      <QuestionSubText text={subText} />
       {onInfoClick ? (
         <button
           type="button"
