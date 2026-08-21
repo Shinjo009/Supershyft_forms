@@ -45,7 +45,7 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
   },
   {
     question_id: 103,
-    question_key: 'personal_diagnoses',
+    question_key: 'diagnosed_diseases',
     question_text: 'Are you diagnosed with the following diseases?',
     question_type: 'multi_choice',
     is_required: true,
@@ -60,12 +60,23 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
   },
   {
     question_id: 104,
-    question_key: 'medications',
+    question_key: 'diagnosed_diseases_medications',
     question_text: 'Are you taking medications for the following diseases?',
     question_type: 'multi_choice',
     is_required: true,
     help_text: null,
     sub_text: '(Select multiple or None that apply)',
+    visibility_rules: {
+      match: 'all',
+      conditions: [
+        {
+          type: 'question_answer',
+          operator: 'not_equals',
+          question_key: 'diagnosed_diseases',
+          value: 'none',
+        },
+      ],
+    },
     options: [
       { option_id: 31, option_value: 'type_2_diabetes', display_name: 'Type 2 diabetes' },
       { option_id: 32, option_value: 'fatty_liver', display_name: 'Fatty liver' },
@@ -94,7 +105,7 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
   },
   {
     question_id: 106,
-    question_key: 'personal_diagnoses_other',
+    question_key: 'diagnosed_diseases_other',
     question_text: 'Diagnosed diseases (other)',
     question_type: 'text',
     is_required: false,
@@ -105,7 +116,7 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
         {
           type: 'question_answer',
           operator: 'contains',
-          question_key: 'personal_diagnoses',
+          question_key: 'diagnosed_diseases',
           value: 'other',
         },
       ],
@@ -113,7 +124,7 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
   },
   {
     question_id: 107,
-    question_key: 'medications_other',
+    question_key: 'diagnosed_diseases_medications_other',
     question_text: 'Medications (other)',
     question_type: 'text',
     is_required: false,
@@ -124,7 +135,7 @@ export const MOCK_FAMILY_HISTORY_QUESTIONS: QuestionnaireQuestion[] = [
         {
           type: 'question_answer',
           operator: 'contains',
-          question_key: 'medications',
+          question_key: 'diagnosed_diseases_medications',
           value: 'other',
         },
       ],
@@ -353,14 +364,6 @@ export const MOCK_ANTHROPOMETRY_QUESTIONS: QuestionnaireQuestion[] = [
       { option_id: 41, option_value: 'in', display_name: 'In' },
       { option_id: 42, option_value: 'cm', display_name: 'cm' },
     ],
-  },
-  {
-    question_id: 5,
-    question_key: 'body_fat',
-    question_text: 'What is you body-fat percent ?',
-    question_type: 'scale',
-    is_required: false,
-    options: [{ option_id: 51, option_value: '%', display_name: '%' }],
   },
 ]
 

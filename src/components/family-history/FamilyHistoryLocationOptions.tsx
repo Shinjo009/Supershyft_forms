@@ -17,13 +17,13 @@ const CARD_META: Record<
     image: inlandImg,
     imageTop: '-61px',
     isInland: true,
-    description: 'An area entirely surrounded by land or mountains',
+    description: 'Along or near the Coast',
   },
   coastal: {
     image: coastalImg,
     imageTop: '-65px',
     isInland: false,
-    description: 'An area entirely or partially surrounded by sea',
+    description: 'Along or near the Coast',
   },
 }
 

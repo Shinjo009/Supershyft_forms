@@ -46,7 +46,6 @@ import {
 } from './api/assessments'
 import {
   getCategoryQuestionnaire,
-  submitQuestionnaireResponses,
   type QuestionnaireQuestion,
 } from './api/questionnaire'
 import { getAccessToken } from './lib/authStorage'
@@ -61,7 +60,6 @@ import { defaultFormData, type FormData } from './types'
 import { ApiQuestionnaireStep } from './components/ApiQuestionnaireStep'
 import { AnthropometryStep } from './components/anthropometry/AnthropometryStep'
 import {
-  buildAnthropometryResponses,
   type AnthropometryFollowupValues,
   type AnthropometryPrimaryValues,
 } from './components/anthropometry/anthropometryConfig'
@@ -723,7 +721,7 @@ export default function BookAppointment() {
       // Frontend-only: use API-shaped mock questions so we can redesign layouts one-by-one.
       if (isFrontendOnly()) {
         const questions = getMockQuestionnaireQuestions(category.category_key)
-        if (questions.length === 0 && !isAnthropometryCategory(category.category_key)) {
+        if (questions.length === 0) {
           throw new Error('No mock questions available for this category yet.')
         }
         beginCategory(questions)
@@ -743,10 +741,6 @@ export default function BookAppointment() {
       )
       const questions = questionnaire.questions
       if (!Array.isArray(questions) || questions.length === 0) {
-        if (isAnthropometryCategory(category.category_key)) {
-          beginCategory([])
-          return
-        }
         if (cachedQuestions?.length) {
           beginCategory(cachedQuestions)
           return
@@ -808,7 +802,7 @@ export default function BookAppointment() {
     setStep(completedHubStep)
   }
 
-  const handleAnthropometryComplete = async (payload: {
+  const handleAnthropometryComplete = (_payload: {
     primary: AnthropometryPrimaryValues
     followup: AnthropometryFollowupValues
   }) => {
@@ -819,29 +813,6 @@ export default function BookAppointment() {
     }
 
     const categoryId = Number(activeCategory.category_id)
-    const responses = buildAnthropometryResponses(
-      categoryQuestions,
-      payload.primary,
-      payload.followup,
-    )
-
-    if (assessmentInstanceId && responses.length > 0) {
-      try {
-        const accessToken = getAccessToken()
-        await submitQuestionnaireResponses(
-          accessToken,
-          assessmentInstanceId,
-          categoryId,
-          responses,
-        )
-      } catch (error) {
-        console.warn(
-          '[assessment] anthropometry submit reported an error; continuing anyway',
-          error instanceof Error ? error.message : error,
-        )
-      }
-    }
-
     setCompletedCategoryIds((prev) =>
       prev.includes(categoryId) ? prev : [...prev, categoryId],
     )
@@ -1047,6 +1018,8 @@ export default function BookAppointment() {
             {step === 7 && activeCategory && isAnthroActive ? (
               <AnthropometryStep
                 questions={categoryQuestions}
+                assessmentInstanceId={assessmentInstanceId ?? 0}
+                categoryId={Number(activeCategory.category_id)}
                 onBack={() => setStep(Math.max(highestHubStep, questionnaireReturnStep))}
                 onComplete={handleAnthropometryComplete}
               />

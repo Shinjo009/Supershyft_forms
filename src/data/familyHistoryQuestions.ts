@@ -86,11 +86,11 @@ export const FAMILY_HISTORY_HEALTH_INFO_ITEMS: FamilyHistoryInfoItem[] = [
 export const FAMILY_HISTORY_LOCATION_INFO_ITEMS: FamilyHistoryInfoItem[] = [
   {
     term: 'Coastal',
-    description: 'An area entirely or partially surrounded by sea',
+    description: 'Along or near the Coast',
   },
   {
     term: 'Inland',
-    description: 'An area entirely surrounded by land or mountains',
+    description: 'Along or near the Coast',
   },
 ]
 

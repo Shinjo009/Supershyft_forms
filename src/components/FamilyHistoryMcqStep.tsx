@@ -31,14 +31,14 @@ const LOCATION_OPTIONS: {
     label: 'Inland',
     image: inlandImg,
     imageTop: '-61px',
-    description: 'An area entirely surrounded by land or mountains',
+    description: 'Along or near the Coast',
   },
   {
     id: 'coastal',
     label: 'Coastal',
     image: coastalImg,
     imageTop: '-65px',
-    description: 'An area entirely or partially surrounded by sea',
+    description: 'Along or near the Coast',
   },
 ]
 

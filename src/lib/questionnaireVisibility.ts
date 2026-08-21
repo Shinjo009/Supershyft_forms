@@ -5,6 +5,9 @@ export type VisibilityCondition = {
   type?: string
   operator?: string
   question_key?: string
+  question_id?: number
+  source_question_key?: string
+  source_question_id?: number
   preference_key?: string
   value?: unknown
 }
@@ -21,6 +24,12 @@ function isEmptyAnswer(value: unknown): boolean {
   if (Array.isArray(value)) return value.length === 0
   if (typeof value === 'string' && value.trim() === '') return true
   return false
+}
+
+function normalizeQuestionKey(value: unknown): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
 }
 
 function normalizeRuleText(value: unknown): string {
@@ -59,98 +68,257 @@ function normalizeAnswerForRules(question: QuestionnaireQuestion, answer: unknow
   return normalizePiece(answer)
 }
 
-function matchesOperator(actual: unknown, expected: unknown, operator: string): boolean {
-  const op = String(operator || 'equals').trim().toLowerCase()
+function isNoneSelection(value: unknown): boolean {
+  const token = normalizeRuleText(value)
+  return (
+    token === 'none' ||
+    token === 'no' ||
+    token.startsWith('none_') ||
+    token.includes('none of')
+  )
+}
 
-  if (op === 'equals') {
-    if (Array.isArray(actual)) {
-      return actual.some((item) => normalizeRuleText(item) === normalizeRuleText(expected))
+function optionTokens(option: QuestionnaireOption): string[] {
+  return [getOptionValue(option), getOptionLabel(option), option.option_id]
+    .map((item) => normalizeRuleText(item))
+    .filter(Boolean)
+}
+
+function tokensForValue(value: unknown, question?: QuestionnaireQuestion): Set<string> {
+  const tokens = new Set<string>()
+  const options = Array.isArray(question?.options) ? question.options : []
+
+  const add = (raw: unknown) => {
+    if (raw == null || (typeof raw === 'object' && !Array.isArray(raw))) return
+    const text = normalizeRuleText(raw)
+    if (!text) return
+    tokens.add(text)
+    if (isNoneSelection(text)) tokens.add('none')
+
+    for (const option of options) {
+      const optTokens = optionTokens(option)
+      if (!optTokens.includes(text)) continue
+      for (const token of optTokens) tokens.add(token)
+      if (optTokens.some((token) => isNoneSelection(token))) tokens.add('none')
     }
-    return normalizeRuleText(actual) === normalizeRuleText(expected)
   }
 
-  if (op === 'not_equals') {
-    if (Array.isArray(actual)) {
-      // Unanswered multi → treat as not equal only if we want follow-ups hidden until answered.
-      // Match single-choice behavior: empty is not equal to "0", so follow-up can show until parent answered.
-      // For caffeine_frequency (single), empty !== "0" is true → caffeine_type would show early.
-      // Prefer: unanswered parent fails not_equals for show-when-not-X rules? User said:
-      // "User not selects I do not drink... Then only we need to display"
-      // So we need an answer that is NOT "0". Empty should NOT show the follow-up.
-      if (actual.length === 0) return false
-      return !actual.some((item) => normalizeRuleText(item) === normalizeRuleText(expected))
-    }
-    if (isEmptyAnswer(actual)) return false
-    return normalizeRuleText(actual) !== normalizeRuleText(expected)
+  if (Array.isArray(value)) {
+    for (const item of value) add(item)
+  } else {
+    add(value)
+  }
+  return tokens
+}
+
+function selectionsOverlap(
+  actual: unknown,
+  expected: unknown,
+  question?: QuestionnaireQuestion,
+): boolean {
+  const actualTokens = tokensForValue(actual, question)
+  const expectedTokens = tokensForValue(expected, question)
+  if (actualTokens.size === 0 || expectedTokens.size === 0) return false
+  for (const token of actualTokens) {
+    if (expectedTokens.has(token)) return true
+  }
+  return false
+}
+
+function normalizeOperator(operator: string): string {
+  const raw = String(operator || 'equals')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
+  if (['equals', 'eq', '==', 'is', 'equal'].includes(raw)) return 'equals'
+  if (
+    ['not_equals', 'ne', 'neq', '!=', '<>', 'is_not', 'not_equal', 'does_not_equal'].includes(raw)
+  ) {
+    return 'not_equals'
+  }
+  if (['contains', 'includes', 'has'].includes(raw)) return 'contains'
+  if (['not_contains', 'excludes', 'does_not_contain', 'not_includes'].includes(raw)) {
+    return 'not_contains'
+  }
+  if (['in', 'any_of', 'one_of'].includes(raw)) return 'in'
+  if (['not_in', 'none_of', 'nin'].includes(raw)) return 'not_in'
+  return raw
+}
+
+function matchesOperator(
+  actual: unknown,
+  expected: unknown,
+  operator: string,
+  parentQuestion?: QuestionnaireQuestion,
+): boolean {
+  const op = normalizeOperator(operator)
+  const expectedList = Array.isArray(expected) ? expected : [expected]
+
+  if (op === 'equals') {
+    return selectionsOverlap(actual, expected, parentQuestion)
   }
 
   if (op === 'contains') {
-    if (Array.isArray(actual)) {
-      return actual.some((item) => normalizeRuleText(item) === normalizeRuleText(expected))
+    if (selectionsOverlap(actual, expected, parentQuestion)) return true
+    if (!Array.isArray(actual) && !Array.isArray(expected)) {
+      const needle = normalizeRuleText(expected)
+      return needle !== '' && normalizeRuleText(actual).includes(needle)
     }
-    return (
-      normalizeRuleText(expected) !== '' &&
-      normalizeRuleText(actual).includes(normalizeRuleText(expected))
-    )
+    return false
   }
 
-  if (op === 'not_contains') {
-    if (Array.isArray(actual)) {
-      return !actual.some((item) => normalizeRuleText(item) === normalizeRuleText(expected))
-    }
-    return (
-      normalizeRuleText(expected) === '' ||
-      !normalizeRuleText(actual).includes(normalizeRuleText(expected))
-    )
+  if (op === 'not_equals' || op === 'not_contains') {
+    if (isEmptyAnswer(actual)) return false
+    return !selectionsOverlap(actual, expected, parentQuestion)
   }
 
   if (op === 'in') {
-    if (!Array.isArray(expected)) return false
-    if (Array.isArray(actual)) {
-      return actual.some((item) =>
-        expected.some((exp) => normalizeRuleText(item) === normalizeRuleText(exp)),
-      )
-    }
-    return expected.some((item) => normalizeRuleText(actual) === normalizeRuleText(item))
+    return expectedList.some((item) => selectionsOverlap(actual, item, parentQuestion))
   }
 
   if (op === 'not_in') {
-    if (!Array.isArray(expected)) return false
     if (isEmptyAnswer(actual)) return false
-    if (Array.isArray(actual)) {
-      return !actual.some((item) =>
-        expected.some((exp) => normalizeRuleText(item) === normalizeRuleText(exp)),
-      )
-    }
-    return !expected.some((item) => normalizeRuleText(actual) === normalizeRuleText(item))
+    return !expectedList.some((item) => selectionsOverlap(actual, item, parentQuestion))
   }
 
   return false
 }
 
+function isQuestionAnswerCondition(condition: VisibilityCondition): boolean {
+  const type = String(condition.type || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
+  if (
+    type &&
+    type !== 'question_answer' &&
+    type !== 'question' &&
+    type !== 'answer' &&
+    type !== 'depends_on' &&
+    type !== 'dependency'
+  ) {
+    return Boolean(conditionQuestionKey(condition) || conditionQuestionId(condition))
+  }
+  return Boolean(
+    !type ||
+      type === 'question_answer' ||
+      type === 'question' ||
+      type === 'answer' ||
+      type === 'depends_on' ||
+      type === 'dependency' ||
+      conditionQuestionKey(condition) ||
+      conditionQuestionId(condition),
+  )
+}
+
+function conditionQuestionKey(condition: VisibilityCondition): string {
+  const record = condition as VisibilityCondition & Record<string, unknown>
+  return String(
+    condition.question_key ||
+      condition.source_question_key ||
+      record.depends_on ||
+      record.target_question_key ||
+      '',
+  )
+    .trim()
+    .toLowerCase()
+}
+
+function conditionQuestionId(condition: VisibilityCondition): number {
+  const record = condition as VisibilityCondition & Record<string, unknown>
+  const id = Number(
+    condition.question_id || condition.source_question_id || record.source_question_id || 0,
+  )
+  return Number.isFinite(id) && id > 0 ? id : 0
+}
+
+/** Accept the API's visibility_rules object, array, JSON string, or single condition. */
+export function parseVisibilityRules(raw: unknown): VisibilityRules | null {
+  if (raw == null) return null
+
+  let value: unknown = raw
+  if (typeof value === 'string') {
+    const text = value.trim()
+    if (!text) return null
+    try {
+      value = JSON.parse(text)
+    } catch {
+      return null
+    }
+  }
+
+  if (Array.isArray(value)) {
+    return value.length > 0 ? { match: 'all', conditions: value as VisibilityCondition[] } : null
+  }
+
+  if (typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  const match = String(record.match || record.logic || 'all')
+  const nested = record.conditions ?? record.rules ?? record.rule ?? record.condition
+
+  if (Array.isArray(nested)) {
+    return nested.length > 0 ? { match, conditions: nested as VisibilityCondition[] } : null
+  }
+  if (nested && typeof nested === 'object') {
+    return { match, conditions: [nested as VisibilityCondition] }
+  }
+  if (
+    record.question_key ||
+    record.question_id ||
+    record.operator ||
+    record.source_question_key ||
+    record.value !== undefined
+  ) {
+    return { match, conditions: [record as VisibilityCondition] }
+  }
+  return null
+}
+
+function readRawVisibilityRules(question: QuestionnaireQuestion): unknown {
+  const record = question as QuestionnaireQuestion & Record<string, unknown>
+  return (
+    question.visibility_rules ??
+    record.visibility_rule ??
+    record.visibility ??
+    record.visible_when ??
+    record.show_if ??
+    record.showIf
+  )
+}
+
+export function visibilityRulesForQuestion(question: QuestionnaireQuestion): VisibilityRules | null {
+  return parseVisibilityRules(readRawVisibilityRules(question))
+}
+
 export function evaluateVisibilityRules(
   visibilityRules: VisibilityRules | null | undefined,
   answersByQuestionKey: Record<string, unknown>,
+  allQuestions: QuestionnaireQuestion[] = [],
 ): boolean {
-  if (!visibilityRules || typeof visibilityRules !== 'object') return true
+  const parsed = parseVisibilityRules(visibilityRules)
+  if (!parsed) return true
 
-  const conditions = visibilityRules.conditions
+  const conditions = parsed.conditions
   if (!Array.isArray(conditions) || conditions.length === 0) return true
 
-  const matchMode = String(visibilityRules.match || 'all').trim().toLowerCase()
+  const matchMode = String(parsed.match || 'all').trim().toLowerCase()
   const results = conditions.map((condition) => {
     if (!condition || typeof condition !== 'object') return false
-    const conditionType = String(condition.type || '').trim().toLowerCase()
-    const operator = String(condition.operator || 'equals').trim().toLowerCase()
-    const expected = condition.value
+    if (!isQuestionAnswerCondition(condition)) return false
 
-    if (conditionType === 'question_answer') {
-      const questionKey = String(condition.question_key || '').trim().toLowerCase()
-      const actual = answersByQuestionKey[questionKey]
-      return matchesOperator(actual, expected, operator)
-    }
+    const questionKey = conditionQuestionKey(condition)
+    const questionId = conditionQuestionId(condition)
+    const parent = allQuestions.find(
+      (item) =>
+        (questionKey && normalizeQuestionKey(item.question_key) === questionKey) ||
+        (questionId > 0 && Number(item.question_id) === questionId),
+    )
+    const actual =
+      (questionKey ? answersByQuestionKey[questionKey] : undefined) ??
+      (questionId > 0 ? answersByQuestionKey[`id:${questionId}`] : undefined) ??
+      (parent ? answersByQuestionKey[normalizeQuestionKey(parent.question_key)] : undefined)
 
-    return false
+    return matchesOperator(actual, condition.value, String(condition.operator || 'equals'), parent)
   })
 
   return matchMode === 'any' ? results.some(Boolean) : results.every(Boolean)
@@ -216,64 +384,124 @@ export function applyAnswersToQuestions(
   })
 }
 
+function answerIsNone(actual: unknown, question?: QuestionnaireQuestion): boolean {
+  if (isEmptyAnswer(actual)) return false
+  const items = Array.isArray(actual) ? actual : [actual]
+  if (items.length === 0) return false
+  return items.every((item) => {
+    if (tokensForValue(item, question).has('none')) return true
+    return isNoneSelection(item)
+  })
+}
+
+function isDiagnosedDiseasesMedicationsQuestion(question: QuestionnaireQuestion): boolean {
+  const key = normalizeQuestionKey(question.question_key)
+  const text = normalizeQuestionKey(question.question_text)
+  if (key.endsWith('_other') && !key.includes('medication')) return false
+  if (
+    key === 'diagnosed_diseases_medications' ||
+    key === 'medications' ||
+    key.includes('diagnosed_diseases_medication') ||
+    (key.includes('medication') && !key.includes('relative'))
+  ) {
+    return true
+  }
+  return text.includes('taking medications') && text.includes('disease')
+}
+
+function findDiagnosedDiseasesQuestion(
+  questions: QuestionnaireQuestion[],
+): QuestionnaireQuestion | undefined {
+  const byKey = questions.find((item) => {
+    const key = normalizeQuestionKey(item.question_key)
+    if (key.endsWith('_other') || key.includes('medication')) return false
+    return (
+      key === 'diagnosed_diseases' ||
+      key === 'personal_diagnoses' ||
+      key === 'diagnosed_disease' ||
+      key.includes('diagnos')
+    )
+  })
+  if (byKey) return byKey
+
+  return questions.find((item) => {
+    const key = normalizeQuestionKey(item.question_key)
+    const text = normalizeQuestionKey(item.question_text)
+    if (key.endsWith('_other') || key.includes('medication')) return false
+    if (text.includes('taking medications')) return false
+    return text.includes('diagnosed') && text.includes('disease')
+  })
+}
+
 /**
  * Resolve whether a question should show:
  * - no `visibility_rules` → always show
- * - has `visibility_rules` → evaluate match/conditions against prior answers
+ * - has `visibility_rules` → evaluate match/conditions against answers
+ * - Family History medications stay hidden when diagnosed diseases is None
  */
 export function isQuestionVisible(
   question: QuestionnaireQuestion,
   answersByQuestionKey: Record<string, unknown>,
+  allQuestions: QuestionnaireQuestion[] = [],
 ): boolean {
-  const rules = question.visibility_rules
-  const hasRules =
-    rules &&
-    typeof rules === 'object' &&
-    Array.isArray((rules as VisibilityRules).conditions) &&
-    ((rules as VisibilityRules).conditions?.length || 0) > 0
+  const diagnosed = findDiagnosedDiseasesQuestion(allQuestions)
+  const diagnosedAnswer =
+    (diagnosed
+      ? answersByQuestionKey[normalizeQuestionKey(diagnosed.question_key)] ??
+        answersByQuestionKey[`id:${diagnosed.question_id}`]
+      : undefined) ?? answersByQuestionKey.diagnosed_diseases ?? answersByQuestionKey.personal_diagnoses
 
-  if (!hasRules) {
-    // No rules → always display (user: show at any cost when unrestricted)
-    return true
+  if (
+    diagnosed &&
+    isDiagnosedDiseasesMedicationsQuestion(question) &&
+    answerIsNone(diagnosedAnswer, diagnosed)
+  ) {
+    return false
   }
 
-  return evaluateVisibilityRules(rules as VisibilityRules, answersByQuestionKey)
+  const parsed = parseVisibilityRules(readRawVisibilityRules(question))
+  if (!parsed) return true
+
+  return evaluateVisibilityRules(parsed, answersByQuestionKey, allQuestions)
 }
 
 export function buildAnswersByQuestionKey(
   questions: QuestionnaireQuestion[],
   answersById: Record<number, AnswerValue>,
-  upToIndexExclusive: number,
+  excludeQuestionId?: number,
 ): Record<string, unknown> {
   const byKey: Record<string, unknown> = {}
 
-  for (let i = 0; i < upToIndexExclusive; i += 1) {
-    const prior = questions[i]
+  for (const prior of questions) {
+    if (excludeQuestionId != null && Number(prior.question_id) === Number(excludeQuestionId)) {
+      continue
+    }
     const key = String(prior?.question_key || '')
       .trim()
       .toLowerCase()
-    if (!key) continue
 
     const fromState = answersById[prior.question_id]
     const raw = !isEmptyAnswer(fromState) ? fromState : readInlineAnswer(prior)
     if (isEmptyAnswer(raw)) continue
 
-    byKey[key] = normalizeAnswerForRules(prior, raw)
+    const normalized = normalizeAnswerForRules(prior, raw)
+    if (key) byKey[key] = normalized
+    byKey[`id:${prior.question_id}`] = normalized
   }
 
   return byKey
 }
 
-/** Recompute visibility for every question in API order using live answers. */
+/** Recompute visibility for every question using live answers, regardless of API order. */
 export function computeQuestionsWithVisibility(
   questions: QuestionnaireQuestion[],
   answersById: Record<number, AnswerValue>,
 ): QuestionnaireQuestion[] {
-  return questions.map((question, index) => {
-    const answersByKey = buildAnswersByQuestionKey(questions, answersById, index)
+  return questions.map((question) => {
+    const answersByKey = buildAnswersByQuestionKey(questions, answersById, question.question_id)
     return {
       ...question,
-      is_visible: isQuestionVisible(question, answersByKey),
+      is_visible: isQuestionVisible(question, answersByKey, questions),
     }
   })
 }

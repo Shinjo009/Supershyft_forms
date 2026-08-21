@@ -20,21 +20,21 @@ const VARIANT_COPY: Record<
 > = {
   anthropometry: {
     title: 'Anthropometry Section Complete',
-    subtitle: 'Only 3 more sections left',
     keyPart: 'anthro',
   },
   family: {
     title: 'Family History Section Complete',
-    subtitle: 'Only 2 more sections left',
+    subtitle: 'Only 3 more sections left',
     keyPart: 'family',
   },
   lifestyle: {
     title: 'Lifestyle & Habits Section Complete',
-    subtitle: 'Only 1 more section left',
+    subtitle: 'Only 2 more sections left',
     keyPart: 'lifestyle',
   },
   nutrition: {
     title: 'Nutrition Log Section Complete',
+    subtitle: 'Only 1 more section left',
     keyPart: 'nutrition',
   },
 }
@@ -77,7 +77,6 @@ export function SectionCompleteHub({
   isLoadingCategoryId?: number | null
   isContinuing?: boolean
 }) {
-  const copy = VARIANT_COPY[variant]
   const title = sectionCompleteTitle(variant, categories)
   const remaining = categories.filter(
     (category) => !isCategoryCompleted(category, completedCategoryIds),
@@ -102,7 +101,7 @@ export function SectionCompleteHub({
             <h2 className="text-center text-[18px] font-semibold tracking-[0.2px] text-white">
               {title}
             </h2>
-            {copy.subtitle && !allComplete ? (
+            {!allComplete && remaining > 0 ? (
               <p className="text-center text-[12px] leading-4 text-[#9a9a9a]">
                 {remaining === 1 ? 'Only 1 more section left' : `Only ${remaining} more sections left`}
               </p>

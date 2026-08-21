@@ -8,6 +8,7 @@ import {
 } from '../api/questionnaire'
 import {
   computeQuestionsWithVisibility,
+  visibilityRulesForQuestion,
   type AnswerValue,
 } from './questionnaireVisibility'
 
@@ -128,13 +129,17 @@ function visibilityPointsToParentOther(
   const parentKey = normalizeKey(parent.question_key)
   if (!parentKey) return false
 
-  const conditions = followUp.visibility_rules?.conditions
+  const parsed = visibilityRulesForQuestion(followUp)
+  const conditions = parsed?.conditions
   if (!Array.isArray(conditions) || conditions.length === 0) return false
 
   return conditions.some((condition) => {
     const type = normalizeKey(condition.type)
-    if (type && type !== 'question_answer') return false
-    if (normalizeKey(condition.question_key) !== parentKey) return false
+    if (type && type !== 'question_answer' && type !== 'question' && type !== 'answer') {
+      if (!normalizeKey(condition.question_key || condition.source_question_key)) return false
+    }
+    const conditionKey = normalizeKey(condition.question_key || condition.source_question_key)
+    if (conditionKey !== parentKey) return false
 
     const expected = normalizeKey(condition.value)
     return conditionValueMatchesParentOther(expected, parent)
@@ -259,8 +264,8 @@ export function filterOutInlinedOtherQuestions(
 }
 
 /**
- * One-at-a-time steps: keep parent MCQs (even if marked read-only) and drop
- * standalone "(other)" specify questions so they render inline on the parent.
+ * One-at-a-time steps: drop standalone "(other)" specify questions so they
+ * render inline on the parent. Never revive a parent that visibility hid.
  */
 export function buildNavigableQuestionnaireQuestions(
   questions: QuestionnaireQuestion[],
@@ -276,7 +281,9 @@ export function buildNavigableQuestionnaireQuestions(
   for (const item of questions) {
     const parent = findParentForOtherFollowUp(item, questions)
     if (!parent) continue
-    if (visibleIds.has(item.question_id)) visibleIds.add(parent.question_id)
+    if (!visibleIds.has(parent.question_id)) {
+      visibleIds.delete(item.question_id)
+    }
   }
 
   const withParents = questions.filter((question) => visibleIds.has(question.question_id))

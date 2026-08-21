@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { CSSProperties } from 'react'
-import type { QuestionnaireQuestion } from '../../api/questionnaire'
+import {
+  submitQuestionnaireResponses,
+  type QuestionnaireQuestion,
+} from '../../api/questionnaire'
 import hipGif from '../../assets/anthropometry/hip-gif.gif'
 import waistGif from '../../assets/anthropometry/waist-gif.gif'
+import { getAccessToken } from '../../lib/authStorage'
+import { isFrontendOnly } from '../../lib/frontendOnly'
 import { AnthropometryMcqShell } from './AnthropometryMcqShell'
 import { HeightRulerPicker } from './HeightRulerPicker'
 import { HorizontalRulerPicker } from './HorizontalRulerPicker'
@@ -13,14 +17,15 @@ import {
 } from './AnthropometryPrimitives'
 import {
   ANTHRO_QUESTION_COUNT,
+  buildAnthropometryResponses,
   clamp,
   convertCircumference,
   convertWeight,
-  DEFAULT_BODY_FAT,
   DEFAULT_HEIGHT_CM,
   DEFAULT_HEIGHT_FEET,
   DEFAULT_HEIGHT_INCHES,
-  DEFAULT_CIRCUMFERENCE_INCHES,
+  DEFAULT_HIP_INCHES,
+  DEFAULT_WAIST_INCHES,
   DEFAULT_WEIGHT_KG,
   extractUnitOptionsFromQuestion,
   findQuestionByAliasesAndHints,
@@ -32,10 +37,8 @@ import {
   isKilogramUnit,
   isPoundUnit,
   isProvidedNumber,
-  MAX_BODY_FAT,
   MAX_HEIGHT_CM,
   MAX_HEIGHT_INCHES,
-  MIN_BODY_FAT,
   MIN_HEIGHT_CM,
   MIN_HEIGHT_INCHES,
   prioritizeCircumferenceUnitOptions,
@@ -44,15 +47,20 @@ import {
   roundToTenth,
   type AnthropometryFollowupValues,
   type AnthropometryPrimaryValues,
+  type CircumferenceKind,
 } from './anthropometryConfig'
 import './anthropometry.css'
 
 export function AnthropometryStep({
   questions = [],
+  assessmentInstanceId,
+  categoryId,
   onBack,
   onComplete,
 }: {
   questions?: QuestionnaireQuestion[]
+  assessmentInstanceId: number
+  categoryId: number
   onBack: () => void
   onComplete: (payload: {
     primary: AnthropometryPrimaryValues
@@ -62,77 +70,141 @@ export function AnthropometryStep({
   const [index, setIndex] = useState(0)
   const [height, setHeight] = useState(DEFAULT_HEIGHT_CM)
   const [weight, setWeight] = useState<number | null>(DEFAULT_WEIGHT_KG)
-  const [waist, setWaist] = useState(Math.round(DEFAULT_CIRCUMFERENCE_INCHES))
+  const [waist, setWaist] = useState(Math.round(DEFAULT_WAIST_INCHES))
   const [heightUnit, setHeightUnit] = useState('Cm')
   const [weightUnit, setWeightUnit] = useState('Kg')
   const [waistUnit, setWaistUnit] = useState('In')
   const [heightFeet, setHeightFeet] = useState(DEFAULT_HEIGHT_FEET)
   const [heightInches, setHeightInches] = useState(DEFAULT_HEIGHT_INCHES)
-  const [hipSize, setHipSize] = useState(Math.round(DEFAULT_CIRCUMFERENCE_INCHES))
-  const [bodyFat, setBodyFat] = useState(DEFAULT_BODY_FAT)
+  const [hipSize, setHipSize] = useState(Math.round(DEFAULT_HIP_INCHES))
   const [hipUnit, setHipUnit] = useState('In')
   const [showWaistInfo, setShowWaistInfo] = useState(false)
   const [showHipInfo, setShowHipInfo] = useState(false)
   const [submitAttempted, setSubmitAttempted] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   const heightLabel = getQuestionText(questions, ['height'], ['height'], 'What is you height ?')
   const weightLabel = getQuestionText(questions, ['weight'], ['weight', 'body weight'], 'What is you weight?')
   const waistLabel = getQuestionText(questions, ['waist_circumference', 'waist'], ['waist'], 'What is you waist size ?')
   const hipLabel = getQuestionText(questions, ['hip_circumference', 'hip'], ['hip'], 'What is you hip size ?')
-  const fatLabel = getQuestionText(
-    questions,
-    ['body_fat', 'bodyfat'],
-    ['body fat', 'body-fat'],
-    'What is you body-fat percent ?',
-  )
 
   const previews = [
     { line1: weightLabel },
     { line1: waistLabel },
     { line1: hipLabel },
-    { line1: fatLabel },
   ]
 
   const isLast = index >= ANTHRO_QUESTION_COUNT - 1
   const isWeightValid = isProvidedNumber(weight)
 
-  const finish = (followup: AnthropometryFollowupValues) => {
+  const currentPrimary = (): AnthropometryPrimaryValues => ({
+    height,
+    weight,
+    waist: roundToTenth(waist),
+    heightUnit,
+    weightUnit,
+    waistUnit,
+    heightFeet,
+    heightInches,
+  })
+
+  const saveProgress = async (
+    throughIndex: number,
+    followup: AnthropometryFollowupValues = {},
+  ) => {
+    const responses = buildAnthropometryResponses(questions, currentPrimary(), followup, {
+      throughIndex,
+    })
+
+    if (isFrontendOnly()) {
+      console.info('[frontend-only] skipped anthropometry submit', {
+        assessmentInstanceId,
+        categoryId,
+        throughIndex,
+        responseCount: responses.length,
+      })
+      return
+    }
+
+    if (!Number.isFinite(assessmentInstanceId) || assessmentInstanceId <= 0 || categoryId <= 0) {
+      throw new Error('Assessment category is missing. Go back and continue to Step 2 again.')
+    }
+
+    if (responses.length === 0) {
+      throw new Error('Unable to save your measurements. Please try again.')
+    }
+
+    const accessToken = getAccessToken()
+    console.info('[assessment] anthropometry responses submitting', {
+      assessmentInstanceId,
+      categoryId,
+      throughIndex,
+      responseCount: responses.length,
+      responses,
+    })
+    await submitQuestionnaireResponses(
+      accessToken,
+      assessmentInstanceId,
+      categoryId,
+      responses,
+    )
+    console.info('[assessment] anthropometry responses saved', {
+      assessmentInstanceId,
+      categoryId,
+      responseCount: responses.length,
+    })
+  }
+
+  const completeSection = async (followup: AnthropometryFollowupValues) => {
+    await saveProgress(ANTHRO_QUESTION_COUNT - 1, followup)
     onComplete({
-      primary: {
-        height,
-        weight,
-        waist: roundToTenth(waist),
-        heightUnit,
-        weightUnit,
-        waistUnit,
-        heightFeet,
-        heightInches,
-      },
+      primary: currentPrimary(),
       followup,
     })
   }
 
+  const runSave = async (work: () => Promise<void>) => {
+    if (isSaving) return
+    setSaveError('')
+    setIsSaving(true)
+    try {
+      await work()
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to save your measurements.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const handleNext = () => {
+    if (isSaving) return
     if (index === 1 && !isWeightValid) {
       setSubmitAttempted(true)
       return
     }
-    if (isLast) {
-      finish({
-        hipSize: roundToTenth(hipSize),
-        bodyFat,
-        hipUnit,
-      })
-      return
-    }
-    setIndex((current) => current + 1)
+
+    void runSave(async () => {
+      if (isLast) {
+        await completeSection({
+          hipSize: roundToTenth(hipSize),
+          hipUnit,
+        })
+        return
+      }
+
+      await saveProgress(index)
+      setIndex((current) => current + 1)
+    })
   }
 
   const handleBack = () => {
+    if (isSaving) return
     if (index === 0) {
       onBack()
       return
     }
+    setSaveError('')
     setIndex((current) => current - 1)
   }
 
@@ -141,6 +213,9 @@ export function AnthropometryStep({
       progressPercent={Math.round(((index + 1) / ANTHRO_QUESTION_COUNT) * 100)}
       onBack={handleBack}
       onNext={handleNext}
+      nextDisabled={isSaving}
+      isSaving={isSaving}
+      saveError={saveError}
       nextQuestionPreview={isLast ? undefined : previews[index]}
     >
       {index === 0 ? (
@@ -195,21 +270,14 @@ export function AnthropometryStep({
           onHipChange={setHipSize}
           onUnitChange={setHipUnit}
           onOpenInfo={() => setShowHipInfo(true)}
-          onSkip={() => setIndex(4)}
-        />
-      ) : null}
-
-      {index === 4 ? (
-        <BodyFatQuestion
-          label={fatLabel}
-          bodyFat={bodyFat}
-          onBodyFatChange={setBodyFat}
-          onSkip={() =>
-            finish({
-              hipSize: roundToTenth(hipSize),
-              hipUnit,
+          onSkip={() => {
+            if (isSaving) return
+            void runSave(async () => {
+              await completeSection({
+                hipUnit,
+              })
             })
-          }
+          }}
         />
       ) : null}
 
@@ -289,10 +357,13 @@ function HeightQuestion({
   const selectUnit = (nextUnit: string) => {
     if (isFeetInchesUnit(nextUnit)) {
       const inches = clamp(height / 2.54, MIN_HEIGHT_INCHES, MAX_HEIGHT_INCHES)
-      onUnitChange(nextUnit, height, Math.floor(inches / 12), inches % 12)
+      const whole = Math.round(inches)
+      onUnitChange(nextUnit, whole * 2.54, Math.floor(whole / 12), whole % 12)
       return
     }
-    onUnitChange(nextUnit, height, Math.floor(totalInches / 12), totalInches % 12)
+    const nextCm = clamp(height, MIN_HEIGHT_CM, MAX_HEIGHT_CM)
+    const total = nextCm / 2.54
+    onUnitChange(nextUnit, nextCm, Math.floor(total / 12), total % 12)
   }
 
   return (
@@ -341,20 +412,19 @@ function HeightQuestion({
               return `${feet}'${rest}"`
             }}
             onChange={(inches) => {
-              const whole = Math.round(inches)
-              const nextCm = clamp(whole * 2.54, MIN_HEIGHT_CM, MAX_HEIGHT_CM)
-              onUnitChange(heightUnit, nextCm, Math.floor(whole / 12), whole % 12)
+              const whole = clamp(Math.round(inches), MIN_HEIGHT_INCHES, MAX_HEIGHT_INCHES)
+              onUnitChange(heightUnit, whole * 2.54, Math.floor(whole / 12), whole % 12)
             }}
           />
         ) : (
           <HeightRulerPicker
             key="cm"
-            value={height}
+            value={clamp(height, MIN_HEIGHT_CM, MAX_HEIGHT_CM)}
             min={MIN_HEIGHT_CM}
             max={MAX_HEIGHT_CM}
             step={0.1}
             unitLabel="cm"
-            onChange={onHeightChange}
+            onChange={(next) => onHeightChange(clamp(next, MIN_HEIGHT_CM, MAX_HEIGHT_CM))}
           />
         )}
       </div>
@@ -436,7 +506,7 @@ function WeightQuestion({
           min={range.min}
           max={range.max}
           unitLabel={unitLabel}
-          onChange={onWeightChange}
+          onChange={(next) => onWeightChange(clamp(next, range.min, range.max))}
         />
       </div>
       {showRequired ? <p className="text-center text-sm text-[#f5a9a9]">Please enter your weight</p> : null}
@@ -455,6 +525,7 @@ function CircumferenceQuestion({
   index,
   value,
   unit,
+  kind,
   aliases,
   hints,
   infoLabel,
@@ -468,6 +539,7 @@ function CircumferenceQuestion({
   index: number
   value: number
   unit: string
+  kind: CircumferenceKind
   aliases: string[]
   hints: string[]
   infoLabel: string
@@ -484,7 +556,7 @@ function CircumferenceQuestion({
   const cmOption = unitOptions.find((option) => isCentimeterUnit(option)) || 'Cm'
   const inOption = unitOptions.find((option) => !isCentimeterUnit(option)) || 'In'
   const usesCm = isCentimeterUnit(unit)
-  const range = getCircumferenceRangeForUnit(unit)
+  const range = getCircumferenceRangeForUnit(unit, kind)
   const unitLabel = usesCm ? 'Cms' : 'In'
 
   useEffect(() => {
@@ -493,7 +565,7 @@ function CircumferenceQuestion({
 
   const selectUnit = (nextUnit: string) => {
     if (nextUnit === unit) return
-    onChange(convertCircumference(value, unit, nextUnit))
+    onChange(convertCircumference(value, unit, nextUnit, kind))
     onUnitChange(nextUnit)
   }
 
@@ -533,7 +605,7 @@ function CircumferenceQuestion({
           step={0.1}
           snapStep={1}
           unitLabel={unitLabel}
-          onChange={(next) => onChange(Math.round(next))}
+          onChange={(next) => onChange(clamp(Math.round(next), range.min, range.max))}
         />
       </div>
       {onSkip ? (
@@ -569,6 +641,7 @@ function WaistQuestion({
       index={2}
       value={waist}
       unit={waistUnit}
+      kind="waist"
       aliases={WAIST_ALIASES}
       hints={WAIST_HINTS}
       infoLabel="Open waist size information"
@@ -605,6 +678,7 @@ function HipQuestion({
       index={3}
       value={hipSize}
       unit={hipUnit}
+      kind="hip"
       aliases={HIP_ALIASES}
       hints={HIP_HINTS}
       infoLabel="Open hip size information"
@@ -613,47 +687,5 @@ function HipQuestion({
       onOpenInfo={onOpenInfo}
       onSkip={onSkip}
     />
-  )
-}
-
-function BodyFatQuestion({
-  label,
-  bodyFat,
-  onBodyFatChange,
-  onSkip,
-}: {
-  label: string
-  bodyFat: number
-  onBodyFatChange: (value: number) => void
-  onSkip: () => void
-}) {
-  const progress = (bodyFat - MIN_BODY_FAT) / (MAX_BODY_FAT - MIN_BODY_FAT)
-
-  return (
-    <div className="flex w-full flex-col items-stretch gap-7 pb-4 pt-2">
-      <QuestionChrome index={4}>{label}</QuestionChrome>
-      <div className="w-full rounded-2xl bg-teal-400/5 px-3 py-6 outline outline-[0.84px] outline-offset-[-0.84px] outline-zinc-300/10">
-        <div className="flex flex-col items-center gap-6">
-          <p className="ndq-hruler__value w-full">{bodyFat}%</p>
-          <div
-            className="ndq-anthro__fat-slider-wrap"
-            style={{ ['--fat-progress']: progress } as CSSProperties}
-          >
-            <input
-              className="ndq-anthro__fat-slider"
-              type="range"
-              min={MIN_BODY_FAT}
-              max={MAX_BODY_FAT}
-              value={bodyFat}
-              onChange={(event) => onBodyFatChange(Number(event.target.value))}
-              aria-label="Body fat percentage"
-            />
-          </div>
-        </div>
-      </div>
-      <button type="button" className="text-sm font-normal tracking-tight text-zinc-400 underline" onClick={onSkip}>
-        Skip
-      </button>
-    </div>
   )
 }

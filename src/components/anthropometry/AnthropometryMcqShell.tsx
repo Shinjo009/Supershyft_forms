@@ -17,12 +17,18 @@ export function AnthropometryMcqShell({
   onNext,
   nextQuestionPreview,
   progressPercent,
+  nextDisabled = false,
+  isSaving = false,
+  saveError = '',
 }: {
   children: ReactNode
   onBack?: () => void
   onNext?: () => void
   nextQuestionPreview?: { line1: string; line2?: string }
   progressPercent: number
+  nextDisabled?: boolean
+  isSaving?: boolean
+  saveError?: string
 }) {
   const clampedPercent = Math.min(100, Math.max(0, progressPercent))
   const showNextPreview = Boolean(nextQuestionPreview && onNext)
@@ -31,7 +37,13 @@ export function AnthropometryMcqShell({
     <div className={MCQ_SHELL_CLASS}>
       <header className="flex shrink-0 items-center px-4 pb-0 pt-6">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <button type="button" onClick={onBack} className="relative size-6 shrink-0" aria-label="Back">
+          <button
+            type="button"
+            onClick={onBack}
+            disabled={isSaving}
+            className="relative size-6 shrink-0 disabled:opacity-50"
+            aria-label="Back"
+          >
             <img src={backIcon} alt="" className="absolute inset-0 size-full" aria-hidden />
           </button>
           <h1 className="shrink-0 whitespace-nowrap text-[19px] tracking-[0.095px] text-white">
@@ -49,7 +61,14 @@ export function AnthropometryMcqShell({
         <McqProgressBar percent={clampedPercent} color={ANTHRO_PROGRESS_COLOR} />
       </div>
 
-      <div className={MCQ_SHELL_SCROLL_CLASS}>{children}</div>
+      <div className={MCQ_SHELL_SCROLL_CLASS}>
+        {saveError ? (
+          <div className="rounded-lg border border-[#ff6b6b]/40 bg-[#ff6b6b]/10 px-3 py-2 text-sm text-[#ffd1d1]">
+            {saveError}
+          </div>
+        ) : null}
+        {children}
+      </div>
 
       {onNext ? (
         <footer className={MCQ_SHELL_FOOTER_CLASS}>
@@ -67,9 +86,12 @@ export function AnthropometryMcqShell({
             <button
               type="button"
               onClick={onNext}
-              className="flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(144,223,158,0.5)]"
+              disabled={nextDisabled}
+              className="flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(144,223,158,0.5)] disabled:cursor-not-allowed disabled:opacity-40"
               style={{ backgroundImage: ANTHRO_NEXT_BUTTON_GRADIENT }}
-              aria-label={showNextPreview ? 'Next question' : 'Continue'}
+              aria-label={
+                isSaving ? 'Saving answer' : showNextPreview ? 'Next question' : 'Continue'
+              }
             >
               <img src={nextChevronIcon} alt="" className="size-5" aria-hidden />
             </button>

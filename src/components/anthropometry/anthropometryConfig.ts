@@ -6,26 +6,32 @@ import {
   type QuestionnaireResponseItem,
 } from '../../api/questionnaire'
 
-export const MIN_HEIGHT_CM = 120
-export const MAX_HEIGHT_CM = 215
-export const MIN_HEIGHT_INCHES = 47
-export const MAX_HEIGHT_INCHES = 83
+export const MIN_HEIGHT_CM = 50
+export const MAX_HEIGHT_CM = 250
+/** Table ft/in 1.5–8.5 matches the feet.inches ruler (1'5"–8'5"). */
+export const MIN_HEIGHT_INCHES = 1 * 12 + 5
+export const MAX_HEIGHT_INCHES = 8 * 12 + 5
 export const DEFAULT_HEIGHT_CM = 165
 export const DEFAULT_HEIGHT_FEET = 5
 export const DEFAULT_HEIGHT_INCHES = 5
 
-export const MIN_CIRCUMFERENCE_INCHES = 16
-export const MAX_CIRCUMFERENCE_INCHES = 47
-export const MIN_CIRCUMFERENCE_CM = 40
-export const MAX_CIRCUMFERENCE_CM = 120
-export const DEFAULT_CIRCUMFERENCE_INCHES = 20.6
-export const DEFAULT_CIRCUMFERENCE_CM = 52.2
+export const MIN_WAIST_INCHES = 24
+export const MAX_WAIST_INCHES = 59
+export const MIN_WAIST_CM = 60
+export const MAX_WAIST_CM = 150
+export const DEFAULT_WAIST_INCHES = 32
+export const DEFAULT_WAIST_CM = 81
+
+export const MIN_HIP_INCHES = 28
+export const MAX_HIP_INCHES = 62
+export const MIN_HIP_CM = 70
+export const MAX_HIP_CM = 160
+export const DEFAULT_HIP_INCHES = 38
+export const DEFAULT_HIP_CM = 97
+
 export const IN_TO_CM = 2.54
 
-export const MIN_BODY_FAT = 5
-export const MAX_BODY_FAT = 70
-export const DEFAULT_BODY_FAT = 45
-export const ANTHRO_QUESTION_COUNT = 5
+export const ANTHRO_QUESTION_COUNT = 4
 
 export const ANTHRO_PROGRESS_COLOR = '#90DF9E'
 
@@ -45,7 +51,6 @@ export type AnthropometryPrimaryValues = {
 
 export type AnthropometryFollowupValues = {
   hipSize?: number
-  bodyFat?: number
   hipUnit?: string
 }
 
@@ -107,9 +112,9 @@ export function isPoundUnit(value: unknown): boolean {
 }
 
 export const MIN_WEIGHT_KG = 20
-export const MAX_WEIGHT_KG = 120
+export const MAX_WEIGHT_KG = 130
 export const MIN_WEIGHT_LB = 44
-export const MAX_WEIGHT_LB = 265
+export const MAX_WEIGHT_LB = 660
 export const DEFAULT_WEIGHT_KG = 50
 export const KG_TO_LB = 2.20462
 
@@ -140,36 +145,44 @@ export function roundToTenth(value: number): number {
   return Math.round(value * 10) / 10
 }
 
-export function convertCircumference(value: number, fromUnit: string, toUnit: string): number {
+export type CircumferenceKind = 'waist' | 'hip'
+
+export function convertCircumference(
+  value: number,
+  fromUnit: string,
+  toUnit: string,
+  kind: CircumferenceKind = 'waist',
+): number {
+  const range = getCircumferenceRangeForUnit(toUnit, kind)
   const toCm = isCentimeterUnit(toUnit)
   const fromCm = isCentimeterUnit(fromUnit)
   if (toCm === fromCm) {
-    const range = getCircumferenceRangeForUnit(toUnit)
     return clamp(roundToTenth(value), range.min, range.max)
   }
   if (toCm) {
-    return clamp(roundToTenth(value * IN_TO_CM), MIN_CIRCUMFERENCE_CM, MAX_CIRCUMFERENCE_CM)
+    return clamp(roundToTenth(value * IN_TO_CM), range.min, range.max)
   }
-  return clamp(roundToTenth(value / IN_TO_CM), MIN_CIRCUMFERENCE_INCHES, MAX_CIRCUMFERENCE_INCHES)
+  return clamp(roundToTenth(value / IN_TO_CM), range.min, range.max)
 }
 
-export function getCircumferenceRangeForUnit(unit: string): {
+export function getCircumferenceRangeForUnit(
+  unit: string,
+  kind: CircumferenceKind = 'waist',
+): {
   min: number
   max: number
   defaultValue: number
 } {
-  if (isCentimeterUnit(unit)) {
-    return {
-      min: MIN_CIRCUMFERENCE_CM,
-      max: MAX_CIRCUMFERENCE_CM,
-      defaultValue: DEFAULT_CIRCUMFERENCE_CM,
+  if (kind === 'hip') {
+    if (isCentimeterUnit(unit)) {
+      return { min: MIN_HIP_CM, max: MAX_HIP_CM, defaultValue: DEFAULT_HIP_CM }
     }
+    return { min: MIN_HIP_INCHES, max: MAX_HIP_INCHES, defaultValue: DEFAULT_HIP_INCHES }
   }
-  return {
-    min: MIN_CIRCUMFERENCE_INCHES,
-    max: MAX_CIRCUMFERENCE_INCHES,
-    defaultValue: DEFAULT_CIRCUMFERENCE_INCHES,
+  if (isCentimeterUnit(unit)) {
+    return { min: MIN_WAIST_CM, max: MAX_WAIST_CM, defaultValue: DEFAULT_WAIST_CM }
   }
+  return { min: MIN_WAIST_INCHES, max: MAX_WAIST_INCHES, defaultValue: DEFAULT_WAIST_INCHES }
 }
 
 function getQuestionOptionLabel(option: QuestionnaireOption): string {
@@ -323,7 +336,9 @@ function buildScaleResponseItem(
 
   const unitCode = opts?.forceValueCmUnitZero
     ? '0'
-    : mapOptionLabelToValue(question, unitLabel) || getOptionValue(question.options?.[0] || {})
+    : mapOptionLabelToValue(question, unitLabel) ||
+      getOptionValue(question.options?.[0] || {}) ||
+      unitLabel
   if (!unitCode) return null
 
   return { question_id: questionId, answer: { value: n, unit: unitCode } }
@@ -333,35 +348,41 @@ export function buildAnthropometryResponses(
   questions: QuestionnaireQuestion[] = [],
   primary: AnthropometryPrimaryValues,
   followup: AnthropometryFollowupValues = {},
+  options?: { throughIndex?: number },
 ): QuestionnaireResponseItem[] {
   const merged = { ...primary, ...followup }
+  const throughIndex = options?.throughIndex
   const fieldMap: Array<{
     aliases: string[]
     textHints: string[]
     value: unknown
     unitLabel: string
+    minIndex: number
     forceValueCmUnitZero?: boolean
     wholeNumber?: boolean
   }> = [
     {
-      aliases: ['height'],
+      aliases: ['height', 'height_cm', 'stature'],
       textHints: ['height'],
       value: merged.height,
       unitLabel: merged.heightUnit,
+      minIndex: 0,
       forceValueCmUnitZero: true,
       wholeNumber: true,
     },
     {
-      aliases: ['weight'],
+      aliases: ['weight', 'body_weight', 'weight_kg'],
       textHints: ['weight', 'body weight'],
       value: merged.weight,
       unitLabel: merged.weightUnit,
+      minIndex: 1,
     },
     {
       aliases: ['waist_circumference', 'waist'],
       textHints: ['waist'],
       value: merged.waist,
       unitLabel: merged.waistUnit,
+      minIndex: 2,
       wholeNumber: true,
     },
     {
@@ -369,18 +390,14 @@ export function buildAnthropometryResponses(
       textHints: ['hip'],
       value: merged.hipSize,
       unitLabel: merged.hipUnit || 'In',
+      minIndex: 3,
       wholeNumber: true,
-    },
-    {
-      aliases: ['body_fat_percentage', 'body_fat', 'fat_percentage'],
-      textHints: ['body fat', 'bodyfat'],
-      value: merged.bodyFat,
-      unitLabel: '%',
     },
   ]
 
   return fieldMap
     .map((field) => {
+      if (typeof throughIndex === 'number' && throughIndex < field.minIndex) return null
       if (field.value == null || field.value === '') return null
       const question = findQuestionByAliasesAndHints(questions, field.aliases, field.textHints)
       if (!question) return null

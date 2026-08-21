@@ -32,7 +32,7 @@ type AssessmentStatusResponse = {
 
 const EXCLUDED_CATEGORY_KEYS = new Set(['health_vitals', 'vitals'])
 
-const CATEGORY_UI_ORDER = ['anthro', 'family', 'lifestyle', 'nutrition'] as const
+const CATEGORY_UI_ORDER = ['family', 'lifestyle', 'nutrition', 'anthro'] as const
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   anthropometry:
@@ -177,7 +177,7 @@ export function getAssessmentEngagementId(
 export async function submitAssessmentCategory(
   accessToken: string,
   assessmentInstanceId: number,
-  category: 'physical-measurements' | 'diet-lifestyle-parameters' | 'fitness-parameters',
+  category: 'physical-measurement' | 'diet-lifestyle-parameters' | 'fitness-parameters',
 ): Promise<unknown> {
   const id = Number(assessmentInstanceId)
   if (!Number.isFinite(id) || id <= 0) {
@@ -223,7 +223,7 @@ export async function submitCompletedAssessmentFlow(
     throw new Error('Missing Metsights assessment instance id.')
   }
 
-  await submitAssessmentCategory(accessToken, metsightsId, 'physical-measurements')
+  await submitAssessmentCategory(accessToken, metsightsId, 'physical-measurement')
   await submitAssessmentCategory(accessToken, metsightsId, 'diet-lifestyle-parameters')
 
   const engagementId = getAssessmentEngagementId(rows, metsightsId)
@@ -289,13 +289,6 @@ export async function loadAssessmentCategoriesForStep2(
       assessmentInstanceId: 1,
       categories: [
         {
-          id: 1,
-          category_id: 1,
-          category_key: 'anthropometry',
-          display_name: 'Anthropometry',
-          status: 'pending',
-        },
-        {
           id: 2,
           category_id: 2,
           category_key: 'family_history',
@@ -314,6 +307,13 @@ export async function loadAssessmentCategoriesForStep2(
           category_id: 4,
           category_key: 'nutrition_log',
           display_name: 'Nutrition Log',
+          status: 'pending',
+        },
+        {
+          id: 1,
+          category_id: 1,
+          category_key: 'anthropometry',
+          display_name: 'Anthropometry',
           status: 'pending',
         },
       ],
