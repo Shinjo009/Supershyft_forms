@@ -1,6 +1,7 @@
 import tickCircleSolid from '../assets/figma/tick-circle-solid.svg'
 import assessmentRadioImg from '../assets/Ellipse 13077.svg'
 import sectionSuccessGif from '../assets/animation-gif (1).gif'
+import anthroSuccessGif from '../assets/animation-gif-anthropometry-green.webp'
 import lifestyleSuccessGif from '../assets/animation-gif-lifestyle-orange.webp'
 import nutritionSuccessGif from '../assets/animation-gif-nutrition-blue.webp'
 import {
@@ -50,7 +51,7 @@ function sectionCompleteTitle(
 }
 
 const VARIANT_SUCCESS_GIF: Record<SectionCompleteVariant, string> = {
-  anthropometry: sectionSuccessGif,
+  anthropometry: anthroSuccessGif,
   family: sectionSuccessGif,
   lifestyle: lifestyleSuccessGif,
   nutrition: nutritionSuccessGif,
@@ -75,7 +76,7 @@ const SECTION_COMPLETE_HEADLINES = [
   {
     text: 'thanks for choosing your health!',
     className:
-      "text-center text-base font-semibold uppercase tracking-tight text-purple-500 font-['Lato']",
+      "text-center text-base font-semibold uppercase tracking-tight text-green-400 font-['Lato']",
   },
 ] as const
 
@@ -111,6 +112,10 @@ export function SectionCompleteHub({
   ).length
   const completedCount = Math.max(0, categories.length - remaining)
   const headline = headlineForCompletedCount(completedCount || 1)
+  const headlineClassName =
+    variant === 'anthropometry'
+      ? headline.className.replace(/text-(?:purple|amber|blue)-\d+/g, 'text-green-400')
+      : headline.className
   const nextIncompleteId = categories.find(
     (category) => !isCategoryCompleted(category, completedCategoryIds),
   )?.category_id
@@ -128,7 +133,7 @@ export function SectionCompleteHub({
             className="mx-auto -mt-4 h-[280px] w-[280px] object-contain"
           />
           <div className="flex flex-col items-center gap-1 pb-1">
-            <p className={headline.className}>{headline.text}</p>
+            <p className={headlineClassName}>{headline.text}</p>
             <h2 className="text-center text-xs font-normal leading-4 text-neutral-400 font-['Lato']">
               {title}
             </h2>

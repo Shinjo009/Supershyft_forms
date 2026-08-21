@@ -56,7 +56,7 @@ import { applyAnswersToQuestions, type AnswerValue } from './lib/questionnaireVi
 import { getMockQuestionnaireQuestions } from './data/mockApiQuestionnaires'
 /** Validate booking fields with the input regexes before continuing. */
 const ENFORCE_REQUIRED_FIELDS = true
-import { ANTHRO_PAGE_BACKGROUND, PageBackdrop } from './components/PageBackdrop'
+import { ANTHRO_PAGE_BACKGROUND, PageBackdrop, type BackdropTone } from './components/PageBackdrop'
 import { Stepper } from './components'
 import { defaultFormData, type FormData } from './types'
 import { ApiQuestionnaireStep } from './components/ApiQuestionnaireStep'
@@ -75,7 +75,6 @@ import { OtpVerifyStep } from './components/OtpVerifyStep'
 import { Dropdown } from './components/ui/dropdown-01'
 import bookingSuccessGif from './assets/animation-gif.gif'
 import backgroundAssessmentSvg from './assets/Background.svg'
-import lastPageBackgroundSvg from './assets/lastpage BG.svg'
 import nutritionEndBackgroundSvg from './assets/nutritionend.svg'
 import nutritionLogBackgroundSvg from './assets/nutritionlogstart.svg'
 import familyHistoryBackgroundSvg from './assets/family history.svg'
@@ -870,11 +869,9 @@ export default function BookAppointment() {
     : activeCategoryKey.includes('nutrition')
       ? nutritionLogBackgroundSvg
       : familyHistoryBackgroundSvg
-  const isAnthroSection = step === 6 || (step === 7 && isAnthroActive)
+  const isAnthroSection = step === 6 || step === 13 || (step === 7 && isAnthroActive)
   const questionnaireWallpaper = isQuestionnaireFlow && !isAnthroSection
-    ? step === 13
-      ? lastPageBackgroundSvg
-      : step === 6 || step === 8 || step === 9
+    ? step === 8 || step === 9
         ? backgroundAssessmentSvg
         : step === 10
           ? nutritionEndBackgroundSvg
@@ -885,11 +882,28 @@ export default function BookAppointment() {
               : backgroundAssessmentSvg
     : undefined
 
+  const questionnaireTone: BackdropTone = (() => {
+    if (!isQuestionnaireFlow) return 'booking'
+    if (step === 13) return 'anthro'
+    if (step === 10) return 'lifestyle'
+    if (step === 12) return 'nutrition'
+    if (step === 9) return 'anthro'
+    if (step === 8 || step === 6) return 'family'
+    if (step === 7) {
+      if (isAnthroActive) return 'anthro'
+      if (activeCategoryKey.includes('lifestyle')) return 'lifestyle'
+      if (activeCategoryKey.includes('nutrition')) return 'nutrition'
+      return 'family'
+    }
+    return 'family'
+  })()
+
   return (
     <PageBackdrop
       wide={step <= 4}
       wallpaperSrc={questionnaireWallpaper}
       cssWallpaper={isAnthroSection ? ANTHRO_PAGE_BACKGROUND : undefined}
+      tone={questionnaireTone}
     >
       <div className="flex h-full min-w-0 flex-col">
         {/* Header — Figma: p-20px */}
