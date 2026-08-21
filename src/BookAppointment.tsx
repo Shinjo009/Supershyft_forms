@@ -27,9 +27,11 @@ import {
 } from './api/onboard'
 import {
   getAllBookableDates,
+  getAllScheduleDates,
   getCabinDay,
   getCabinsForDate,
   getSlotDisplays,
+  isScheduleDateEnabled,
   loadEngagementSchedule,
   resolveCabinKey,
   type EngagementSchedule,
@@ -120,12 +122,12 @@ const RELATION_OPTIONS = [
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
 const NAME_REGEX = /^[A-Za-z]+(?: [A-Za-z]+)*$/
 const PHONE_REGEX = /^[6-9]\d{9}$/
-const AGE_REGEX = /^(?:[1-9]|[1-9]\d)$/
+const AGE_REGEX = /^(?:1[8-9]|[2-9]\d)$/
 const sanitizeName = (value: string) => value.replace(/[^A-Za-z\s]/g, '').replace(/\s+/g, ' ')
 const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
 const sanitizeEmail = (value: string) => value.replace(/\s/g, '')
-const sanitizeEmployeeId = (value: string) => value.replace(/\s/g, '').slice(0, 40)
+const sanitizeEmployeeId = (value: string) => value.replace(/\s/g, '').slice(0, 10)
 const generateParticipantId = (phone: string) => `HRM${phone || String(Date.now()).slice(-10)}`
 const BOOK_APPOINTMENT_ERROR_EVENT = 'book-appointment:error'
 const logClientError = (message: string) => {
@@ -344,7 +346,7 @@ export default function BookAppointment() {
         return
       }
       if (!AGE_REGEX.test(trimmedAge)) {
-        logClientError('Age must be between 1 and 99.')
+        logClientError('Age must be between 18 and 99.')
         return
       }
       if (!form.gender) {
@@ -353,10 +355,6 @@ export default function BookAppointment() {
       }
       if (!isBookingCity(form.city)) {
         logClientError('Please select a city.')
-        return
-      }
-      if (!form.employeeId.trim()) {
-        logClientError('Employee ID is required.')
         return
       }
       if (!form.doctorConsultation) {
@@ -383,7 +381,8 @@ export default function BookAppointment() {
     if (isSendingOtp) return
 
     const parsedAge = Number.parseInt(trimmedAge, 10)
-    const confirmAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : 25
+    const confirmAge =
+      Number.isFinite(parsedAge) && parsedAge >= 18 && parsedAge <= 99 ? parsedAge : 25
     const cityMeta = isBookingCity(form.city) ? CITY_LOCATION[form.city] : null
 
     setUiError('')
@@ -496,7 +495,7 @@ export default function BookAppointment() {
     const trimmedEmail = form.email.trim()
     const trimmedAge = form.age.trim()
     const parsedAge = Number.parseInt(form.age, 10)
-    const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
+    const safeAge = Number.isFinite(parsedAge) && parsedAge >= 18 && parsedAge <= 99 ? parsedAge : NaN
     const participantId = form.employeeId.trim() || generateParticipantId(trimmedPhone)
     const cityMeta = isBookingCity(form.city) ? CITY_LOCATION[form.city] : null
     const apiAddress = formatAddressForApi(form)
@@ -526,15 +525,11 @@ export default function BookAppointment() {
         return
       }
       if (!AGE_REGEX.test(trimmedAge) || !Number.isFinite(safeAge)) {
-        logClientError('Age must be between 1 and 99.')
+        logClientError('Age must be between 18 and 99.')
         return
       }
       if (!isBookingCity(apiCity)) {
         logClientError('Please select a city.')
-        return
-      }
-      if (!form.employeeId.trim()) {
-        logClientError('Employee ID is required.')
         return
       }
       if (!form.appointmentDate || !getAllBookableDates(engagementSchedule).includes(form.appointmentDate)) {
@@ -1230,8 +1225,8 @@ function PersonalStep({
           inputMode="numeric"
           placeholder="Age"
           maxLength={2}
-          pattern="^(?:[1-9]|[1-9]\d)$"
-          title="Age must be between 1 and 99"
+          pattern="^(?:1[8-9]|[2-9]\d)$"
+          title="Age must be between 18 and 99"
           value={form.age}
           onChange={(e) => update('age', sanitizeAge(e.target.value))}
         />
@@ -1294,11 +1289,12 @@ function PersonalStep({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(Hash, 'Employee ID', undefined, isMissing(form.employeeId))}
+        {labelRow(Hash, 'Employee ID')}
         <input
           className={mobileFieldInput}
           placeholder="Employee ID"
           autoComplete="off"
+          maxLength={10}
           value={form.employeeId}
           onChange={(e) => update('employeeId', sanitizeEmployeeId(e.target.value))}
         />
@@ -1554,9 +1550,9 @@ function ScheduleStep({
 }) {
   const cabins = schedule?.cabins ?? []
   const bookableDates = useMemo(() => {
-    return getAllBookableDates(schedule).flatMap((iso) => {
+    return getAllScheduleDates(schedule).flatMap((iso) => {
       const date = parseIsoDate(iso)
-      return date ? [{ iso, date }] : []
+      return date ? [{ iso, date, enabled: isScheduleDateEnabled(schedule, iso) }] : []
     })
   }, [schedule])
 
@@ -1583,6 +1579,7 @@ function ScheduleStep({
   const sectionLabelClass = 'font-sans text-[14px] font-medium leading-normal text-[#9A9A9A]'
 
   const pickDate = (iso: string) => {
+    if (!isScheduleDateEnabled(schedule, iso)) return
     update('appointmentDate', iso)
     const nextCabins = getCabinsForDate(schedule, iso)
     const cabinStillValid = nextCabins.some((cabin) => cabin.name === form.appointmentCabin)
@@ -1623,16 +1620,19 @@ function ScheduleStep({
             </p>
           ) : (
             <div className="grid w-full grid-cols-4 gap-2">
-              {bookableDates.map(({ iso, date }) => {
-                const selected = form.appointmentDate === iso
+              {bookableDates.map(({ iso, date, enabled }) => {
+                const selected = enabled && form.appointmentDate === iso
                 return (
                   <button
                     key={iso}
                     type="button"
+                    disabled={!enabled}
                     onClick={() => pickDate(iso)}
                     aria-pressed={selected}
+                    aria-disabled={!enabled}
                     className={[
-                      'flex h-20 w-full min-w-0 origin-center flex-col items-center justify-center gap-1 rounded-[8px] transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                      'flex h-20 w-full min-w-0 origin-center flex-col items-center justify-center gap-1 rounded-[8px] transition duration-200',
+                      enabled ? 'hover:z-[1] hover:scale-[1.03]' : 'cursor-not-allowed opacity-40',
                       selected ? selectedDateClass : idleDateClass,
                     ].join(' ')}
                   >

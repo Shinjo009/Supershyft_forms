@@ -59,6 +59,37 @@ const VARIANT_SUCCESS_GIF: Record<SectionCompleteVariant, string> = {
   nutrition: nutritionSuccessGif,
 }
 
+const SECTION_COMPLETE_HEADLINES = [
+  {
+    text: '1 step closer to prevention!',
+    className:
+      "text-center text-base font-semibold uppercase tracking-tight text-purple-500 font-['Lato']",
+  },
+  {
+    text: 'Halfway through!',
+    className:
+      "text-center text-base font-semibold uppercase tracking-tight text-amber-500 font-['Lato']",
+  },
+  {
+    text: '1 FINAL STRETCH!',
+    className:
+      "text-center text-base font-semibold uppercase tracking-tight text-blue-400 font-['Lato']",
+  },
+  {
+    text: 'thanks for choosing your health!',
+    className:
+      "text-center text-base font-semibold uppercase tracking-tight text-purple-500 font-['Lato']",
+  },
+] as const
+
+function headlineForCompletedCount(completedCount: number) {
+  const index = Math.min(
+    SECTION_COMPLETE_HEADLINES.length - 1,
+    Math.max(0, completedCount - 1),
+  )
+  return SECTION_COMPLETE_HEADLINES[index]
+}
+
 /** Shared section-complete hub — categories come from /assessments/{id}/status */
 export function SectionCompleteHub({
   variant,
@@ -81,6 +112,8 @@ export function SectionCompleteHub({
   const remaining = categories.filter(
     (category) => !isCategoryCompleted(category, completedCategoryIds),
   ).length
+  const completedCount = Math.max(0, categories.length - remaining)
+  const headline = headlineForCompletedCount(completedCount || 1)
   const nextIncompleteId = categories.find(
     (category) => !isCategoryCompleted(category, completedCategoryIds),
   )?.category_id
@@ -98,6 +131,7 @@ export function SectionCompleteHub({
             className="mx-auto -mt-4 h-[280px] w-[280px] object-contain"
           />
           <div className="flex flex-col items-center gap-1 pb-1">
+            <p className={headline.className}>{headline.text}</p>
             <h2 className="text-center text-[18px] font-semibold tracking-[0.2px] text-white">
               {title}
             </h2>

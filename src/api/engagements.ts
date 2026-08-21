@@ -23,6 +23,7 @@ export type EngagementSchedule = {
   cabins: EngagementCabin[]
   datesByCabin: Record<string, string[]>
   days: Record<string, CabinDay>
+  dateEnabled: Record<string, boolean>
   source: 'api' | 'fallback'
 }
 
@@ -46,6 +47,17 @@ function readString(value: unknown): string {
 function readNumber(value: unknown, fallback = 0): number {
   const n = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(n) ? n : fallback
+}
+
+function readEnabledFlag(value: unknown, fallback = true): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value === 'string') {
+    const token = value.trim().toLowerCase()
+    if (token === 'false' || token === '0' || token === 'no') return false
+    if (token === 'true' || token === '1' || token === 'yes') return true
+  }
+  return fallback
 }
 
 function normalizeHHmm(value: string): string {
@@ -97,13 +109,28 @@ export function getCabinDay(
   return schedule.days[dayLookupKey(cabinName, date)] ?? null
 }
 
-export function getAllBookableDates(schedule: EngagementSchedule | null): string[] {
+export function getAllScheduleDates(schedule: EngagementSchedule | null): string[] {
   if (!schedule) return []
-  const dates = new Set<string>()
+  const dates = new Set<string>(Object.keys(schedule.dateEnabled))
   for (const cabinDates of Object.values(schedule.datesByCabin)) {
     for (const iso of cabinDates) dates.add(iso)
   }
   return [...dates].sort()
+}
+
+export function isScheduleDateEnabled(
+  schedule: EngagementSchedule | null,
+  date: string,
+): boolean {
+  if (!schedule || !date) return false
+  if (Object.prototype.hasOwnProperty.call(schedule.dateEnabled, date)) {
+    return schedule.dateEnabled[date] !== false
+  }
+  return Object.values(schedule.datesByCabin).some((cabinDates) => cabinDates.includes(date))
+}
+
+export function getAllBookableDates(schedule: EngagementSchedule | null): string[] {
+  return getAllScheduleDates(schedule).filter((iso) => isScheduleDateEnabled(schedule, iso))
 }
 
 export function getCabinsForDate(
@@ -186,8 +213,13 @@ function emptySchedule(engagementCode: string): EngagementSchedule {
     cabins: [],
     datesByCabin: {},
     days: {},
+    dateEnabled: {},
     source: 'api',
   }
+}
+
+function recordScheduleDate(schedule: EngagementSchedule, date: string, enabled: boolean): void {
+  schedule.dateEnabled[date] = enabled
 }
 
 function addCabinDay(schedule: EngagementSchedule, date: string, cabin: CabinDay): void {
@@ -217,8 +249,25 @@ function parseEngagementSchedule(payload: unknown, engagementCode: string): Enga
   if (!bloodMap) return schedule
 
   for (const [date, value] of Object.entries(bloodMap).sort(([a], [b]) => a.localeCompare(b))) {
-    if (!DATE_KEY.test(date) || !Array.isArray(value)) continue
-    value.forEach((item, index) => {
+    if (!DATE_KEY.test(date)) continue
+
+    if (Array.isArray(value)) {
+      recordScheduleDate(schedule, date, true)
+      value.forEach((item, index) => {
+        const cabin = parseCabinDay(item, index)
+        if (cabin) addCabinDay(schedule, date, cabin)
+      })
+      continue
+    }
+
+    const day = asRecord(value)
+    if (!day) continue
+
+    const enabled = readEnabledFlag(day.is_enable ?? day.is_enabled, true)
+    recordScheduleDate(schedule, date, enabled)
+
+    const cabins = Array.isArray(day.cabins) ? day.cabins : []
+    cabins.forEach((item, index) => {
       const cabin = parseCabinDay(item, index)
       if (cabin) addCabinDay(schedule, date, cabin)
     })
@@ -238,6 +287,7 @@ function buildFallbackSchedule(city: string, engagementCode: string): Engagement
   }))
   const cabin: CabinDay = { name: 'Cabin 1', key: 'cabin-1', slots }
   for (const date of getCityBookableDates(city).map(toIsoDate)) {
+    recordScheduleDate(schedule, date, true)
     addCabinDay(schedule, date, cabin)
   }
   sortScheduleDates(schedule)
@@ -252,6 +302,6 @@ export async function loadEngagementSchedule(
 
   const engagement = await publicGet(`/engagements/code/${encodeURIComponent(engagementCode)}`)
   const parsed = parseEngagementSchedule(engagement, engagementCode)
-  if (parsed.cabins.length > 0) return parsed
+  if (parsed.cabins.length > 0 || getAllScheduleDates(parsed).length > 0) return parsed
   return buildFallbackSchedule(city, engagementCode)
 }
