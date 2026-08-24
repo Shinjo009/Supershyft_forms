@@ -27,9 +27,11 @@ import {
 } from './api/onboard'
 import {
   getAllBookableDates,
+  getAllScheduleDates,
   getCabinDay,
   getCabinsForDate,
   getSlotDisplays,
+  isScheduleDateEnabled,
   loadEngagementSchedule,
   resolveCabinKey,
   type EngagementSchedule,
@@ -55,7 +57,7 @@ import { applyAnswersToQuestions, type AnswerValue } from './lib/questionnaireVi
 import { getMockQuestionnaireQuestions } from './data/mockApiQuestionnaires'
 /** Validate booking fields with the input regexes before continuing. */
 const ENFORCE_REQUIRED_FIELDS = true
-import { ANTHRO_PAGE_BACKGROUND, PageBackdrop } from './components/PageBackdrop'
+import { ANTHRO_PAGE_BACKGROUND, PageBackdrop, type BackdropTone } from './components/PageBackdrop'
 import { Stepper } from './components'
 import { defaultFormData, type FormData } from './types'
 import { ApiQuestionnaireStep } from './components/ApiQuestionnaireStep'
@@ -915,11 +917,29 @@ export default function BookAppointment() {
               : backgroundAssessmentSvg
     : undefined
 
+  const questionnaireTone: BackdropTone = (() => {
+    if (!isQuestionnaireFlow) return 'booking'
+    if (isAnthroSection) return 'anthro'
+    if (step === 13) return 'finale'
+    if (step === 10) return 'lifestyle'
+    if (step === 12) return 'nutrition'
+    if (step === 9) return 'anthro'
+    if (step === 8 || step === 6) return 'family'
+    if (step === 7) {
+      if (isAnthroActive) return 'anthro'
+      if (activeCategoryKey.includes('lifestyle')) return 'lifestyle'
+      if (activeCategoryKey.includes('nutrition')) return 'nutrition'
+      return 'family'
+    }
+    return 'family'
+  })()
+
   return (
     <PageBackdrop
       wide={step <= 4}
       wallpaperSrc={questionnaireWallpaper}
       cssWallpaper={isAnthroSection ? ANTHRO_PAGE_BACKGROUND : undefined}
+      tone={questionnaireTone}
     >
       <div className="flex h-full min-w-0 flex-col">
         {/* Header — Figma: p-20px */}
@@ -1545,9 +1565,9 @@ function ScheduleStep({
 }) {
   const cabins = schedule?.cabins ?? []
   const bookableDates = useMemo(() => {
-    return getAllBookableDates(schedule).flatMap((iso) => {
+    return getAllScheduleDates(schedule).flatMap((iso) => {
       const date = parseIsoDate(iso)
-      return date ? [{ iso, date }] : []
+      return date ? [{ iso, date, enabled: isScheduleDateEnabled(schedule, iso) }] : []
     })
   }, [schedule])
 
@@ -1614,16 +1634,24 @@ function ScheduleStep({
             </p>
           ) : (
             <div className="grid w-full grid-cols-4 gap-2">
-              {bookableDates.map(({ iso, date }) => {
-                const selected = form.appointmentDate === iso
+              {bookableDates.map(({ iso, date, enabled }) => {
+                const selected = enabled && form.appointmentDate === iso
                 return (
                   <button
                     key={iso}
                     type="button"
-                    onClick={() => pickDate(iso)}
+                    disabled={!enabled}
+                    onClick={() => {
+                      if (!enabled) return
+                      pickDate(iso)
+                    }}
                     aria-pressed={selected}
+                    aria-disabled={!enabled}
                     className={[
-                      'flex h-20 w-full min-w-0 origin-center flex-col items-center justify-center gap-1 rounded-[8px] transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                      'flex h-20 w-full min-w-0 origin-center flex-col items-center justify-center gap-1 rounded-[8px] transition duration-200',
+                      enabled
+                        ? 'hover:z-[1] hover:scale-[1.03]'
+                        : 'pointer-events-none cursor-not-allowed opacity-40',
                       selected ? selectedDateClass : idleDateClass,
                     ].join(' ')}
                   >
