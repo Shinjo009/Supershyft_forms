@@ -1043,6 +1043,8 @@ export default function BookAppointment() {
             {step === 7 && activeCategory && isAnthroActive ? (
               <AnthropometryStep
                 questions={categoryQuestions}
+                assessmentInstanceId={assessmentInstanceId ?? 1}
+                categoryId={Number(activeCategory.category_id)}
                 onBack={() => setStep(Math.max(highestHubStep, questionnaireReturnStep))}
                 onComplete={handleAnthropometryComplete}
               />
