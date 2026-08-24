@@ -37,7 +37,8 @@ import {
   type EngagementSchedule,
 } from './api/engagements'
 import { resolveEngagementCode } from './lib/engagementCode'
-import { resendBookingOtp, startBookingOtpFlow, verifyBookingOtp } from './api/otp'
+import { createEmployeeUser } from './api/users'
+import { resendBookingOtp, sendBookingOtp, verifyBookingOtp } from './api/otp'
 import {
   isAnthropometryCategory,
   isCategoryCompleted,
@@ -245,7 +246,6 @@ export default function BookAppointment() {
   const [uiError, setUiError] = useState('')
   const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
   const [attemptedScheduleContinue, setAttemptedScheduleContinue] = useState(false)
-  const [isSendingOtp, setIsSendingOtp] = useState(false)
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
   const [isResendingOtp, setIsResendingOtp] = useState(false)
   const [otpVerified, setOtpVerified] = useState(false)
@@ -276,7 +276,7 @@ export default function BookAppointment() {
   }, [])
 
   useEffect(() => {
-    if (step !== 3) return
+    if (step !== 2) return
 
     const engagementCode = resolveEngagementCode(form.city, form.gender)
     let cancelled = false
@@ -302,7 +302,7 @@ export default function BookAppointment() {
     }
   }, [step, form.city, form.gender])
 
-  const goNextFromPersonal = async () => {
+  const goNextFromPersonal = () => {
     const trimmedPhone = form.phone.trim()
     const trimmedEmail = form.email.trim()
     const trimmedAge = form.age.trim()
@@ -374,43 +374,8 @@ export default function BookAppointment() {
       return
     }
 
-    if (otpVerified) {
-      setUiError('')
-      setStep(3)
-      return
-    }
-
-    if (isSendingOtp) return
-
-    const parsedAge = Number.parseInt(trimmedAge, 10)
-    const confirmAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : 25
-    const cityMeta = isBookingCity(form.city) ? CITY_LOCATION[form.city] : null
-
     setUiError('')
-    setIsSendingOtp(true)
-
-    try {
-      await startBookingOtpFlow({
-        age: confirmAge,
-        phone: trimmedPhone,
-        first_name: trimmedFirstName || null,
-        last_name: trimmedLastName || null,
-        email: EMAIL_REGEX.test(trimmedEmail) ? trimmedEmail : null,
-        gender: form.gender || null,
-        address: formatAddressForApi(form) || 'NA',
-        pin_code: form.pincode.trim() || cityMeta?.pincode || '000000',
-        city: form.city.trim() || 'NA',
-        state: form.state.trim() || cityMeta?.state || 'Maharashtra',
-        country: 'India',
-        is_participant: true,
-        status: 'active',
-      })
-      setStep(2)
-    } catch (error) {
-      logClientError(error instanceof Error ? error.message : 'Unable to send OTP.')
-    } finally {
-      setIsSendingOtp(false)
-    }
+    setStep(2)
   }
 
   const handleVerifyOtp = async (otp: string) => {
@@ -424,7 +389,7 @@ export default function BookAppointment() {
         await verifyBookingOtp({ phone: form.phone.trim() }, otp)
         setOtpVerified(true)
       }
-      setStep(3)
+      setStep(5)
     } catch (error) {
       logClientError(error instanceof Error ? error.message : 'Unable to verify OTP.')
     } finally {
@@ -447,15 +412,11 @@ export default function BookAppointment() {
     }
   }
 
-  const resetOtpFlow = () => {
-    setOtpVerified(false)
-  }
-
   const goNextFromSchedule = () => {
     setAttemptedScheduleContinue(true)
     if (!ENFORCE_REQUIRED_FIELDS) {
       setUiError('')
-      setStep(4)
+      setStep(3)
       return
     }
     if (isLoadingSchedule) {
@@ -486,7 +447,7 @@ export default function BookAppointment() {
     }
 
     setUiError('')
-    setStep(4)
+    setStep(3)
   }
 
   const handleConfirmBooking = async () => {
@@ -563,12 +524,6 @@ export default function BookAppointment() {
       }
     }
 
-    if (!otpVerified) {
-      logClientError('Please verify OTP before confirming your booking.')
-      setStep(2)
-      return
-    }
-
     if (!isFrontendOnly()) {
       if (!form.gender) {
         logClientError('Gender is required.')
@@ -611,8 +566,32 @@ export default function BookAppointment() {
         },
       }
 
+      await createEmployeeUser({
+        age: confirmAge,
+        phone: trimmedPhone,
+        first_name: form.firstName.trim() || null,
+        last_name: form.lastName.trim() || null,
+        email: EMAIL_REGEX.test(trimmedEmail) ? trimmedEmail : null,
+        gender: form.gender || null,
+        address: formatAddressForApi(form) || 'NA',
+        pin_code: form.pincode.trim() || cityMeta?.pincode || '000000',
+        city: form.city.trim() || 'NA',
+        state: form.state.trim() || cityMeta?.state || 'Maharashtra',
+        country: 'India',
+        is_participant: true,
+        status: 'active',
+      })
       await onboardUserForEngagement(payload)
-      setStep(5)
+      if (otpVerified) {
+        setStep(5)
+        return
+      }
+      try {
+        await sendBookingOtp({ phone: trimmedPhone })
+      } catch (otpError) {
+        logClientError(otpError instanceof Error ? otpError.message : 'Unable to send OTP.')
+      }
+      setStep(4)
     } catch (error) {
       logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
     } finally {
@@ -881,18 +860,18 @@ export default function BookAppointment() {
 
   const mobileScreenTitle = 'Book Appointment'
 
-  const showBack = step > 1 && step !== 5 && step !== 13
-  const hideGlobalContinue = step === 2 || step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12 || step === 13
+  const showBack = step > 1 && step !== 4 && step !== 5 && step !== 13
+  const hideGlobalContinue = step === 3 || step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12 || step === 13
   const hideStepper = step >= 5
   const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12
-  const confirmStepperBorder = step === 4
+  const confirmStepperBorder = step === 3
 
   const handleStepContinue = () => {
-    if (step === 1) void goNextFromPersonal()
+    if (step === 1) goNextFromPersonal()
     else goNextFromSchedule()
   }
 
-  const continueVariant = step === 3 ? 'mobileBar' : 'mobileBarCompact'
+  const continueVariant = step === 2 ? 'mobileBar' : 'mobileBarCompact'
 
   const isQuestionnaireFlow = step >= 6
   const activeCategoryKey = normalizeCategoryKey(activeCategory?.category_key || '')
@@ -981,7 +960,7 @@ export default function BookAppointment() {
             <Stepper
               current={step}
               maxReachable={maxReachedStep}
-              onStepClick={(target) => setStep(target)}
+              onStepClick={step === 4 ? undefined : (target) => setStep(target)}
             />
           </div>
         )}
@@ -1020,20 +999,6 @@ export default function BookAppointment() {
               />
             )}
             {step === 2 && (
-              <OtpVerifyStep
-                key={form.phone}
-                phone={form.phone}
-                isVerifying={isVerifyingOtp}
-                isResending={isResendingOtp}
-                onVerify={handleVerifyOtp}
-                onResend={handleResendOtp}
-                onChangeNumber={() => {
-                  resetOtpFlow()
-                  setStep(1)
-                }}
-              />
-            )}
-            {step === 3 && (
               <ScheduleStep
                 form={form}
                 update={update}
@@ -1042,12 +1007,22 @@ export default function BookAppointment() {
                 showMissingRequired={ENFORCE_REQUIRED_FIELDS && attemptedScheduleContinue}
               />
             )}
-            {step === 4 && (
+            {step === 3 && (
               <ConfirmStep
                 form={form}
                 onEdit={(s) => setStep(s)}
                 onProceed={handleConfirmBooking}
                 isSubmitting={isSubmittingBooking}
+              />
+            )}
+            {step === 4 && (
+              <OtpVerifyStep
+                key={form.phone}
+                phone={form.phone}
+                isVerifying={isVerifyingOtp}
+                isResending={isResendingOtp}
+                onVerify={handleVerifyOtp}
+                onResend={handleResendOtp}
               />
             )}
             {step === 5 && (
@@ -1123,16 +1098,10 @@ export default function BookAppointment() {
             <div className="mt-3 shrink-0">
               <ContinueButton
                 variant={continueVariant}
-                disabled={(step === 1 && isSendingOtp) || (step === 3 && isLoadingSchedule)}
+                disabled={step === 2 && isLoadingSchedule}
                 onClick={handleStepContinue}
               >
-                {step === 1 && isSendingOtp
-                  ? 'Sending OTP...'
-                  : step === 1
-                    ? 'Continue & Verify OTP'
-                    : step === 3 && isLoadingSchedule
-                      ? 'Loading slots...'
-                      : 'Continue'}
+                {step === 2 && isLoadingSchedule ? 'Loading slots...' : 'Continue'}
               </ContinueButton>
             </div>
           ) : null}
@@ -1417,7 +1386,7 @@ function ConfirmStep({
       <section className="rounded-[8px] bg-white/5 p-3">
         <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
           <h3 className="text-[15px] font-semibold text-white">Schedule</h3>
-          <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(3)}>
+          <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(2)}>
             Edit
           </button>
         </div>

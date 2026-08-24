@@ -1,4 +1,4 @@
-const STEPS = ['Personal', 'OTP', 'Schedule', 'Preview'] as const
+const STEPS = ['Personal', 'Schedule', 'Preview', 'OTP'] as const
 
 type Props = {
   current: number

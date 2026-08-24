@@ -140,12 +140,6 @@ function parseOnboardSuccess(data: unknown, engagementCode: string): OnboardResu
     refreshToken = refreshToken || stored.refreshToken
   }
 
-  if (!accessToken || !refreshToken) {
-    throw new Error(
-      'Booking succeeded but no auth session was found. Please verify OTP and try again.',
-    )
-  }
-
   return {
     message: 'Booking confirmed',
     engagementCode,
@@ -272,7 +266,9 @@ export async function onboardUserForEngagement(
   }
 
   const result = parseOnboardSuccess(data, engagementCode)
-  saveOnboardTokens(result.tokens)
+  if (result.tokens.accessToken && result.tokens.refreshToken) {
+    saveOnboardTokens(result.tokens)
+  }
   console.info('[onboard] booking saved', {
     engagementCode: result.engagementCode,
     userId: result.userId,

@@ -20,7 +20,7 @@ type Props = {
   isResending?: boolean
   onVerify: (otp: string) => void
   onResend: () => void
-  onChangeNumber: () => void
+  onChangeNumber?: () => void
 }
 
 export function OtpVerifyStep({
@@ -130,13 +130,15 @@ export function OtpVerifyStep({
           Enter the 6-digit code sent to your WhatsApp at{' '}
           <span className="font-medium text-[#ccc]">{maskIndianMobile(phone)}</span>
         </p>
-        <button
-          type="button"
-          onClick={onChangeNumber}
-          className="self-start text-[13px] font-medium text-[#4b8d83]"
-        >
-          Change number
-        </button>
+        {onChangeNumber ? (
+          <button
+            type="button"
+            onClick={onChangeNumber}
+            className="self-start text-[13px] font-medium text-[#4b8d83]"
+          >
+            Change number
+          </button>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-3">
