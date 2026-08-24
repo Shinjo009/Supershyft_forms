@@ -27,11 +27,9 @@ import {
 } from './api/onboard'
 import {
   getAllBookableDates,
-  getAllScheduleDates,
   getCabinDay,
   getCabinsForDate,
   getSlotDisplays,
-  isScheduleDateEnabled,
   loadEngagementSchedule,
   resolveCabinKey,
   type EngagementSchedule,
@@ -48,6 +46,7 @@ import {
 } from './api/assessments'
 import {
   getCategoryQuestionnaire,
+  submitQuestionnaireResponses,
   type QuestionnaireQuestion,
 } from './api/questionnaire'
 import { getAccessToken } from './lib/authStorage'
@@ -56,12 +55,13 @@ import { applyAnswersToQuestions, type AnswerValue } from './lib/questionnaireVi
 import { getMockQuestionnaireQuestions } from './data/mockApiQuestionnaires'
 /** Validate booking fields with the input regexes before continuing. */
 const ENFORCE_REQUIRED_FIELDS = true
-import { ANTHRO_PAGE_BACKGROUND, PageBackdrop, type BackdropTone } from './components/PageBackdrop'
+import { ANTHRO_PAGE_BACKGROUND, PageBackdrop } from './components/PageBackdrop'
 import { Stepper } from './components'
 import { defaultFormData, type FormData } from './types'
 import { ApiQuestionnaireStep } from './components/ApiQuestionnaireStep'
 import { AnthropometryStep } from './components/anthropometry/AnthropometryStep'
 import {
+  buildAnthropometryResponses,
   type AnthropometryFollowupValues,
   type AnthropometryPrimaryValues,
 } from './components/anthropometry/anthropometryConfig'
@@ -75,6 +75,7 @@ import { OtpVerifyStep } from './components/OtpVerifyStep'
 import { Dropdown } from './components/ui/dropdown-01'
 import bookingSuccessGif from './assets/animation-gif.gif'
 import backgroundAssessmentSvg from './assets/Background.svg'
+import lastPageBackgroundSvg from './assets/lastpage BG.svg'
 import nutritionEndBackgroundSvg from './assets/nutritionend.svg'
 import nutritionLogBackgroundSvg from './assets/nutritionlogstart.svg'
 import familyHistoryBackgroundSvg from './assets/family history.svg'
@@ -121,12 +122,12 @@ const RELATION_OPTIONS = [
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
 const NAME_REGEX = /^[A-Za-z]+(?: [A-Za-z]+)*$/
 const PHONE_REGEX = /^[6-9]\d{9}$/
-const AGE_REGEX = /^(?:1[8-9]|[2-9]\d)$/
+const AGE_REGEX = /^(?:[1-9]|[1-9]\d)$/
 const sanitizeName = (value: string) => value.replace(/[^A-Za-z\s]/g, '').replace(/\s+/g, ' ')
 const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
 const sanitizeEmail = (value: string) => value.replace(/\s/g, '')
-const sanitizeEmployeeId = (value: string) => value.replace(/\s/g, '').slice(0, 10)
+const sanitizeEmployeeId = (value: string) => value.replace(/\s/g, '').slice(0, 40)
 const generateParticipantId = (phone: string) => `HRM${phone || String(Date.now()).slice(-10)}`
 const BOOK_APPOINTMENT_ERROR_EVENT = 'book-appointment:error'
 const logClientError = (message: string) => {
@@ -345,7 +346,7 @@ export default function BookAppointment() {
         return
       }
       if (!AGE_REGEX.test(trimmedAge)) {
-        logClientError('Age must be between 18 and 99.')
+        logClientError('Age must be between 1 and 99.')
         return
       }
       if (!form.gender) {
@@ -356,12 +357,12 @@ export default function BookAppointment() {
         logClientError('Please select a city.')
         return
       }
-      if (!form.doctorConsultation) {
-        logClientError('Please select doctor consultation preference.')
+      if (!form.employeeId.trim()) {
+        logClientError('Employee ID is required.')
         return
       }
-      if (!form.eyeConsultation) {
-        logClientError('Please select eye consultation preference.')
+      if (!form.doctorConsultation || form.doctorConsultation !== form.eyeConsultation) {
+        logClientError('Please select eye and doctor consultation preference.')
         return
       }
     }
@@ -380,8 +381,7 @@ export default function BookAppointment() {
     if (isSendingOtp) return
 
     const parsedAge = Number.parseInt(trimmedAge, 10)
-    const confirmAge =
-      Number.isFinite(parsedAge) && parsedAge >= 18 && parsedAge <= 99 ? parsedAge : 25
+    const confirmAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : 25
     const cityMeta = isBookingCity(form.city) ? CITY_LOCATION[form.city] : null
 
     setUiError('')
@@ -494,7 +494,7 @@ export default function BookAppointment() {
     const trimmedEmail = form.email.trim()
     const trimmedAge = form.age.trim()
     const parsedAge = Number.parseInt(form.age, 10)
-    const safeAge = Number.isFinite(parsedAge) && parsedAge >= 18 && parsedAge <= 99 ? parsedAge : NaN
+    const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
     const participantId = form.employeeId.trim() || generateParticipantId(trimmedPhone)
     const cityMeta = isBookingCity(form.city) ? CITY_LOCATION[form.city] : null
     const apiAddress = formatAddressForApi(form)
@@ -524,11 +524,15 @@ export default function BookAppointment() {
         return
       }
       if (!AGE_REGEX.test(trimmedAge) || !Number.isFinite(safeAge)) {
-        logClientError('Age must be between 18 and 99.')
+        logClientError('Age must be between 1 and 99.')
         return
       }
       if (!isBookingCity(apiCity)) {
         logClientError('Please select a city.')
+        return
+      }
+      if (!form.employeeId.trim()) {
+        logClientError('Employee ID is required.')
         return
       }
       if (!form.appointmentDate || !getAllBookableDates(engagementSchedule).includes(form.appointmentDate)) {
@@ -600,7 +604,7 @@ export default function BookAppointment() {
         participants_employee_id: participantId,
         participant_blood_group: 'NA',
         consultation: {
-          eye: form.eyeConsultation === 'yes',
+          eye: form.doctorConsultation === 'yes',
           doctor: form.doctorConsultation === 'yes',
         },
       }
@@ -715,7 +719,7 @@ export default function BookAppointment() {
       // Frontend-only: use API-shaped mock questions so we can redesign layouts one-by-one.
       if (isFrontendOnly()) {
         const questions = getMockQuestionnaireQuestions(category.category_key)
-        if (questions.length === 0) {
+        if (questions.length === 0 && !isAnthropometryCategory(category.category_key)) {
           throw new Error('No mock questions available for this category yet.')
         }
         beginCategory(questions)
@@ -735,6 +739,10 @@ export default function BookAppointment() {
       )
       const questions = questionnaire.questions
       if (!Array.isArray(questions) || questions.length === 0) {
+        if (isAnthropometryCategory(category.category_key)) {
+          beginCategory([])
+          return
+        }
         if (cachedQuestions?.length) {
           beginCategory(cachedQuestions)
           return
@@ -796,7 +804,7 @@ export default function BookAppointment() {
     setStep(completedHubStep)
   }
 
-  const handleAnthropometryComplete = (_payload: {
+  const handleAnthropometryComplete = async (payload: {
     primary: AnthropometryPrimaryValues
     followup: AnthropometryFollowupValues
   }) => {
@@ -807,6 +815,29 @@ export default function BookAppointment() {
     }
 
     const categoryId = Number(activeCategory.category_id)
+    const responses = buildAnthropometryResponses(
+      categoryQuestions,
+      payload.primary,
+      payload.followup,
+    )
+
+    if (assessmentInstanceId && responses.length > 0) {
+      try {
+        const accessToken = getAccessToken()
+        await submitQuestionnaireResponses(
+          accessToken,
+          assessmentInstanceId,
+          categoryId,
+          responses,
+        )
+      } catch (error) {
+        console.warn(
+          '[assessment] anthropometry submit reported an error; continuing anyway',
+          error instanceof Error ? error.message : error,
+        )
+      }
+    }
+
     setCompletedCategoryIds((prev) =>
       prev.includes(categoryId) ? prev : [...prev, categoryId],
     )
@@ -851,7 +882,7 @@ export default function BookAppointment() {
   const showBack = step > 1 && step !== 5 && step !== 13
   const hideGlobalContinue = step === 2 || step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12 || step === 13
   const hideStepper = step >= 5
-  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12 || step === 13
+  const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12
   const confirmStepperBorder = step === 4
 
   const handleStepContinue = () => {
@@ -869,9 +900,11 @@ export default function BookAppointment() {
     : activeCategoryKey.includes('nutrition')
       ? nutritionLogBackgroundSvg
       : familyHistoryBackgroundSvg
-  const isAnthroSection = step === 6 || step === 13 || (step === 7 && isAnthroActive)
+  const isAnthroSection = step === 6 || (step === 7 && isAnthroActive)
   const questionnaireWallpaper = isQuestionnaireFlow && !isAnthroSection
-    ? step === 8 || step === 9
+    ? step === 13
+      ? lastPageBackgroundSvg
+      : step === 6 || step === 8 || step === 9
         ? backgroundAssessmentSvg
         : step === 10
           ? nutritionEndBackgroundSvg
@@ -882,28 +915,11 @@ export default function BookAppointment() {
               : backgroundAssessmentSvg
     : undefined
 
-  const questionnaireTone: BackdropTone = (() => {
-    if (!isQuestionnaireFlow) return 'booking'
-    if (step === 13) return 'anthro'
-    if (step === 10) return 'lifestyle'
-    if (step === 12) return 'nutrition'
-    if (step === 9) return 'anthro'
-    if (step === 8 || step === 6) return 'family'
-    if (step === 7) {
-      if (isAnthroActive) return 'anthro'
-      if (activeCategoryKey.includes('lifestyle')) return 'lifestyle'
-      if (activeCategoryKey.includes('nutrition')) return 'nutrition'
-      return 'family'
-    }
-    return 'family'
-  })()
-
   return (
     <PageBackdrop
       wide={step <= 4}
       wallpaperSrc={questionnaireWallpaper}
       cssWallpaper={isAnthroSection ? ANTHRO_PAGE_BACKGROUND : undefined}
-      tone={questionnaireTone}
     >
       <div className="flex h-full min-w-0 flex-col">
         {/* Header — Figma: p-20px */}
@@ -1027,8 +1043,6 @@ export default function BookAppointment() {
             {step === 7 && activeCategory && isAnthroActive ? (
               <AnthropometryStep
                 questions={categoryQuestions}
-                assessmentInstanceId={assessmentInstanceId ?? 0}
-                categoryId={Number(activeCategory.category_id)}
                 onBack={() => setStep(Math.max(highestHubStep, questionnaireReturnStep))}
                 onComplete={handleAnthropometryComplete}
               />
@@ -1129,8 +1143,15 @@ function PersonalStep({
   const showRequired = Boolean(showMissingRequired)
   const isMissing = (value: string) => showRequired && !value.trim()
   const isMissingGender = showRequired && !form.gender
-  const isMissingDoctorConsultation = showRequired && !form.doctorConsultation
-  const isMissingEyeConsultation = showRequired && !form.eyeConsultation
+  const consultationChoice =
+    form.doctorConsultation && form.doctorConsultation === form.eyeConsultation
+      ? form.doctorConsultation
+      : ''
+  const isMissingConsultation = showRequired && !consultationChoice
+  const setConsultation = (value: 'yes' | 'no') => {
+    update('doctorConsultation', value)
+    update('eyeConsultation', value)
+  }
   const fullNameError: 'missing' | 'invalid' | undefined = !showRequired
     ? undefined
     : !form.firstName.trim() || !form.lastName.trim()
@@ -1239,8 +1260,8 @@ function PersonalStep({
           inputMode="numeric"
           placeholder="Age"
           maxLength={2}
-          pattern="^(?:1[8-9]|[2-9]\d)$"
-          title="Age must be between 18 and 99"
+          pattern="^(?:[1-9]|[1-9]\d)$"
+          title="Age must be between 1 and 99"
           value={form.age}
           onChange={(e) => update('age', sanitizeAge(e.target.value))}
         />
@@ -1303,26 +1324,25 @@ function PersonalStep({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(Hash, 'Employee ID')}
+        {labelRow(Hash, 'Employee ID', undefined, isMissing(form.employeeId))}
         <input
           className={mobileFieldInput}
           placeholder="Employee ID"
           autoComplete="off"
-          maxLength={10}
           value={form.employeeId}
           onChange={(e) => update('employeeId', sanitizeEmployeeId(e.target.value))}
         />
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(User, 'Do you want doctor consultation? (2nd week of Sept)', undefined, isMissingDoctorConsultation)}
+        {labelRow(Eye, 'Do you want eye and doctor consultation? (2nd week of September)', undefined, isMissingConsultation)}
         <div className="flex h-10 gap-6 overflow-visible">
           <button
             type="button"
-            onClick={() => update('doctorConsultation', 'yes')}
+            onClick={() => setConsultation('yes')}
             className={[
               'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-              form.doctorConsultation === 'yes'
+              consultationChoice === 'yes'
                 ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
                 : 'bg-white/5 text-[#999]',
             ].join(' ')}
@@ -1331,40 +1351,10 @@ function PersonalStep({
           </button>
           <button
             type="button"
-            onClick={() => update('doctorConsultation', 'no')}
+            onClick={() => setConsultation('no')}
             className={[
               'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-              form.doctorConsultation === 'no'
-                ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                : 'bg-white/5 text-[#999]',
-            ].join(' ')}
-          >
-            No
-          </button>
-        </div>
-      </div>
-
-      <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(Eye, 'Do you want eye consultation? (2nd week of Sept)', undefined, isMissingEyeConsultation)}
-        <div className="flex h-10 gap-6 overflow-visible">
-          <button
-            type="button"
-            onClick={() => update('eyeConsultation', 'yes')}
-            className={[
-              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-              form.eyeConsultation === 'yes'
-                ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                : 'bg-white/5 text-[#999]',
-            ].join(' ')}
-          >
-            Yes
-          </button>
-          <button
-            type="button"
-            onClick={() => update('eyeConsultation', 'no')}
-            className={[
-              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-              form.eyeConsultation === 'no'
+              consultationChoice === 'no'
                 ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
                 : 'bg-white/5 text-[#999]',
             ].join(' ')}
@@ -1473,22 +1463,11 @@ function MemberSummary({
         </div>
         <div className="col-span-2">
           <SummaryItem
-            Icon={User}
-            label={
-              member.doctorConsultation
-                ? `Doctor consultation: ${member.doctorConsultation === 'yes' ? 'Yes' : 'No'}`
-                : 'Doctor consultation: —'
-            }
-            dense={dense}
-          />
-        </div>
-        <div className="col-span-2">
-          <SummaryItem
             Icon={Eye}
             label={
-              member.eyeConsultation
-                ? `Eye consultation: ${member.eyeConsultation === 'yes' ? 'Yes' : 'No'}`
-                : 'Eye consultation: —'
+              member.doctorConsultation && member.doctorConsultation === member.eyeConsultation
+                ? `Eye and doctor consultation: ${member.doctorConsultation === 'yes' ? 'Yes' : 'No'}`
+                : 'Eye and doctor consultation: —'
             }
             dense={dense}
           />
@@ -1564,9 +1543,9 @@ function ScheduleStep({
 }) {
   const cabins = schedule?.cabins ?? []
   const bookableDates = useMemo(() => {
-    return getAllScheduleDates(schedule).flatMap((iso) => {
+    return getAllBookableDates(schedule).flatMap((iso) => {
       const date = parseIsoDate(iso)
-      return date ? [{ iso, date, enabled: isScheduleDateEnabled(schedule, iso) }] : []
+      return date ? [{ iso, date }] : []
     })
   }, [schedule])
 
@@ -1593,7 +1572,6 @@ function ScheduleStep({
   const sectionLabelClass = 'font-sans text-[14px] font-medium leading-normal text-[#9A9A9A]'
 
   const pickDate = (iso: string) => {
-    if (!isScheduleDateEnabled(schedule, iso)) return
     update('appointmentDate', iso)
     const nextCabins = getCabinsForDate(schedule, iso)
     const cabinStillValid = nextCabins.some((cabin) => cabin.name === form.appointmentCabin)
@@ -1634,19 +1612,16 @@ function ScheduleStep({
             </p>
           ) : (
             <div className="grid w-full grid-cols-4 gap-2">
-              {bookableDates.map(({ iso, date, enabled }) => {
-                const selected = enabled && form.appointmentDate === iso
+              {bookableDates.map(({ iso, date }) => {
+                const selected = form.appointmentDate === iso
                 return (
                   <button
                     key={iso}
                     type="button"
-                    disabled={!enabled}
                     onClick={() => pickDate(iso)}
                     aria-pressed={selected}
-                    aria-disabled={!enabled}
                     className={[
-                      'flex h-20 w-full min-w-0 origin-center flex-col items-center justify-center gap-1 rounded-[8px] transition duration-200',
-                      enabled ? 'hover:z-[1] hover:scale-[1.03]' : 'cursor-not-allowed opacity-40',
+                      'flex h-20 w-full min-w-0 origin-center flex-col items-center justify-center gap-1 rounded-[8px] transition duration-200 hover:z-[1] hover:scale-[1.03]',
                       selected ? selectedDateClass : idleDateClass,
                     ].join(' ')}
                   >
@@ -1807,7 +1782,7 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
             Slot Confirmed!
           </h2>
           <p className="text-[12px] leading-4 text-[#9a9a9a]">
-            Congratulations! You have completed the first step.
+            Complete the health assessment to confirm your booking.
           </p>
         </div>
       </div>
