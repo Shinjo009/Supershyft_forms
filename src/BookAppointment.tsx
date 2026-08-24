@@ -359,10 +359,6 @@ export default function BookAppointment() {
         logClientError('Please select a city.')
         return
       }
-      if (!form.employeeId.trim()) {
-        logClientError('Employee ID is required.')
-        return
-      }
       if (!form.doctorConsultation || form.doctorConsultation !== form.eyeConsultation) {
         logClientError('Please select eye and doctor consultation preference.')
         return
@@ -492,10 +488,6 @@ export default function BookAppointment() {
       }
       if (!isBookingCity(apiCity)) {
         logClientError('Please select a city.')
-        return
-      }
-      if (!form.employeeId.trim()) {
-        logClientError('Employee ID is required.')
         return
       }
       if (!form.appointmentDate || !getAllBookableDates(engagementSchedule).includes(form.appointmentDate)) {
@@ -1315,7 +1307,7 @@ function PersonalStep({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(Hash, 'Employee ID', undefined, isMissing(form.employeeId))}
+        {labelRow(Hash, 'Employee ID')}
         <input
           className={mobileFieldInput}
           placeholder="Employee ID"
