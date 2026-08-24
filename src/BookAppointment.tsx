@@ -1357,7 +1357,7 @@ function PersonalStep({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(Eye, 'Do you want an eye and doctor consultation? (2nd week of September)', undefined, isMissingConsultation)}
+        {labelRow(Eye, 'Do you want an eye and Doctor consultation? (2nd week of September)', undefined, isMissingConsultation)}
         <div className="flex h-10 gap-6 overflow-visible">
           <button
             type="button"
