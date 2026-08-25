@@ -887,7 +887,6 @@ function PersonalStep({
   }
 
   const showRequired = Boolean(showMissingRequired)
-  const isMissing = (value: string) => showRequired && !value.trim()
   const isMissingGender = showRequired && !form.gender
   const isMissingRelation = showRequired && !form.relation.trim()
   const fullNameError: 'missing' | 'invalid' | undefined = !showRequired
