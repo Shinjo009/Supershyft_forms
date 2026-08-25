@@ -521,7 +521,7 @@ export default function BookAppointment() {
 
   const desktopWelcomeTitle = 'Welcome to the world of Bio AI technology.'
   const desktopWelcomeSubtitle =
-    'Book your Bio-marker sample collection & schedule your personalised doctor consultation.'
+    'Book your Bio-marker sample collection.'
 
   const glassPanel =
     'rounded-[18px] border border-white/12 bg-black/18 shadow-[0_26px_70px_rgba(0,0,0,0.35)] backdrop-blur-[2px]'
