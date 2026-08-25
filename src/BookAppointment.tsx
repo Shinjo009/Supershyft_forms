@@ -4,7 +4,6 @@ import {
   Building2,
   Calendar,
   Clock,
-  Eye,
   Hash,
   Mail,
   MapPin,
@@ -437,8 +436,8 @@ export default function BookAppointment() {
       logClientError('Please select a time slot.')
       return
     }
-    if (!form.doctorConsultation || form.doctorConsultation !== form.eyeConsultation) {
-      logClientError('Please select eye and doctor consultation preference.')
+    if (!form.doctorConsultation) {
+      logClientError('Please select doctor consultation preference.')
       return
     }
 
@@ -514,8 +513,8 @@ export default function BookAppointment() {
         logClientError('Please select a time slot.')
         return
       }
-      if (!form.doctorConsultation || form.doctorConsultation !== form.eyeConsultation) {
-        logClientError('Please select eye and doctor consultation preference.')
+      if (!form.doctorConsultation) {
+        logClientError('Please select doctor consultation preference.')
         return
       }
     }
@@ -557,7 +556,7 @@ export default function BookAppointment() {
         participants_employee_id: participantId,
         participant_blood_group: 'NA',
         consultation: {
-          eye: form.doctorConsultation === 'yes',
+          eye: false,
           doctor: form.doctorConsultation === 'yes',
         },
       }
@@ -1355,11 +1354,11 @@ function ConfirmStep({
           </div>
           <div className="col-span-2">
             <SummaryItem
-              Icon={Eye}
+              Icon={User}
               label={
-                form.doctorConsultation && form.doctorConsultation === form.eyeConsultation
-                  ? `Eye and doctor consultation: ${form.doctorConsultation === 'yes' ? 'Yes' : 'No'}`
-                  : 'Eye and doctor consultation: —'
+                form.doctorConsultation
+                  ? `Doctor consultation: ${form.doctorConsultation === 'yes' ? 'Yes' : 'No'}`
+                  : 'Doctor consultation: —'
               }
               dense
             />
@@ -1537,15 +1536,11 @@ function ScheduleStep({
     update('appointmentTime', '')
   }
 
-  const consultationChoice =
-    form.doctorConsultation && form.doctorConsultation === form.eyeConsultation
-      ? form.doctorConsultation
-      : ''
+  const consultationChoice = form.doctorConsultation
   const showConsultation = Boolean(activeDate && selectedCabin)
   const isMissingConsultation = Boolean(showMissingRequired && showConsultation && !consultationChoice)
   const setConsultation = (value: 'yes' | 'no') => {
     update('doctorConsultation', value)
-    update('eyeConsultation', value)
   }
 
   return (
@@ -1714,9 +1709,9 @@ function ScheduleStep({
         {showConsultation ? (
           <section className="flex min-w-0 flex-col gap-3">
             <div className="flex items-start gap-2">
-              <Eye className="mt-0.5 size-5 shrink-0 text-[#9A9A9A]" strokeWidth={1.75} />
+              <User className="mt-0.5 size-5 shrink-0 text-[#9A9A9A]" strokeWidth={1.75} />
               <h2 className={sectionLabelClass}>
-                Do you want an in-person Eye and Doctor consultation? (2nd week of September)
+                Do you want an in-person Doctor consultation? (2nd week of September)
                 {isMissingConsultation ? (
                   <span className="text-[#ff6b6b]"> * Field is required</span>
                 ) : null}
