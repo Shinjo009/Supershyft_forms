@@ -225,6 +225,10 @@ export default function BookAppointment() {
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
   const [isLoadingAssessmentCategories, setIsLoadingAssessmentCategories] = useState(false)
   const [assessmentInstanceId, setAssessmentInstanceId] = useState<number | null>(null)
+  const [preferredAssessmentInstanceId, setPreferredAssessmentInstanceId] = useState<number | null>(
+    null,
+  )
+  const [previewAvailable, setPreviewAvailable] = useState(false)
   const [assessmentCategories, setAssessmentCategories] = useState<AssessmentCategoryStatus[]>([])
   const [completedCategoryIds, setCompletedCategoryIds] = useState<number[]>([])
   const [activeCategory, setActiveCategory] = useState<AssessmentCategoryStatus | null>(null)
@@ -576,7 +580,9 @@ export default function BookAppointment() {
         is_participant: true,
         status: 'active',
       })
-      await onboardUserForEngagement(payload)
+      const onboardResult = await onboardUserForEngagement(payload)
+      setPreviewAvailable(Boolean(onboardResult.previewAvailable))
+      setPreferredAssessmentInstanceId(onboardResult.assessmentInstanceId ?? null)
       if (otpVerified) {
         setStep(5)
         return
@@ -641,17 +647,26 @@ export default function BookAppointment() {
 
     try {
       const accessToken = getAccessToken()
-      const result = await loadAssessmentCategoriesForStep2(accessToken)
+      const result = await loadAssessmentCategoriesForStep2(
+        accessToken,
+        preferredAssessmentInstanceId,
+      )
+      const categories = previewAvailable
+        ? result.categories.map((category) => ({ ...category, status: 'pending' }))
+        : result.categories
       setAssessmentInstanceId(result.assessmentInstanceId)
-      setAssessmentCategories(result.categories)
+      setAssessmentCategories(categories)
       setCompletedCategoryIds(
-        result.categories
-          .filter((category) => isCategoryCompleted(category, []))
-          .map((category) => Number(category.category_id)),
+        previewAvailable
+          ? []
+          : categories
+              .filter((category) => isCategoryCompleted(category, []))
+              .map((category) => Number(category.category_id)),
       )
       console.info('[assessment] step 2 categories loaded', {
         assessmentInstanceId: result.assessmentInstanceId,
-        categories: result.categories.map((c) => c.category_key),
+        previewAvailable,
+        categories: categories.map((c) => c.category_key),
       })
       setStep(6)
     } catch (error) {
@@ -712,6 +727,7 @@ export default function BookAppointment() {
         accessToken,
         assessmentInstanceId,
         categoryId,
+        { includeAllQuestions: previewAvailable },
       )
       const questions = questionnaire.questions
       if (!Array.isArray(questions) || questions.length === 0) {
@@ -732,6 +748,7 @@ export default function BookAppointment() {
         categoryId,
         categoryKey: category.category_key,
         questionCount: questions.length,
+        questionAll: previewAvailable,
       })
     } catch (error) {
       if (cachedQuestions?.length) {
@@ -1032,6 +1049,7 @@ export default function BookAppointment() {
             )}
             {step === 7 && activeCategory && isAnthroActive ? (
               <AnthropometryStep
+                key={Number(activeCategory.category_id)}
                 questions={categoryQuestions}
                 assessmentInstanceId={assessmentInstanceId ?? 1}
                 categoryId={Number(activeCategory.category_id)}

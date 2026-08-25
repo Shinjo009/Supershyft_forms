@@ -21,13 +21,9 @@ import {
   clamp,
   convertCircumference,
   convertWeight,
-  DEFAULT_HEIGHT_CM,
-  DEFAULT_HEIGHT_FEET,
-  DEFAULT_HEIGHT_INCHES,
   DEFAULT_HIP_INCHES,
-  DEFAULT_WAIST_INCHES,
-  DEFAULT_WEIGHT_KG,
   extractUnitOptionsFromQuestion,
+  seedAnthropometryFromQuestions,
   findQuestionByAliasesAndHints,
   getCircumferenceRangeForUnit,
   getQuestionText,
@@ -67,17 +63,18 @@ export function AnthropometryStep({
     followup: AnthropometryFollowupValues
   }) => void
 }) {
+  const [seeded] = useState(() => seedAnthropometryFromQuestions(questions))
   const [index, setIndex] = useState(0)
-  const [height, setHeight] = useState(DEFAULT_HEIGHT_CM)
-  const [weight, setWeight] = useState<number | null>(DEFAULT_WEIGHT_KG)
-  const [waist, setWaist] = useState(Math.round(DEFAULT_WAIST_INCHES))
-  const [heightUnit, setHeightUnit] = useState('Cm')
-  const [weightUnit, setWeightUnit] = useState('Kg')
-  const [waistUnit, setWaistUnit] = useState('In')
-  const [heightFeet, setHeightFeet] = useState(DEFAULT_HEIGHT_FEET)
-  const [heightInches, setHeightInches] = useState(DEFAULT_HEIGHT_INCHES)
-  const [hipSize, setHipSize] = useState(Math.round(DEFAULT_HIP_INCHES))
-  const [hipUnit, setHipUnit] = useState('In')
+  const [height, setHeight] = useState(seeded.primary.height)
+  const [weight, setWeight] = useState<number | null>(seeded.primary.weight)
+  const [waist, setWaist] = useState(seeded.primary.waist)
+  const [heightUnit, setHeightUnit] = useState(seeded.primary.heightUnit)
+  const [weightUnit, setWeightUnit] = useState(seeded.primary.weightUnit)
+  const [waistUnit, setWaistUnit] = useState(seeded.primary.waistUnit)
+  const [heightFeet, setHeightFeet] = useState(seeded.primary.heightFeet)
+  const [heightInches, setHeightInches] = useState(seeded.primary.heightInches)
+  const [hipSize, setHipSize] = useState(seeded.followup.hipSize ?? Math.round(DEFAULT_HIP_INCHES))
+  const [hipUnit, setHipUnit] = useState(seeded.followup.hipUnit || 'In')
   const [showWaistInfo, setShowWaistInfo] = useState(false)
   const [showHipInfo, setShowHipInfo] = useState(false)
   const [submitAttempted, setSubmitAttempted] = useState(false)

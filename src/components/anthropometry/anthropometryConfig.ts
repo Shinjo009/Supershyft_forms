@@ -293,6 +293,145 @@ export function getQuestionText(
   return findQuestionByAliasesAndHints(questions, keys, hints)?.question_text || fallback
 }
 
+function readScaleAnswer(answer: unknown): { value: number; unit: string } | null {
+  if (answer == null || answer === '') return null
+
+  if (typeof answer === 'number' && Number.isFinite(answer) && answer > 0) {
+    return { value: answer, unit: '' }
+  }
+
+  if (typeof answer === 'string') {
+    const parsed = Number(answer)
+    return Number.isFinite(parsed) && parsed > 0 ? { value: parsed, unit: '' } : null
+  }
+
+  if (typeof answer === 'object') {
+    const record = answer as Record<string, unknown>
+    const value = Number(record.value ?? record.answer ?? record.response)
+    const unit = String(record.unit ?? record.units ?? '').trim()
+    if (!Number.isFinite(value) || value <= 0) return null
+    return { value, unit }
+  }
+
+  return null
+}
+
+function resolveUnitLabelFromAnswer(
+  question: QuestionnaireQuestion | null,
+  unitCode: string,
+  fallback: string,
+): string {
+  if (unitCode === '0' || isCentimeterUnit(unitCode)) {
+    const options = extractUnitOptionsFromQuestion(question)
+    return options.find((option) => isCentimeterUnit(option)) || (isCentimeterUnit(fallback) ? fallback : 'Cm')
+  }
+
+  if (!unitCode) return fallback
+
+  const options = question && Array.isArray(question.options) ? question.options : []
+  const preferred = normalizeUnitToken(unitCode)
+  const matched = options.find((option) => {
+    const value = normalizeUnitToken(getOptionValue(option))
+    const label = normalizeUnitToken(getOptionLabel(option))
+    return (
+      value === preferred ||
+      label === preferred ||
+      value.includes(preferred) ||
+      preferred.includes(value) ||
+      label.includes(preferred) ||
+      preferred.includes(label)
+    )
+  })
+  if (matched) {
+    return getOptionLabel(matched) || getOptionValue(matched) || fallback
+  }
+
+  const extracted = extractUnitOptionsFromQuestion(question)
+  return resolvePreferredUnitOption(extracted, unitCode, fallback)
+}
+
+export function seedAnthropometryFromQuestions(questions: QuestionnaireQuestion[] = []): {
+  primary: AnthropometryPrimaryValues
+  followup: AnthropometryFollowupValues
+} {
+  const heightQuestion = findQuestionByAliasesAndHints(
+    questions,
+    ['height', 'height_cm', 'stature'],
+    ['height'],
+  )
+  const weightQuestion = findQuestionByAliasesAndHints(
+    questions,
+    ['weight', 'body_weight', 'weight_kg'],
+    ['weight', 'body weight'],
+  )
+  const waistQuestion = findQuestionByAliasesAndHints(
+    questions,
+    ['waist_circumference', 'waist'],
+    ['waist'],
+  )
+  const hipQuestion = findQuestionByAliasesAndHints(
+    questions,
+    ['hip_circumference', 'hip_size', 'hip'],
+    ['hip'],
+  )
+
+  let height = DEFAULT_HEIGHT_CM
+  let heightUnit = 'Cm'
+  const heightAnswer = readScaleAnswer(heightQuestion?.answer)
+  if (heightAnswer) {
+    height = clamp(Math.round(heightAnswer.value), MIN_HEIGHT_CM, MAX_HEIGHT_CM)
+    heightUnit = resolveUnitLabelFromAnswer(heightQuestion, heightAnswer.unit, 'Cm')
+    if (isFeetInchesUnit(heightUnit)) {
+      const cmOptions = extractUnitOptionsFromQuestion(heightQuestion)
+      heightUnit = cmOptions.find((option) => isCentimeterUnit(option)) || 'Cm'
+    }
+  }
+  const totalInches = clamp(height / IN_TO_CM, MIN_HEIGHT_INCHES, MAX_HEIGHT_INCHES)
+  const heightFeet = Math.floor(totalInches / 12)
+  const heightInches = Math.round((totalInches % 12) * 10) / 10
+
+  let weight: number | null = DEFAULT_WEIGHT_KG
+  let weightUnit = 'Kg'
+  const weightAnswer = readScaleAnswer(weightQuestion?.answer)
+  if (weightAnswer) {
+    weightUnit = resolveUnitLabelFromAnswer(weightQuestion, weightAnswer.unit, 'Kg')
+    const range = getWeightRangeForUnit(weightUnit)
+    weight = clamp(Math.round(weightAnswer.value), range.min, range.max)
+  }
+
+  let waist = Math.round(DEFAULT_WAIST_INCHES)
+  let waistUnit = 'In'
+  const waistAnswer = readScaleAnswer(waistQuestion?.answer)
+  if (waistAnswer) {
+    waistUnit = resolveUnitLabelFromAnswer(waistQuestion, waistAnswer.unit, 'In')
+    const range = getCircumferenceRangeForUnit(waistUnit, 'waist')
+    waist = clamp(roundToWholeNumber(waistAnswer.value), range.min, range.max)
+  }
+
+  const followup: AnthropometryFollowupValues = {}
+  const hipAnswer = readScaleAnswer(hipQuestion?.answer)
+  if (hipAnswer) {
+    const hipUnit = resolveUnitLabelFromAnswer(hipQuestion, hipAnswer.unit, 'In')
+    const range = getCircumferenceRangeForUnit(hipUnit, 'hip')
+    followup.hipUnit = hipUnit
+    followup.hipSize = clamp(roundToWholeNumber(hipAnswer.value), range.min, range.max)
+  }
+
+  return {
+    primary: {
+      height,
+      weight,
+      waist,
+      heightUnit,
+      weightUnit,
+      waistUnit,
+      heightFeet,
+      heightInches,
+    },
+    followup,
+  }
+}
+
 function normalizeQuestionType(questionType: string): string {
   return String(questionType || '')
     .trim()

@@ -38,6 +38,8 @@ export type OnboardResult = {
   userId?: number
   tokens: OnboardTokens
   alreadyEnrolled?: boolean
+  previewAvailable?: boolean
+  assessmentInstanceId?: number
 }
 
 type ValidationErrorDetail = {
@@ -53,14 +55,72 @@ type ValidationErrorResponse = {
 }
 
 type OnboardSuccessResponse = {
+  user_id?: number
+  preview_available?: unknown
+  assessment_instance_id?: unknown
+  tokens?: {
+    access_token?: string
+    refresh_token?: string
+    token_type?: string
+  }
   data?: {
     user_id?: number
+    preview_available?: unknown
+    assessment_instance_id?: unknown
     tokens?: {
       access_token?: string
       refresh_token?: string
       token_type?: string
     }
   }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+function onboardPayloadRows(data: unknown): Record<string, unknown>[] {
+  const root = asRecord(data)
+  if (!root) return []
+  const nested = asRecord(root.data)
+  return nested ? [nested, root] : [root]
+}
+
+function readBooleanFlag(value: unknown): boolean | undefined {
+  if (value === true || value === 1) return true
+  if (value === false || value === 0) return false
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (normalized === 'true' || normalized === '1') return true
+    if (normalized === 'false' || normalized === '0') return false
+  }
+  return undefined
+}
+
+function readPositiveId(value: unknown): number | undefined {
+  const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
+}
+
+function readOnboardMeta(data: unknown): {
+  userId?: number
+  previewAvailable?: boolean
+  assessmentInstanceId?: number
+} {
+  let userId: number | undefined
+  let previewAvailable: boolean | undefined
+  let assessmentInstanceId: number | undefined
+
+  for (const row of onboardPayloadRows(data)) {
+    if (userId == null) userId = readPositiveId(row.user_id)
+    if (previewAvailable == null) previewAvailable = readBooleanFlag(row.preview_available)
+    if (assessmentInstanceId == null) {
+      assessmentInstanceId = readPositiveId(row.assessment_instance_id)
+    }
+  }
+
+  return { userId, previewAvailable, assessmentInstanceId }
 }
 
 function trimTrailingSlash(value: string): string {
@@ -113,15 +173,14 @@ function parseValidationMessage(data: unknown): string | null {
 }
 
 function parseOnboardSuccess(data: unknown, engagementCode: string): OnboardResult {
-  let userId: number | undefined
   let accessToken = ''
   let refreshToken = ''
   let tokenType = 'bearer'
+  const meta = readOnboardMeta(data)
 
   if (data && typeof data === 'object') {
     const response = data as OnboardSuccessResponse
-    const row = response.data
-    userId = row?.user_id
+    const row = response.data ?? response
     const tokens = row?.tokens
     accessToken = tokens?.access_token?.trim() || ''
     refreshToken = tokens?.refresh_token?.trim() || ''
@@ -143,7 +202,9 @@ function parseOnboardSuccess(data: unknown, engagementCode: string): OnboardResu
   return {
     message: 'Booking confirmed',
     engagementCode,
-    userId,
+    userId: meta.userId,
+    previewAvailable: meta.previewAvailable,
+    assessmentInstanceId: meta.assessmentInstanceId,
     tokens: {
       accessToken,
       refreshToken,
@@ -225,14 +286,20 @@ export async function onboardUserForEngagement(
     if (isAlreadyEnrolledError(response.status, data)) {
       applyAuthTokensFromResponse(data)
       const tokens = tokensFromStorage()
+      const meta = readOnboardMeta(data)
       console.info('[onboard] already enrolled; continuing with existing session', {
         engagementCode,
         hasAccessToken: Boolean(tokens.accessToken),
+        previewAvailable: meta.previewAvailable,
+        assessmentInstanceId: meta.assessmentInstanceId,
       })
       return {
         message: 'Already enrolled',
         engagementCode,
         alreadyEnrolled: true,
+        userId: meta.userId,
+        previewAvailable: meta.previewAvailable,
+        assessmentInstanceId: meta.assessmentInstanceId,
         tokens,
       }
     }
@@ -272,6 +339,8 @@ export async function onboardUserForEngagement(
   console.info('[onboard] booking saved', {
     engagementCode: result.engagementCode,
     userId: result.userId,
+    previewAvailable: result.previewAvailable,
+    assessmentInstanceId: result.assessmentInstanceId,
   })
   return result
 }

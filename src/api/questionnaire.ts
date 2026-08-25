@@ -179,10 +179,12 @@ export async function getCategoryQuestionnaire(
   accessToken: string,
   assessmentInstanceId: number,
   categoryId: number,
+  options?: { includeAllQuestions?: boolean },
 ): Promise<CategoryQuestionnaire> {
   const response = await authorizedGet<CategoryQuestionnaireResponse>(
     `/questionnaire/${assessmentInstanceId}/category/${categoryId}`,
     accessToken,
+    options?.includeAllQuestions ? { question: 'all' } : undefined,
   )
 
   const data = response?.data

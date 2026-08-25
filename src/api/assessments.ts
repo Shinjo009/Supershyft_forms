@@ -279,9 +279,10 @@ export type AssessmentBootstrapResult = {
   categories: AssessmentCategoryStatus[]
 }
 
-/** Resolve latest Metsights Pro/Basic assessment and questionnaire categories for Step 2. */
+/** Resolve Metsights Pro/Basic assessment and questionnaire categories for Step 2. */
 export async function loadAssessmentCategoriesForStep2(
   accessToken: string,
+  preferredAssessmentInstanceId?: number | null,
 ): Promise<AssessmentBootstrapResult> {
   if (isFrontendOnly()) {
     console.info('[frontend-only] using local mock assessment categories')
@@ -321,7 +322,11 @@ export async function loadAssessmentCategoriesForStep2(
   }
 
   const rows = await listMyAssessments(accessToken)
-  const assessmentInstanceId = pickLatestMetsightsProOrBasicId(rows)
+  const preferredId = Number(preferredAssessmentInstanceId || 0)
+  const assessmentInstanceId =
+    Number.isFinite(preferredId) && preferredId > 0
+      ? preferredId
+      : pickLatestMetsightsProOrBasicId(rows)
 
   if (!assessmentInstanceId) {
     throw new Error('No Metsights Pro or Basic assessment found for this account.')
