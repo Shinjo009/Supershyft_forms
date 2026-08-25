@@ -359,10 +359,6 @@ export default function BookAppointment() {
         logClientError('Please select a city.')
         return
       }
-      if (!form.doctorConsultation || form.doctorConsultation !== form.eyeConsultation) {
-        logClientError('Please select eye and doctor consultation preference.')
-        return
-      }
     }
 
     if (!trimmedPhone || !PHONE_REGEX.test(trimmedPhone)) {
@@ -441,6 +437,10 @@ export default function BookAppointment() {
       logClientError('Please select a time slot.')
       return
     }
+    if (!form.doctorConsultation || form.doctorConsultation !== form.eyeConsultation) {
+      logClientError('Please select eye and doctor consultation preference.')
+      return
+    }
 
     setUiError('')
     setStep(3)
@@ -512,6 +512,10 @@ export default function BookAppointment() {
       const slots = getSlotDisplays(day)
       if (!form.appointmentTime || !slots.includes(form.appointmentTime)) {
         logClientError('Please select a time slot.')
+        return
+      }
+      if (!form.doctorConsultation || form.doctorConsultation !== form.eyeConsultation) {
+        logClientError('Please select eye and doctor consultation preference.')
         return
       }
     }
@@ -850,7 +854,7 @@ export default function BookAppointment() {
     }
   }
 
-  const mobileScreenTitle = 'Book Appointment'
+  const mobileScreenTitle = 'Book Appointment for Bio-AI health camp.'
 
   const showBack = step > 1 && step !== 4 && step !== 5 && step !== 13
   const hideGlobalContinue = step === 3 || step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12 || step === 13
@@ -928,14 +932,14 @@ export default function BookAppointment() {
           ) : (
             <span className="size-8" aria-hidden />
           )}
-          <h1 className="flex items-center justify-center gap-4 overflow-visible text-center text-[20px] font-semibold leading-6 text-white">
+          <h1 className="flex min-w-0 items-center justify-center gap-2 overflow-visible text-center text-[15px] font-semibold leading-5 text-white lg:gap-4 lg:text-[20px] lg:leading-6">
             <img
               src={superShyftLogo}
               alt=""
               className="h-10 w-10 shrink-0 object-contain"
               aria-hidden
             />
-            {mobileScreenTitle}
+            <span className="min-w-0">{mobileScreenTitle}</span>
           </h1>
           <span className="size-8" aria-hidden />
         </header>
@@ -1126,15 +1130,6 @@ function PersonalStep({
   const showRequired = Boolean(showMissingRequired)
   const isMissing = (value: string) => showRequired && !value.trim()
   const isMissingGender = showRequired && !form.gender
-  const consultationChoice =
-    form.doctorConsultation && form.doctorConsultation === form.eyeConsultation
-      ? form.doctorConsultation
-      : ''
-  const isMissingConsultation = showRequired && !consultationChoice
-  const setConsultation = (value: 'yes' | 'no') => {
-    update('doctorConsultation', value)
-    update('eyeConsultation', value)
-  }
   const fullNameError: 'missing' | 'invalid' | undefined = !showRequired
     ? undefined
     : !form.firstName.trim() || !form.lastName.trim()
@@ -1316,36 +1311,6 @@ function PersonalStep({
           onChange={(e) => update('employeeId', sanitizeEmployeeId(e.target.value))}
         />
       </div>
-
-      <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(Eye, 'Do you want an in-person Eye and Doctor consultation? (2nd week of September)', undefined, isMissingConsultation)}
-        <div className="flex h-10 gap-6 overflow-visible">
-          <button
-            type="button"
-            onClick={() => setConsultation('yes')}
-            className={[
-              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-              consultationChoice === 'yes'
-                ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                : 'bg-white/5 text-[#999]',
-            ].join(' ')}
-          >
-            Yes
-          </button>
-          <button
-            type="button"
-            onClick={() => setConsultation('no')}
-            className={[
-              'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-              consultationChoice === 'no'
-                ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                : 'bg-white/5 text-[#999]',
-            ].join(' ')}
-          >
-            No
-          </button>
-        </div>
-      </div>
     </div>
   )
 }
@@ -1387,6 +1352,17 @@ function ConfirmStep({
           <SummaryItem Icon={Clock} label={form.appointmentTime || '—'} dense />
           <div className="col-span-2">
             <SummaryItem Icon={Building2} label={form.appointmentCabinName || form.appointmentCabin || '—'} dense />
+          </div>
+          <div className="col-span-2">
+            <SummaryItem
+              Icon={Eye}
+              label={
+                form.doctorConsultation && form.doctorConsultation === form.eyeConsultation
+                  ? `Eye and doctor consultation: ${form.doctorConsultation === 'yes' ? 'Yes' : 'No'}`
+                  : 'Eye and doctor consultation: —'
+              }
+              dense
+            />
           </div>
         </div>
       </section>
@@ -1443,17 +1419,6 @@ function MemberSummary({
         </div>
         <div className="col-span-2">
           <SummaryItem Icon={Mail} label={member.email || '—'} dense={dense} />
-        </div>
-        <div className="col-span-2">
-          <SummaryItem
-            Icon={Eye}
-            label={
-              member.doctorConsultation && member.doctorConsultation === member.eyeConsultation
-                ? `Eye and doctor consultation: ${member.doctorConsultation === 'yes' ? 'Yes' : 'No'}`
-                : 'Eye and doctor consultation: —'
-            }
-            dense={dense}
-          />
         </div>
       </div>
     </div>
@@ -1572,6 +1537,17 @@ function ScheduleStep({
     update('appointmentTime', '')
   }
 
+  const consultationChoice =
+    form.doctorConsultation && form.doctorConsultation === form.eyeConsultation
+      ? form.doctorConsultation
+      : ''
+  const showConsultation = Boolean(activeDate && selectedCabin)
+  const isMissingConsultation = Boolean(showMissingRequired && showConsultation && !consultationChoice)
+  const setConsultation = (value: 'yes' | 'no') => {
+    update('doctorConsultation', value)
+    update('eyeConsultation', value)
+  }
+
   return (
     <div className="flex min-w-0 flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-8 lg:gap-y-6">
       <div className="flex min-w-0 flex-col gap-6">
@@ -1686,7 +1662,8 @@ function ScheduleStep({
         </section>
       </div>
 
-      <section className="flex min-w-0 flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-6">
+        <section className="flex min-w-0 flex-col gap-3">
         <div className="flex items-start gap-2">
           <PreferredTimeSlotIcon />
           <div className="flex flex-col gap-0.5">
@@ -1732,7 +1709,48 @@ function ScheduleStep({
             })}
           </div>
         )}
-      </section>
+        </section>
+
+        {showConsultation ? (
+          <section className="flex min-w-0 flex-col gap-3">
+            <div className="flex items-start gap-2">
+              <Eye className="mt-0.5 size-5 shrink-0 text-[#9A9A9A]" strokeWidth={1.75} />
+              <h2 className={sectionLabelClass}>
+                Do you want an in-person Eye and Doctor consultation? (2nd week of September)
+                {isMissingConsultation ? (
+                  <span className="text-[#ff6b6b]"> * Field is required</span>
+                ) : null}
+              </h2>
+            </div>
+            <div className="flex h-10 gap-6 overflow-visible">
+              <button
+                type="button"
+                onClick={() => setConsultation('yes')}
+                className={[
+                  'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                  consultationChoice === 'yes'
+                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                    : 'bg-white/5 text-[#999]',
+                ].join(' ')}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                onClick={() => setConsultation('no')}
+                className={[
+                  'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                  consultationChoice === 'no'
+                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                    : 'bg-white/5 text-[#999]',
+                ].join(' ')}
+              >
+                No
+              </button>
+            </div>
+          </section>
+        ) : null}
+      </div>
     </div>
   )
 }
