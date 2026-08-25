@@ -40,19 +40,15 @@ type OnboardSuccessResponse = {
   data?: {
     user_id?: number
     created?: boolean
+    is_participant?: boolean
     engagement_id?: number
     engagement_code?: string
     engagement_participant_id?: number
   }
 }
 
-/** Legacy CBTW engagement — must never be used from the Celebal form. */
+/** Legacy CBTW engagement — must never be used from this form. */
 const LEGACY_CBTW_ENGAGEMENT_CODES = new Set(['CBMU0626'])
-
-const DEFAULT_CELEBAL_ENGAGEMENT_CODE = {
-  male: 'CBJP0626',
-  female: 'CBJF0626',
-} as const
 
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '')
@@ -65,73 +61,39 @@ function firstNonEmpty(...values: Array<string | undefined>): string {
   return ''
 }
 
-function assertCelebalEngagementCode(code: string, source: string): string {
-  const normalized = code.trim().toUpperCase()
-  if (LEGACY_CBTW_ENGAGEMENT_CODES.has(normalized)) {
+function assertEngagementCode(code: string): string {
+  const trimmed = code.trim()
+  if (LEGACY_CBTW_ENGAGEMENT_CODES.has(trimmed.toUpperCase())) {
     throw new Error(
-      `${source} uses legacy CBTW engagement "${code}". Remove VITE_ENGAGEMENT_CODE / VITE_CBTW_ENGAGEMENT_CODE from .env and hosting, then restart the dev server.`,
+      `Engagement code "${trimmed}" is the legacy CBTW engagement. Set VITE_ENGAGEMENT_CODE in .env to the current code and restart the dev server.`,
     )
   }
-  return code.trim()
-}
-
-function warnIfLegacyEngagementEnvConfigured(): void {
-  const legacyEnvValues = [
-    ['VITE_ENGAGEMENT_CODE', import.meta.env.VITE_ENGAGEMENT_CODE],
-    ['VITE_CELEBAL_ENGAGEMENT_CODE', import.meta.env.VITE_CELEBAL_ENGAGEMENT_CODE],
-    ['VITE_CBTW_ENGAGEMENT_CODE', import.meta.env.VITE_CBTW_ENGAGEMENT_CODE],
-    ['ENGAGEMENT_CODE', import.meta.env.ENGAGEMENT_CODE],
-  ] as const
-
-  for (const [name, value] of legacyEnvValues) {
-    const trimmed = typeof value === 'string' ? value.trim() : ''
-    if (!trimmed) continue
-    const upper = trimmed.toUpperCase()
-    if (LEGACY_CBTW_ENGAGEMENT_CODES.has(upper)) {
-      console.warn(`[onboard] ${name}=${trimmed} points at legacy CBTW engagement and is ignored.`)
-    } else {
-      console.warn(
-        `[onboard] ${name} is set but ignored on Celebal form. Use VITE_CELEBAL_ENGAGEMENT_CODE_MALE / VITE_CELEBAL_ENGAGEMENT_CODE_FEMALE instead.`,
-      )
-    }
-  }
+  return trimmed
 }
 
 function parseBookingGender(gender: string): 'male' | 'female' {
   const normalized = gender.trim().toLowerCase()
   if (normalized === 'male' || normalized === 'm') return 'male'
   if (normalized === 'female' || normalized === 'f') return 'female'
-  throw new Error('Celebal engagement code requires gender to be male or female.')
+  throw new Error('Gender must be male or female.')
 }
 
-function resolveCelebalEngagementCodes(): { male: string; female: string } {
-  const male = assertCelebalEngagementCode(
-    firstNonEmpty(
-      import.meta.env.VITE_CELEBAL_ENGAGEMENT_CODE_MALE,
-      DEFAULT_CELEBAL_ENGAGEMENT_CODE.male,
-    ),
-    'Male engagement code',
-  )
-  const female = assertCelebalEngagementCode(
-    firstNonEmpty(
-      import.meta.env.VITE_CELEBAL_ENGAGEMENT_CODE_FEMALE,
-      DEFAULT_CELEBAL_ENGAGEMENT_CODE.female,
-    ),
-    'Female engagement code',
+function resolveEngagementCode(gender: 'male' | 'female'): string {
+  const fromEnv = firstNonEmpty(
+    import.meta.env.VITE_ENGAGEMENT_CODE,
+    gender === 'male'
+      ? import.meta.env.VITE_CELEBAL_ENGAGEMENT_CODE_MALE
+      : import.meta.env.VITE_CELEBAL_ENGAGEMENT_CODE_FEMALE,
+    import.meta.env.VITE_CELEBAL_ENGAGEMENT_CODE,
   )
 
-  if (male.toUpperCase() === female.toUpperCase()) {
+  if (!fromEnv) {
     throw new Error(
-      `Male and female Celebal engagement codes must differ (both set to "${male}"). Fix VITE_CELEBAL_ENGAGEMENT_CODE_MALE and VITE_CELEBAL_ENGAGEMENT_CODE_FEMALE on hosting.`,
+      'Missing engagement code. Set VITE_ENGAGEMENT_CODE in .env and restart the dev server.',
     )
   }
 
-  return { male, female }
-}
-
-function resolveCelebalEngagementCode(gender: 'male' | 'female'): string {
-  const codes = resolveCelebalEngagementCodes()
-  return gender === 'male' ? codes.male : codes.female
+  return assertEngagementCode(fromEnv)
 }
 
 function parseValidationMessage(data: unknown): string | null {
@@ -146,15 +108,9 @@ function parseValidationMessage(data: unknown): string | null {
   return messages.length > 0 ? messages.join(', ') : null
 }
 
-function isTestParticipantEmployeeId(employeeId: string): boolean {
-  const normalized = employeeId.trim().toUpperCase()
-  return normalized === 'HRM000' || normalized.startsWith('HRM000-T-')
-}
-
 function parseOnboardSuccess(
   data: unknown,
   expectedEngagementCode: string,
-  participantsEmployeeId: string,
 ): OnboardResult {
   const expected = expectedEngagementCode.trim().toUpperCase()
 
@@ -168,13 +124,7 @@ function parseOnboardSuccess(
 
   if (apiCode && apiCode !== expected) {
     throw new Error(
-      `Booking was saved under engagement ${row?.engagement_code} instead of ${expectedEngagementCode}. Check VITE_CELEBAL_ENGAGEMENT_CODE_FEMALE / MALE on hosting.`,
-    )
-  }
-
-  if (row?.created === false && !isTestParticipantEmployeeId(participantsEmployeeId)) {
-    throw new Error(
-      `Booking was not created for engagement ${expectedEngagementCode}. The employee may already exist in this engagement.`,
+      `Booking was saved under engagement ${row?.engagement_code} instead of ${expectedEngagementCode}. Check VITE_ENGAGEMENT_CODE in .env.`,
     )
   }
 
@@ -189,8 +139,6 @@ function parseOnboardSuccess(
 export async function onboardUserForEngagement(
   payload: OnboardUserForEngagementPayload,
 ): Promise<OnboardResult> {
-  warnIfLegacyEngagementEnvConfigured()
-
   const baseUrl = firstNonEmpty(
     import.meta.env.VITE_BACKEND_BASE_URL,
     import.meta.env.VITE_API_BASE_URL,
@@ -200,7 +148,7 @@ export async function onboardUserForEngagement(
   )
 
   const bookingGender = parseBookingGender(payload.gender)
-  const engagementCode = resolveCelebalEngagementCode(bookingGender)
+  const engagementCode = resolveEngagementCode(bookingGender)
   const apiPayload: OnboardUserForEngagementPayload = {
     ...payload,
     gender: bookingGender,
@@ -265,7 +213,7 @@ export async function onboardUserForEngagement(
     return { message: data.trim() || 'Booking confirmed', engagementCode }
   }
 
-  const result = parseOnboardSuccess(data, engagementCode, apiPayload.participants_employee_id)
+  const result = parseOnboardSuccess(data, engagementCode)
   console.info('[onboard] Celebal booking saved', result)
   return result
 }

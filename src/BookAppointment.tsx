@@ -44,6 +44,7 @@ const RELATION_OPTIONS = [
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const NAME_REGEX = /^[A-Za-z\s]+$/
+const AGE_REGEX = /^(1[89]|[2-9]\d)$/
 const sanitizeName = (value: string) => value.replace(/[^A-Za-z\s]/g, '')
 const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
@@ -73,36 +74,14 @@ const logClientError = (message: string) => {
     window.dispatchEvent(new CustomEvent(BOOK_APPOINTMENT_ERROR_EVENT, { detail: message }))
   }
 }
+function getRazorpayPaymentLinkUrl(): string {
+  return import.meta.env.VITE_RAZORPAY_PAYMENT_LINK_URL?.trim() || ''
+}
+
 /** QA only: unlimited bookings (no localStorage cap); API uses unique employee/email/phone per submit. */
 const TEST_EMPLOYEE_ID = 'HRM000'
 /** Celebal-only; do not share key with CBTW or other company forms on the same domain. */
 const BOOKED_EMPLOYEE_IDS_STORAGE_KEY = 'celebalBookedEmployeeIds'
-/** 130 Celebal employee IDs plus {@link TEST_EMPLOYEE_ID}. */
-const ALLOWED_EMPLOYEE_IDS = new Set([
-  TEST_EMPLOYEE_ID,
-  'HRM4196', 'HRM4039', 'HRM4032', 'HRM3803', 'HRM3666', 'HRM3598',
-  'HRM3444', 'HRM2864', 'HRM2839', 'HRM2820', 'HRM2665', 'HRM2532',
-  'HRM2195', 'HRM2108', 'HRM2104', 'HRM2100', 'HRM2068', 'HRM2022',
-  'HRM1725', 'HRM1638', 'HRM1628', 'HRM1623', 'HRM1611', 'HRM1572',
-  'HRM1493', 'HRM1479', 'HRM1336', 'HRM1259', 'HRM1235', 'HRM1068',
-  'HRM1045', 'HRM760', 'HRM666', 'HRM431', 'HRM345', 'HRM254',
-  'HRM154', 'HRM150', 'HRM3', 'HRM122', 'HRM41', 'HRM2089',
-  'HRM2039', 'HRM146', 'HRM3806', 'HRM3643', 'HRM3599', 'HRM3443',
-  'HRM3442', 'HRM2932', 'HRM2528', 'HRM2310', 'HRM2093', 'HRM1681',
-  'HRM1141', 'HRM989', 'HRM965', 'HRM851', 'HRM405', 'HRM4106',
-  'HRM1039', 'HRM4244', 'HRM4246', 'HRM4304', 'HRM255', 'HRM4332',
-  'HRM4461', 'HRM4467', 'HRM4580', 'HRM4605', 'HRM4648', 'HRM4652',
-  'HRM4650', 'HRM4672', 'HRM4697', 'HRM4707', 'HRM4710', 'HRM4906',
-  'HRM4800', 'HRM4815', 'HRM4844', 'HRM4951', 'HRM4982', 'HRM4994',
-  'HRM4989', 'HRM5011', 'HRM5021', 'HRM5081', 'HRM5090', 'HRM5192',
-  'HRM5180', 'HRM5191', 'HRM5201', 'HRM5202', 'HRM5203', 'HRM5205',
-  'HRM5297', 'HRM5412', 'HRM5498', 'HRM5608', 'HRM5667', 'HRM5732',
-  'HRM5786', 'HRM5766', 'HRM5781', 'HRM5782', 'HRM5789', 'HRM5834',
-  'HRM5821', 'HRM5844', 'HRM5846', 'HRM5872', 'HRM5932', 'HRM5937',
-  'HRM5952', 'HRM5955', 'HRM5977', 'HRM6086', 'HRM6158', 'HRM6164',
-  'HRM6441', 'HRM6539', 'HRM6597', 'HRM6596', 'HRM6643', 'HRM6649',
-  'HRM3392', 'HRM4103', 'HRM4687', 'HRM5338',
-])
 
 function getBookedEmployeeIds(): Set<string> {
   if (typeof window === 'undefined') return new Set()
@@ -120,6 +99,7 @@ function getBookedEmployeeIds(): Set<string> {
 function markEmployeeIdAsBooked(employeeId: string) {
   if (isTestEmployeeId(employeeId) || typeof window === 'undefined') return
   const normalized = normalizeEmployeeId(employeeId)
+  if (!normalized) return
   const booked = getBookedEmployeeIds()
   booked.add(normalized)
   window.localStorage.setItem(BOOKED_EMPLOYEE_IDS_STORAGE_KEY, JSON.stringify(Array.from(booked)))
@@ -135,8 +115,9 @@ function employeeIdForOnboardApi(
   gender: '' | 'male' | 'female',
 ): string {
   const normalized = normalizeEmployeeId(employeeId)
-  if (!isTestEmployeeId(normalized)) return normalized
   const genderTag = gender === 'female' ? 'F' : gender === 'male' ? 'M' : 'X'
+  if (!normalized) return `HRM-OPT-${genderTag}-${Date.now()}`
+  if (!isTestEmployeeId(normalized)) return normalized
   return `${TEST_EMPLOYEE_ID}-T-${genderTag}-${Date.now()}`
 }
 
@@ -343,15 +324,7 @@ export default function BookAppointment() {
       return
     }
     const normalizedEmployeeId = normalizeEmployeeId(form.employeeId)
-    if (!normalizedEmployeeId) {
-      logClientError('Employee ID is required.')
-      return
-    }
-    if (!ALLOWED_EMPLOYEE_IDS.has(normalizedEmployeeId)) {
-      logClientError('This Employee ID is not allowed.')
-      return
-    }
-    if (normalizedEmployeeId !== TEST_EMPLOYEE_ID && getBookedEmployeeIds().has(normalizedEmployeeId)) {
+    if (normalizedEmployeeId && normalizedEmployeeId !== TEST_EMPLOYEE_ID && getBookedEmployeeIds().has(normalizedEmployeeId)) {
       logClientError('This Employee ID has already used the booking.')
       return
     }
@@ -359,8 +332,8 @@ export default function BookAppointment() {
       logClientError('Age is required.')
       return
     }
-    if (!/^\d{1,2}$/.test(trimmedAge)) {
-      logClientError('Age must be up to 2 digits.')
+    if (!AGE_REGEX.test(trimmedAge)) {
+      logClientError('Age must be between 18 and 99.')
       return
     }
     if (!form.gender) {
@@ -440,7 +413,7 @@ export default function BookAppointment() {
     const trimmedEmail = form.email.trim()
     const trimmedAge = form.age.trim()
     const parsedAge = Number.parseInt(form.age, 10)
-    const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
+    const safeAge = Number.isFinite(parsedAge) && parsedAge >= 18 && parsedAge <= 99 ? parsedAge : NaN
 
     if (!form.firstName.trim()) {
       logClientError('First Name is required.')
@@ -450,15 +423,7 @@ export default function BookAppointment() {
       logClientError('Last Name is required.')
       return
     }
-    if (!normalizedEmployeeId) {
-      logClientError('Employee ID is required.')
-      return
-    }
-    if (!ALLOWED_EMPLOYEE_IDS.has(normalizedEmployeeId)) {
-      logClientError('This Employee ID is not allowed.')
-      return
-    }
-    if (normalizedEmployeeId !== TEST_EMPLOYEE_ID && getBookedEmployeeIds().has(normalizedEmployeeId)) {
+    if (normalizedEmployeeId && normalizedEmployeeId !== TEST_EMPLOYEE_ID && getBookedEmployeeIds().has(normalizedEmployeeId)) {
       logClientError('This Employee ID has already used the booking.')
       return
     }
@@ -482,8 +447,8 @@ export default function BookAppointment() {
       logClientError('Gender is required.')
       return
     }
-    if (!/^\d{1,2}$/.test(trimmedAge) || !Number.isFinite(safeAge)) {
-      logClientError('Age must be up to 2 digits.')
+    if (!AGE_REGEX.test(trimmedAge) || !Number.isFinite(safeAge)) {
+      logClientError('Age must be between 18 and 99.')
       return
     }
     if (!form.appointmentDate) {
@@ -508,6 +473,14 @@ export default function BookAppointment() {
     }
     if (!apiState) {
       logClientError('State is required.')
+      return
+    }
+
+    const paymentUrl = getRazorpayPaymentLinkUrl()
+    if (!paymentUrl) {
+      logClientError(
+        'Missing Razorpay payment link. Set VITE_RAZORPAY_PAYMENT_LINK_URL in .env and restart the dev server.',
+      )
       return
     }
 
@@ -538,7 +511,7 @@ export default function BookAppointment() {
 
       await onboardUserForEngagement(payload)
       markEmployeeIdAsBooked(normalizedEmployeeId)
-      setStep(5)
+      window.location.assign(paymentUrl)
     } catch (error) {
       logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
     } finally {
@@ -857,7 +830,7 @@ function EmployeeIdField({
         autoComplete="off"
         placeholder="4196"
         maxLength={4}
-        aria-label="Employee ID number"
+        aria-label="Employee ID number (optional)"
         value={suffix}
         onChange={(e) => onChange(buildEmployeeIdFromSuffix(e.target.value))}
       />
@@ -936,6 +909,13 @@ function PersonalStep({
     : !emailValue.trim()
       ? 'missing'
       : !EMAIL_REGEX.test(emailValue.trim())
+        ? 'invalid'
+        : undefined
+  const ageError: 'missing' | 'invalid' | undefined = !showRequired
+    ? undefined
+    : !form.age.trim()
+      ? 'missing'
+      : !AGE_REGEX.test(form.age.trim())
         ? 'invalid'
         : undefined
 
@@ -1040,7 +1020,7 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(Calendar, 'Age', undefined, true, isMissing(form.age))}
+            {labelRow(Calendar, 'Age', undefined, true, Boolean(ageError), ageError)}
             <input
               className={mobileFieldInput14}
               inputMode="numeric"
@@ -1097,7 +1077,7 @@ function PersonalStep({
 
 
           <div className="flex flex-col gap-1">
-            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true, isMissing(form.employeeId))}
+            {labelRow(EmployeeIdIcon, 'Employee ID (optional)', undefined, true)}
             <EmployeeIdField
               variant="mobile"
               value={form.employeeId}
@@ -1172,7 +1152,7 @@ function PersonalStep({
 
 
           <div className="flex flex-col gap-1">
-            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, true, isMissing(form.employeeId))}
+            {labelRow(EmployeeIdIcon, 'Employee ID (optional)', undefined, true)}
             <EmployeeIdField
               variant="mobile"
               value={form.employeeId}
@@ -1181,7 +1161,7 @@ function PersonalStep({
           </div>
 
           <div className="flex flex-col gap-1">
-            {labelRow(Calendar, 'Age', undefined, true, isMissing(form.age))}
+            {labelRow(Calendar, 'Age', undefined, true, Boolean(ageError), ageError)}
             <input
               className={mobileFieldInput14}
               inputMode="numeric"
@@ -1356,7 +1336,7 @@ function PersonalStep({
 
 
           <div>
-            {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false, isMissing(form.employeeId))}
+            {labelRow(EmployeeIdIcon, 'Employee ID (optional)', undefined, false)}
             <EmployeeIdField
               variant="desktop"
               value={form.employeeId}
@@ -1365,7 +1345,7 @@ function PersonalStep({
           </div>
 
           <div>
-            {labelRow(Calendar, 'Age', undefined, false, isMissing(form.age))}
+            {labelRow(Calendar, 'Age', undefined, false, Boolean(ageError), ageError)}
             <input
               className={inputClass()}
               placeholder="Age"
@@ -1478,7 +1458,7 @@ function PersonalStep({
 
 
         <div>
-          {labelRow(EmployeeIdIcon, 'Employee ID', undefined, false, isMissing(form.employeeId))}
+          {labelRow(EmployeeIdIcon, 'Employee ID (optional)', undefined, false)}
           <EmployeeIdField
             variant="desktop"
             value={form.employeeId}
@@ -1487,7 +1467,7 @@ function PersonalStep({
         </div>
 
         <div>
-          {labelRow(Calendar, 'Age', undefined, false, isMissing(form.age))}
+          {labelRow(Calendar, 'Age', undefined, false, Boolean(ageError), ageError)}
           <input
             className={inputClass()}
             placeholder="Age"
@@ -1902,7 +1882,6 @@ function ScheduleStep({
     '10:00 AM',
     '11:00 AM',
     '12:00 PM',
-    '01:00 PM',
   ]
 
   const selectedSlotClass =
