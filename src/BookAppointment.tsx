@@ -1105,7 +1105,11 @@ export default function BookAppointment() {
               disabled={isLoadingAssessmentCategories}
               onClick={handleContinueToAssessment}
             >
-              {isLoadingAssessmentCategories ? 'Loading...' : 'Continue to Step 2'}
+              {isLoadingAssessmentCategories
+                ? 'Loading...'
+                : previewAvailable
+                  ? 'Review & Edit Step 2'
+                  : 'Continue to Step 2'}
             </ContinueButton>
           ) : !hideGlobalContinue ? (
             <div className="mt-3 shrink-0">

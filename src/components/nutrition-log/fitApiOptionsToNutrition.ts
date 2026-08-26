@@ -41,6 +41,54 @@ function readingForGlasses(glasses: number): WaterIntakeReading {
   }
 }
 
+function parseLabelNumbers(text: string): number[] {
+  return [...text.matchAll(/(\d+)/g)]
+    .map((match) => Number(match[1]))
+    .filter((value) => Number.isFinite(value))
+}
+
+/** Pick a display number from option copy (upper bound for ranges, special-cases for once/less/more). */
+function representativeFrequencyValue(text: string, numbers: number[]): number | null {
+  const lower = text.toLowerCase()
+  if (
+    lower.includes('rare') ||
+    lower.includes('never') ||
+    lower.includes('skip') ||
+    lower.includes('none') ||
+    lower === 'no'
+  ) {
+    return 0
+  }
+
+  if (lower.includes('once') || lower.includes('or less') || lower.includes('less than') || lower.includes('under')) {
+    if (numbers.length > 0) return numbers[0]
+    if (lower.includes('once')) return 1
+    return 1
+  }
+
+  if (
+    lower.includes('more than') ||
+    lower.includes('or more') ||
+    lower.includes('over ') ||
+    /\d+\s*\+/.test(lower)
+  ) {
+    return (numbers[0] ?? 6) + 1
+  }
+
+  if (numbers.length >= 2) return numbers[numbers.length - 1]
+  if (numbers.length === 1) return numbers[0]
+  return null
+}
+
+function unitFillDenominator(unit: string): number {
+  const normalized = unit.toUpperCase()
+  if (normalized.includes('DAY')) return 3
+  if (normalized.includes('WEEK')) return 7
+  if (normalized.includes('MONTH')) return 8
+  if (normalized.includes('YEAR')) return 6
+  return 6
+}
+
 /** Infer circular-meter reading from option copy (works for any backend label set). */
 export function inferConsumptionMeterReading(
   label: string,
@@ -49,6 +97,7 @@ export function inferConsumptionMeterReading(
   fallbackUnit = 'TIMES/MONTH',
 ): MeterReading {
   const text = label.toLowerCase()
+  const numbers = parseLabelNumbers(text)
 
   if (
     text.includes('rare') ||
@@ -60,34 +109,33 @@ export function inferConsumptionMeterReading(
     return { value: 0, fillRatio: 0, unit: fallbackUnit }
   }
 
+  let unit = fallbackUnit
   if (text.includes('per day') || text.includes('/day') || text.includes('a day') || text.includes('daily')) {
-    const match = text.match(/(\d+)/)
-    const value = match ? Number(match[1]) : 1
-    return { value, fillRatio: 1, unit: 'TIMES/DAY' }
+    unit = 'TIMES/DAY'
+  } else if (text.includes('week') || text.includes('weekly')) {
+    unit = 'TIMES/WEEK'
+  } else if (text.includes('month') || text.includes('monthly')) {
+    unit = 'TIMES/MONTH'
+  } else if (text.includes('year') || text.includes('yearly') || text.includes('annual')) {
+    unit = 'TIMES/YEAR'
   }
 
-  if (text.includes('week')) {
-    const match = text.match(/(\d+)/)
-    const value = match ? Number(match[1]) : text.includes('weekly') ? 1 : 2
-    return { value, fillRatio: Math.min(1, value / 7), unit: 'TIMES/WEEK' }
+  const value = representativeFrequencyValue(text, numbers)
+  if (value != null) {
+    const denom = unitFillDenominator(unit)
+    return {
+      value,
+      fillRatio: value <= 0 ? 0 : Math.min(1, value / denom),
+      unit,
+    }
   }
 
-  if (text.includes('month')) {
-    const match = text.match(/(\d+)/)
-    const value = match ? Number(match[1]) : 1
-    return { value, fillRatio: Math.min(1, value / 12), unit: 'TIMES/MONTH' }
-  }
-
-  if (text.includes('year')) {
-    const match = text.match(/(\d+)/)
-    const value = match ? Number(match[1]) : 1
-    return { value, fillRatio: Math.min(1, value / 6), unit: 'TIMES/YEAR' }
-  }
-
+  // Last resort: position in the option list (higher index ≈ lower frequency).
   const n = Math.max(total, 1)
   const fillRatio = n === 1 ? 0.5 : 1 - index / (n - 1)
+  const denom = unitFillDenominator(fallbackUnit)
   return {
-    value: Math.max(0, Math.round(fillRatio * 10)),
+    value: Math.max(0, Math.round(fillRatio * denom)),
     fillRatio,
     unit: fallbackUnit,
   }
