@@ -1527,25 +1527,10 @@ function ScheduleStep({
     timeSlots.length > 0
       ? `${timeSlots[0].display} – ${timeSlots[timeSlots.length - 1].display}`
       : ''
-  const timeSlotOptions = timeSlots.map((slot) => {
-    const remaining = slot.spotLeft
-    const isFull = remaining <= 0
-    return {
-      value: slot.display,
-      triggerLabel: slot.display,
-      disabled: isFull,
-      label: (
-        <>
-          <span className="text-[#9a9a9a]/80">{slot.display}</span>
-          <span className="text-[#9a9a9a]/80"> | </span>
-          <span className="text-[12px] text-[#41ab99]">
-            {isFull ? 'Full' : `${remaining} slot${remaining === 1 ? '' : 's'} left`}
-          </span>
-        </>
-      ),
-    }
-  })
 
+  const selectedSlotClass =
+    'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
+  const idleSlotClass = 'border-white/[0.08] bg-white/5'
   const selectedDateClass =
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)]'
   const idleDateClass = 'bg-white/5'
@@ -1578,120 +1563,117 @@ function ScheduleStep({
 
   return (
     <div className="flex min-w-0 flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-8 lg:gap-y-6">
-      <div className="flex min-w-0 flex-col gap-6">
-        <section className="flex min-w-0 flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <PreferredDateIcon />
-            <h2 className={sectionLabelClass}>
-              Preferred Date
-              {showMissingRequired && !form.appointmentDate ? (
-                <span className="text-[#ff6b6b]"> * Field is required</span>
-              ) : null}
-            </h2>
-          </div>
-          {isLoading ? (
-            <p className="text-[12px] font-light text-[#9a9a9a]">Loading dates...</p>
-          ) : bookableDates.length === 0 ? (
-            <p className="text-[12px] font-light text-[#9a9a9a]">
-              {form.city
-                ? 'No dates are available yet.'
-                : 'Select a city on the previous page to see available dates.'}
-            </p>
-          ) : (
-            <div className="grid w-full grid-cols-4 gap-2">
-              {bookableDates.map(({ iso, date, enabled }) => {
-                const selected = enabled && form.appointmentDate === iso
-                return (
-                  <button
-                    key={iso}
-                    type="button"
-                    disabled={!enabled}
-                    onClick={() => {
-                      if (!enabled) return
-                      pickDate(iso)
-                    }}
-                    aria-pressed={selected}
-                    aria-disabled={!enabled}
-                    className={[
-                      'flex h-20 w-full min-w-0 origin-center flex-col items-center justify-center gap-1 rounded-[8px] transition duration-200',
-                      enabled
-                        ? 'hover:z-[1] hover:scale-[1.03]'
-                        : 'pointer-events-none cursor-not-allowed opacity-40',
-                      selected ? selectedDateClass : idleDateClass,
-                    ].join(' ')}
+      <section className="flex min-w-0 flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <PreferredDateIcon />
+          <h2 className={sectionLabelClass}>
+            Preferred Date
+            {showMissingRequired && !form.appointmentDate ? (
+              <span className="text-[#ff6b6b]"> * Field is required</span>
+            ) : null}
+          </h2>
+        </div>
+        {isLoading ? (
+          <p className="text-[12px] font-light text-[#9a9a9a]">Loading dates...</p>
+        ) : bookableDates.length === 0 ? (
+          <p className="text-[12px] font-light text-[#9a9a9a]">
+            {form.city
+              ? 'No dates are available yet.'
+              : 'Select a city on the previous page to see available dates.'}
+          </p>
+        ) : (
+          <div className="grid w-full grid-cols-4 gap-2">
+            {bookableDates.map(({ iso, date, enabled }) => {
+              const selected = enabled && form.appointmentDate === iso
+              return (
+                <button
+                  key={iso}
+                  type="button"
+                  disabled={!enabled}
+                  onClick={() => {
+                    if (!enabled) return
+                    pickDate(iso)
+                  }}
+                  aria-pressed={selected}
+                  aria-disabled={!enabled}
+                  className={[
+                    'flex h-20 w-full min-w-0 origin-center flex-col items-center justify-center gap-1 rounded-[8px] transition duration-200',
+                    enabled
+                      ? 'hover:z-[1] hover:scale-[1.03]'
+                      : 'pointer-events-none cursor-not-allowed opacity-40',
+                    selected ? selectedDateClass : idleDateClass,
+                  ].join(' ')}
+                >
+                  <span
+                    className={
+                      selected
+                        ? 'text-[13px] font-medium leading-4 text-white'
+                        : 'text-[13px] font-medium leading-4 text-[#9a9a9a]'
+                    }
                   >
-                    <span
-                      className={
-                        selected
-                          ? 'text-[13px] font-medium leading-4 text-white'
-                          : 'text-[13px] font-medium leading-4 text-[#9a9a9a]'
-                      }
-                    >
-                      {DAY_LABELS[date.getDay()]}
-                    </span>
-                    <span
-                      className={
-                        selected
-                          ? 'text-[22px] font-semibold leading-6 text-white'
-                          : 'text-[22px] font-semibold leading-6 text-[#cccccc]'
-                      }
-                    >
-                      {date.getDate()}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </section>
-
-        <section className="flex min-w-0 flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <PickCabinIcon />
-            <h2 className={sectionLabelClass}>
-              Pick Cabin
-              {showMissingRequired && !form.appointmentCabin ? (
-                <span className="text-[#ff6b6b]"> * Field is required</span>
-              ) : null}
-            </h2>
-          </div>
-          {isLoading ? (
-            <p className="text-[12px] font-light text-[#9a9a9a]">Loading cabins...</p>
-          ) : cabins.length === 0 ? (
-            <p className="text-[12px] font-light text-[#9a9a9a]">
-              No cabins are available for this city yet.
-            </p>
-          ) : !activeDate ? (
-            <p className="text-[12px] font-light text-[#9a9a9a]">Select a date to see available cabins.</p>
-          ) : cabinsForDate.length === 0 ? (
-            <p className="text-[12px] font-light text-[#9a9a9a]">No cabins are available on this date.</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {cabinsForDate.map((cabin) => {
-                const selected = form.appointmentCabin === cabin.name
-                return (
-                  <button
-                    key={cabin.name}
-                    type="button"
-                    onClick={() => pickCabin(cabin.name)}
-                    aria-pressed={selected}
-                    className={[
-                      'flex h-12 min-w-0 origin-center items-center justify-center rounded-[8px] px-3 text-[14px] font-medium transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                      selected ? selectedDateClass : idleDateClass,
-                      selected ? 'text-white' : 'text-[#9a9a9a]',
-                    ].join(' ')}
+                    {DAY_LABELS[date.getDay()]}
+                  </span>
+                  <span
+                    className={
+                      selected
+                        ? 'text-[22px] font-semibold leading-6 text-white'
+                        : 'text-[22px] font-semibold leading-6 text-[#cccccc]'
+                    }
                   >
-                    <span className="truncate">{cabin.name}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </section>
-      </div>
+                    {date.getDate()}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </section>
 
-      <div className="flex min-w-0 flex-col gap-6">
-        <section className="flex min-w-0 flex-col gap-3">
+      <section className="flex min-w-0 flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <PickCabinIcon />
+          <h2 className={sectionLabelClass}>
+            Pick Cabin
+            {showMissingRequired && !form.appointmentCabin ? (
+              <span className="text-[#ff6b6b]"> * Field is required</span>
+            ) : null}
+          </h2>
+        </div>
+        {isLoading ? (
+          <p className="text-[12px] font-light text-[#9a9a9a]">Loading cabins...</p>
+        ) : cabins.length === 0 ? (
+          <p className="text-[12px] font-light text-[#9a9a9a]">
+            No cabins are available for this city yet.
+          </p>
+        ) : !activeDate ? (
+          <p className="text-[12px] font-light text-[#9a9a9a]">Select a date to see available cabins.</p>
+        ) : cabinsForDate.length === 0 ? (
+          <p className="text-[12px] font-light text-[#9a9a9a]">No cabins are available on this date.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {cabinsForDate.map((cabin) => {
+              const selected = form.appointmentCabin === cabin.name
+              return (
+                <button
+                  key={cabin.name}
+                  type="button"
+                  onClick={() => pickCabin(cabin.name)}
+                  aria-pressed={selected}
+                  className={[
+                    'flex h-12 min-w-0 origin-center items-center justify-center rounded-[8px] px-3 text-[14px] font-medium transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                    selected ? selectedDateClass : idleDateClass,
+                    selected ? 'text-white' : 'text-[#9a9a9a]',
+                  ].join(' ')}
+                >
+                  <span className="truncate">{cabin.name}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="flex min-w-0 flex-col gap-3">
         <div className="flex items-start gap-2">
           <PreferredTimeSlotIcon />
           <div className="flex flex-col gap-0.5">
@@ -1708,58 +1690,76 @@ function ScheduleStep({
           <p className="text-[12px] font-light text-[#9a9a9a]">Select a date to see time slots.</p>
         ) : !selectedCabin ? (
           <p className="text-[12px] font-light text-[#9a9a9a]">Select a cabin to see time slots.</p>
-        ) : timeSlotOptions.length === 0 ? (
-          <p className="text-[12px] font-light text-[#9a9a9a]">No time slots are available.</p>
         ) : (
-          <Dropdown
-            value={form.appointmentTime}
-            placeholder="Select time slot"
-            options={timeSlotOptions}
-            onChange={(slot) => update('appointmentTime', slot)}
-          />
+          <div className="grid w-full grid-cols-3 gap-x-2 gap-y-3 px-1 lg:grid-cols-4 xl:grid-cols-5">
+            {timeSlots.map((slot) => {
+              const selected = form.appointmentTime === slot.display
+              const remaining = slot.spotLeft
+              const isFull = remaining <= 0
+              return (
+                <div key={slot.hhmm} className="flex min-w-0 flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={isFull}
+                    onClick={() => update('appointmentTime', slot.display)}
+                    aria-pressed={selected}
+                    className={[
+                      'flex h-10 w-full items-center justify-center rounded-full border text-[12px] font-medium transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                      selected ? selectedSlotClass : idleSlotClass,
+                      isFull ? 'cursor-not-allowed opacity-40 hover:scale-100' : '',
+                    ].join(' ')}
+                  >
+                    <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>{slot.display}</span>
+                  </button>
+                  <span className="text-[9px] font-light leading-none text-[#41ab99]">
+                    {isFull ? 'Full' : `${remaining} slot${remaining === 1 ? '' : 's'} left`}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         )}
-        </section>
+      </section>
 
-        {showConsultation ? (
-          <section className="flex min-w-0 flex-col gap-3">
-            <div className="flex items-start gap-2">
-              <User className="mt-0.5 size-5 shrink-0 text-[#9A9A9A]" strokeWidth={1.75} />
-              <h2 className={sectionLabelClass}>
-                Do you want an in-person Doctor consultation? (2nd week of September)
-                {isMissingConsultation ? (
-                  <span className="text-[#ff6b6b]"> * Field is required</span>
-                ) : null}
-              </h2>
-            </div>
-            <div className="flex h-10 gap-6 overflow-visible">
-              <button
-                type="button"
-                onClick={() => setConsultation('yes')}
-                className={[
-                  'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                  consultationChoice === 'yes'
-                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                    : 'bg-white/5 text-[#999]',
-                ].join(' ')}
-              >
-                Yes
-              </button>
-              <button
-                type="button"
-                onClick={() => setConsultation('no')}
-                className={[
-                  'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                  consultationChoice === 'no'
-                    ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                    : 'bg-white/5 text-[#999]',
-                ].join(' ')}
-              >
-                No
-              </button>
-            </div>
-          </section>
-        ) : null}
-      </div>
+      {showConsultation ? (
+        <section className="flex min-w-0 flex-col gap-3">
+          <div className="flex items-start gap-2">
+            <User className="mt-0.5 size-5 shrink-0 text-[#9A9A9A]" strokeWidth={1.75} />
+            <h2 className={sectionLabelClass}>
+              Do you want an in-person Doctor consultation? (2nd week of September)
+              {isMissingConsultation ? (
+                <span className="text-[#ff6b6b]"> * Field is required</span>
+              ) : null}
+            </h2>
+          </div>
+          <div className="flex h-10 gap-6 overflow-visible">
+            <button
+              type="button"
+              onClick={() => setConsultation('yes')}
+              className={[
+                'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                consultationChoice === 'yes'
+                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                  : 'bg-white/5 text-[#999]',
+              ].join(' ')}
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              onClick={() => setConsultation('no')}
+              className={[
+                'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                consultationChoice === 'no'
+                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                  : 'bg-white/5 text-[#999]',
+              ].join(' ')}
+            >
+              No
+            </button>
+          </div>
+        </section>
+      ) : null}
     </div>
   )
 }
