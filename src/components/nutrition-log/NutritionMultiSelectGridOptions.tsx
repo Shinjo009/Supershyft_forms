@@ -1,5 +1,9 @@
 import tickCircleIcon from '../../assets/family-history/tick-circle-outline.svg'
-import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
+import {
+  MCQ_PILL_BORDER_IDLE,
+  MCQ_PILL_BORDER_SELECTED,
+  MCQ_PILL_OUTLINE_GLOW,
+} from '../mcq/mcqLayout'
 import { NUTRITION_PILL_GRADIENT, NUTRITION_PILL_GRADIENT_FULL } from './nutritionLogConfig'
 
 export type NutritionMultiSelectGridOption<T extends string> = {
@@ -39,6 +43,7 @@ function NutritionMultiSelectGridPill({
                 ? NUTRITION_PILL_GRADIENT_FULL
                 : NUTRITION_PILL_GRADIENT,
               borderColor: MCQ_PILL_BORDER_SELECTED,
+              boxShadow: MCQ_PILL_OUTLINE_GLOW.nutrition,
             }
           : {
               borderColor: MCQ_PILL_BORDER_IDLE,

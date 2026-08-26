@@ -51,4 +51,14 @@ export const MCQ_QUESTION_HINT_CLASS = 'mt-0 text-[12px] !text-[#9a9a9a]'
 export const MCQ_PILL_BORDER_IDLE = '#969696'
 export const MCQ_PILL_BORDER_SELECTED = '#d0d0d0'
 
+/** Outer halo on the pill outline. Inner radial fill is unchanged. */
+export const MCQ_PILL_OUTLINE_GLOW = {
+  family:
+    '0 0 0 1px rgba(164, 86, 234, 0.85), 0 0 8px 2px rgba(164, 86, 234, 0.7), 0 0 16px 4px rgba(157, 80, 187, 0.4)',
+  lifestyle:
+    '0 0 0 1px rgba(255, 136, 0, 0.85), 0 0 8px 2px rgba(255, 136, 0, 0.7), 0 0 16px 4px rgba(255, 136, 0, 0.35)',
+  nutrition:
+    '0 0 0 1px rgba(63, 156, 255, 0.85), 0 0 8px 2px rgba(63, 156, 255, 0.7), 0 0 16px 4px rgba(63, 156, 255, 0.35)',
+} as const
+
 export const MCQ_DIAL_DESKTOP_CLASS = 'lg:scale-110 lg:origin-center'

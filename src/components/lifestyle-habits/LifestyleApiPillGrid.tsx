@@ -8,6 +8,7 @@ import {
   MCQ_PILL_BORDER_IDLE,
   MCQ_PILL_BORDER_SELECTED,
   MCQ_PILL_CHIP_CLASS,
+  MCQ_PILL_OUTLINE_GLOW,
 } from '../mcq/mcqLayout'
 import {
   ALCOHOL_PILL_GRADIENT_FULL,
@@ -49,6 +50,7 @@ function DesignedPill({
                 ? ALCOHOL_PILL_GRADIENT_FULL
                 : ALCOHOL_PILL_GRADIENT_HALF,
               borderColor: MCQ_PILL_BORDER_SELECTED,
+              boxShadow: MCQ_PILL_OUTLINE_GLOW.lifestyle,
             }
           : {
               borderColor: MCQ_PILL_BORDER_IDLE,

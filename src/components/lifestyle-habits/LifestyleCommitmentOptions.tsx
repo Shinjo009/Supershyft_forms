@@ -2,7 +2,11 @@ import {
   LIFESTYLE_COMMITMENT_OPTIONS,
   type LifestyleCommitmentOption,
 } from '../../data/lifestyleHabitsQuestions'
-import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
+import {
+  MCQ_PILL_BORDER_IDLE,
+  MCQ_PILL_BORDER_SELECTED,
+  MCQ_PILL_OUTLINE_GLOW,
+} from '../mcq/mcqLayout'
 import { ALCOHOL_PILL_GRADIENT_FULL } from './alcoholConsumptionConfig'
 
 function CommitmentPill({
@@ -26,6 +30,7 @@ function CommitmentPill({
           ? {
               backgroundImage: ALCOHOL_PILL_GRADIENT_FULL,
               borderColor: MCQ_PILL_BORDER_SELECTED,
+              boxShadow: MCQ_PILL_OUTLINE_GLOW.lifestyle,
             }
           : {
               borderColor: MCQ_PILL_BORDER_IDLE,

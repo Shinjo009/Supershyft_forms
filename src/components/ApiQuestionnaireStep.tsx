@@ -78,6 +78,7 @@ import {
   MCQ_PILL_BORDER_IDLE,
   MCQ_PILL_BORDER_SELECTED,
   MCQ_PILL_CHIP_CLASS,
+  MCQ_PILL_OUTLINE_GLOW,
   MCQ_SHELL_CLASS,
   MCQ_SHELL_FOOTER_CLASS,
   MCQ_SHELL_FOOTER_INNER_CLASS,
@@ -916,6 +917,7 @@ export function ApiQuestionnaireStep({
                             borderColor: selected ? MCQ_PILL_BORDER_SELECTED : MCQ_PILL_BORDER_IDLE,
                             backgroundImage: selected ? chipGradient : undefined,
                             backgroundColor: selected ? undefined : 'rgba(255,255,255,0.05)',
+                            boxShadow: selected ? MCQ_PILL_OUTLINE_GLOW[theme] : undefined,
                           }}
                         >
                           {selected ? (

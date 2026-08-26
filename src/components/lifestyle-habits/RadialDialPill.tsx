@@ -1,5 +1,9 @@
 import { memo } from 'react'
-import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
+import {
+  MCQ_PILL_BORDER_IDLE,
+  MCQ_PILL_BORDER_SELECTED,
+  MCQ_PILL_OUTLINE_GLOW,
+} from '../mcq/mcqLayout'
 import { DIAL_PILL_GRADIENT } from './radialDialShared'
 
 function RadialDialPillInner({
@@ -35,6 +39,7 @@ function RadialDialPillInner({
           ? {
               backgroundImage: DIAL_PILL_GRADIENT,
               borderColor: MCQ_PILL_BORDER_SELECTED,
+              boxShadow: MCQ_PILL_OUTLINE_GLOW.lifestyle,
             }
           : {
               backgroundColor: 'rgba(0, 0, 0, 0.2)',

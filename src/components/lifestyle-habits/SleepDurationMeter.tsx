@@ -3,7 +3,11 @@ import {
   SLEEP_DURATION_OPTIONS,
   type SleepDurationOption,
 } from '../../data/lifestyleHabitsQuestions'
-import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
+import {
+  MCQ_PILL_BORDER_IDLE,
+  MCQ_PILL_BORDER_SELECTED,
+  MCQ_PILL_OUTLINE_GLOW,
+} from '../mcq/mcqLayout'
 import { SLEEP_MOON_FILL, SLEEP_PILL_GRADIENT } from './sleepDurationConfig'
 
 const MOON_SIZE = 148
@@ -189,6 +193,7 @@ function SleepPill({
           ? {
               backgroundImage: SLEEP_PILL_GRADIENT,
               borderColor: MCQ_PILL_BORDER_SELECTED,
+              boxShadow: MCQ_PILL_OUTLINE_GLOW.lifestyle,
             }
           : {
               borderColor: MCQ_PILL_BORDER_IDLE,

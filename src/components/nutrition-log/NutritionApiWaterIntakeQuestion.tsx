@@ -2,7 +2,11 @@ import { useMemo } from 'react'
 import type { QuestionnaireOption } from '../../api/questionnaire'
 import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 import { McqQuestionHeader } from '../mcq/McqQuestionHeader'
-import { MCQ_PILL_BORDER_IDLE, MCQ_PILL_BORDER_SELECTED } from '../mcq/mcqLayout'
+import {
+  MCQ_PILL_BORDER_IDLE,
+  MCQ_PILL_BORDER_SELECTED,
+  MCQ_PILL_OUTLINE_GLOW,
+} from '../mcq/mcqLayout'
 import { buildWaterReadingsFromApi } from './fitApiOptionsToNutrition'
 import { WaterIntakeBottle } from './WaterIntakeBottle'
 import { WATER_INTAKE_PILL_GRADIENT } from './waterIntakeConfig'
@@ -28,6 +32,7 @@ function WaterIntakePill({
           ? {
               backgroundImage: WATER_INTAKE_PILL_GRADIENT,
               borderColor: MCQ_PILL_BORDER_SELECTED,
+              boxShadow: MCQ_PILL_OUTLINE_GLOW.nutrition,
             }
           : {
               borderColor: MCQ_PILL_BORDER_IDLE,

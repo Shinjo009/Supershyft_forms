@@ -14,7 +14,7 @@ import {
 import { OTHER_SPECIFY_MAX_LENGTH } from '../lib/apiOtherFollowUps'
 import { FamilyHistoryInfoOverlay } from './family-history/FamilyHistoryInfoOverlay'
 import { FamilyHistoryQuestionHeader } from './family-history/FamilyHistoryQuestionHeader'
-import { MCQ_PILL_CHIP_CLASS, MCQ_QUESTION_HINT_CLASS } from './mcq/mcqLayout'
+import { MCQ_PILL_CHIP_CLASS, MCQ_PILL_OUTLINE_GLOW, MCQ_QUESTION_HINT_CLASS } from './mcq/mcqLayout'
 import { CHIP_SELECTED_GRADIENT, FamilyHistoryMcqShell } from './family-history/FamilyHistoryMcqShell'
 
 type LocationOption = 'inland' | 'coastal'
@@ -332,7 +332,14 @@ function MultiSelectChipQuestion({
                   `flex ${MCQ_PILL_CHIP_CLASS} items-center justify-center gap-2.5 rounded-[24px] border border-solid px-2.5 py-1`,
                   isSelected ? 'border-[#d0d0d0] font-semibold' : 'border-[#969696] font-normal',
                 ].join(' ')}
-                style={isSelected ? { backgroundImage: CHIP_SELECTED_GRADIENT } : undefined}
+                style={
+                  isSelected
+                    ? {
+                        backgroundImage: CHIP_SELECTED_GRADIENT,
+                        boxShadow: MCQ_PILL_OUTLINE_GLOW.family,
+                      }
+                    : undefined
+                }
               >
                 {isSelected ? (
                   <img src={tickCircleIcon} alt="" className="size-3 shrink-0" aria-hidden />

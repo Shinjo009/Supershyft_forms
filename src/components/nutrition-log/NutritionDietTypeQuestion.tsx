@@ -9,6 +9,7 @@ import {
   MCQ_PILL_BORDER_IDLE,
   MCQ_PILL_BORDER_SELECTED,
   MCQ_PILL_CHIP_CLASS,
+  MCQ_PILL_OUTLINE_GLOW,
 } from '../mcq/mcqLayout'
 import { NUTRITION_PILL_GRADIENT } from './nutritionLogConfig'
 
@@ -36,6 +37,7 @@ function DietPill({
           ? {
               backgroundImage: NUTRITION_PILL_GRADIENT,
               borderColor: MCQ_PILL_BORDER_SELECTED,
+              boxShadow: MCQ_PILL_OUTLINE_GLOW.nutrition,
             }
           : {
               borderColor: MCQ_PILL_BORDER_IDLE,
