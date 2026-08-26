@@ -79,14 +79,44 @@ function normalizeScaleAnswer(answer: Record<string, unknown>): { value: number;
   return { value, unit }
 }
 
+/** Map a stored answer token (value, label, or option_id) to canonical option_value. */
+export function resolveAnswerTokenToOptionValue(
+  raw: string,
+  options?: QuestionnaireOption[] | null,
+): string {
+  const text = String(raw ?? '').trim()
+  if (!text || !Array.isArray(options) || options.length === 0) return text
+
+  const normalized = text.toLowerCase()
+  const matched = options.find((option) => {
+    const value = getOptionValue(option)
+    const label = getOptionLabel(option)
+    const optionId = option.option_id != null ? String(option.option_id) : ''
+    return (
+      (value !== '' && value === text) ||
+      (label !== '' && label === text) ||
+      (value !== '' && value.toLowerCase() === normalized) ||
+      (label !== '' && label.toLowerCase() === normalized) ||
+      (optionId !== '' && optionId === text)
+    )
+  })
+
+  if (!matched) return text
+  const value = getOptionValue(matched)
+  return value !== '' ? value : text
+}
+
 /** Normalize local answer values into the PUT /responses payload shape. */
 export function normalizeOutgoingAnswer(
   answer: unknown,
+  options?: QuestionnaireOption[] | null,
 ): string | string[] | { value: number; unit: string } | null {
   if (answer == null) return null
 
   if (Array.isArray(answer)) {
-    const values = answer.map((item) => String(item ?? '').trim()).filter(Boolean)
+    const values = answer
+      .map((item) => resolveAnswerTokenToOptionValue(String(item ?? '').trim(), options))
+      .filter(Boolean)
     return values.length > 0 ? values : null
   }
 
@@ -98,19 +128,30 @@ export function normalizeOutgoingAnswer(
   if (typeof answer === 'number') return Number.isFinite(answer) ? String(answer) : null
 
   const text = String(answer).trim()
-  return text || null
+  if (!text) return null
+  return resolveAnswerTokenToOptionValue(text, options)
 }
 
 export function buildQuestionnaireResponses(
   answersById: Record<number, unknown>,
   questionIds?: number[],
+  questions?: QuestionnaireQuestion[],
 ): QuestionnaireResponseItem[] {
   const ids = questionIds ?? Object.keys(answersById).map((id) => Number(id))
+  const questionById = new Map(
+    (questions ?? []).map((question) => [Number(question.question_id), question] as const),
+  )
   const responses: QuestionnaireResponseItem[] = []
 
   for (const questionId of ids) {
     if (!Number.isFinite(questionId) || questionId <= 0) continue
-    const normalized = normalizeOutgoingAnswer(answersById[questionId])
+    const question = questionById.get(questionId)
+    const useOptions =
+      question &&
+      (isMultiChoiceType(question.question_type) || isSingleChoiceType(question.question_type))
+        ? question.options
+        : undefined
+    const normalized = normalizeOutgoingAnswer(answersById[questionId], useOptions)
     if (normalized == null || isEmptyAnswer(normalized)) continue
     responses.push({ question_id: questionId, answer: normalized })
   }

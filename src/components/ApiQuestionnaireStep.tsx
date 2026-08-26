@@ -9,6 +9,7 @@ import {
   isMultiChoiceType,
   isSingleChoiceType,
   isTextType,
+  resolveAnswerTokenToOptionValue,
   submitQuestionnaireResponses,
   type QuestionnaireQuestion,
 } from '../api/questionnaire'
@@ -174,7 +175,8 @@ function toggleMulti(current: string[], value: string, maxSelections?: number): 
   return [...withoutNone, value]
 }
 
-/** Ensure multi-choice / wellness answers are always arrays before POST. */
+/** Ensure multi-choice / wellness answers are always arrays before POST.
+ *  Also map labels / option ids to canonical option_value. */
 function coerceAnswersForSubmit(
   answersById: Record<number, AnswerValue>,
   allQuestions: QuestionnaireQuestion[],
@@ -183,12 +185,30 @@ function coerceAnswersForSubmit(
   for (const item of allQuestions) {
     const mustBeList =
       isMultiChoiceType(item.question_type) || isLifestyleWellnessPrioritiesQuestion(item)
-    if (!mustBeList) continue
+    const isChoice =
+      mustBeList || isSingleChoiceType(item.question_type)
     const value = next[item.question_id]
-    if (value == null || Array.isArray(value)) continue
-    if (typeof value === 'string' || typeof value === 'number') {
-      const text = String(value).trim()
-      next[item.question_id] = text ? [text] : []
+    if (value == null) continue
+
+    if (mustBeList && !Array.isArray(value)) {
+      if (typeof value === 'string' || typeof value === 'number') {
+        const text = String(value).trim()
+        next[item.question_id] = text ? [text] : []
+      }
+    }
+
+    if (!isChoice) continue
+    const current = next[item.question_id]
+    if (Array.isArray(current)) {
+      next[item.question_id] = current
+        .map((itemValue) =>
+          resolveAnswerTokenToOptionValue(String(itemValue ?? '').trim(), item.options),
+        )
+        .filter(Boolean)
+      continue
+    }
+    if (typeof current === 'string' || typeof current === 'number') {
+      next[item.question_id] = resolveAnswerTokenToOptionValue(String(current).trim(), item.options)
     }
   }
   return next
@@ -343,6 +363,7 @@ export function ApiQuestionnaireStep({
     const responses = buildQuestionnaireResponses(
       coerceAnswersForSubmit(answers, questions),
       idsToSave,
+      questions,
     )
 
     if (responses.length === 0) return

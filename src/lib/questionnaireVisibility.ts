@@ -1,5 +1,5 @@
 import type { QuestionnaireOption, QuestionnaireQuestion } from '../api/questionnaire'
-import { getOptionLabel, getOptionValue, isMultiChoiceType } from '../api/questionnaire'
+import { getOptionLabel, getOptionValue, isMultiChoiceType, isSingleChoiceType, resolveAnswerTokenToOptionValue } from '../api/questionnaire'
 
 export type VisibilityCondition = {
   type?: string
@@ -332,10 +332,16 @@ function coerceStoredAnswer(question: QuestionnaireQuestion, raw: unknown): Answ
   if (isEmptyAnswer(raw)) return undefined
 
   if (isMultiChoiceType(question.question_type)) {
-    if (Array.isArray(raw)) {
-      return raw.map((item) => String(item ?? '').trim()).filter(Boolean)
-    }
-    return [String(raw).trim()].filter(Boolean)
+    const items = Array.isArray(raw)
+      ? raw.map((item) => String(item ?? '').trim()).filter(Boolean)
+      : [String(raw).trim()].filter(Boolean)
+    return items.map((item) => resolveAnswerTokenToOptionValue(item, question.options))
+  }
+
+  if (isSingleChoiceType(question.question_type)) {
+    const text = Array.isArray(raw) ? String(raw[0] ?? '').trim() : String(raw).trim()
+    if (!text) return undefined
+    return resolveAnswerTokenToOptionValue(text, question.options)
   }
 
   if (Array.isArray(raw)) {
