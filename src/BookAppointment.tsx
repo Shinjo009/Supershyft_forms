@@ -1527,10 +1527,25 @@ function ScheduleStep({
     timeSlots.length > 0
       ? `${timeSlots[0].display} – ${timeSlots[timeSlots.length - 1].display}`
       : ''
+  const timeSlotOptions = timeSlots.map((slot) => {
+    const remaining = slot.spotLeft
+    const isFull = remaining <= 0
+    return {
+      value: slot.display,
+      triggerLabel: slot.display,
+      disabled: isFull,
+      label: (
+        <>
+          <span className="text-[#9a9a9a]/80">{slot.display}</span>
+          <span className="text-[#9a9a9a]/80"> | </span>
+          <span className="text-[12px] text-[#41ab99]">
+            {isFull ? 'Full' : `${remaining} slot${remaining === 1 ? '' : 's'} left`}
+          </span>
+        </>
+      ),
+    }
+  })
 
-  const selectedSlotClass =
-    'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
-  const idleSlotClass = 'border-white/[0.08] bg-white/5'
   const selectedDateClass =
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)]'
   const idleDateClass = 'bg-white/5'
@@ -1693,34 +1708,15 @@ function ScheduleStep({
           <p className="text-[12px] font-light text-[#9a9a9a]">Select a date to see time slots.</p>
         ) : !selectedCabin ? (
           <p className="text-[12px] font-light text-[#9a9a9a]">Select a cabin to see time slots.</p>
+        ) : timeSlotOptions.length === 0 ? (
+          <p className="text-[12px] font-light text-[#9a9a9a]">No time slots are available.</p>
         ) : (
-          <div className="grid w-full grid-cols-3 gap-x-2 gap-y-3 px-1 lg:grid-cols-4 xl:grid-cols-5">
-            {timeSlots.map((slot) => {
-              const selected = form.appointmentTime === slot.display
-              const remaining = slot.spotLeft
-              const isFull = remaining <= 0
-              return (
-                <div key={slot.hhmm} className="flex min-w-0 flex-col items-center gap-1">
-                  <button
-                    type="button"
-                    disabled={isFull}
-                    onClick={() => update('appointmentTime', slot.display)}
-                    aria-pressed={selected}
-                    className={[
-                      'flex h-10 w-full items-center justify-center rounded-full border text-[12px] font-medium transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                      selected ? selectedSlotClass : idleSlotClass,
-                      isFull ? 'cursor-not-allowed opacity-40 hover:scale-100' : '',
-                    ].join(' ')}
-                  >
-                    <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>{slot.display}</span>
-                  </button>
-                  <span className="text-[9px] font-light leading-none text-[#41ab99]">
-                    {isFull ? 'Full' : `${remaining} slot${remaining === 1 ? '' : 's'} left`}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+          <Dropdown
+            value={form.appointmentTime}
+            placeholder="Select time slot"
+            options={timeSlotOptions}
+            onChange={(slot) => update('appointmentTime', slot)}
+          />
         )}
         </section>
 
