@@ -1570,79 +1570,118 @@ function ScheduleStep({
   }
 
   const consultationChoice = form.doctorConsultation
-  const showConsultation = Boolean(activeDate && selectedCabin)
-  const isMissingConsultation = Boolean(showMissingRequired && showConsultation && !consultationChoice)
+  const isMissingConsultation = Boolean(showMissingRequired && !consultationChoice)
   const setConsultation = (value: 'yes' | 'no') => {
     update('doctorConsultation', value)
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-8 lg:gap-y-6">
-      <section className="flex min-w-0 flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <PreferredDateIcon />
-          <h2 className={sectionLabelClass}>
-            Preferred Date
-            {showMissingRequired && !form.appointmentDate ? (
-              <span className="text-[#ff6b6b]"> * Field is required</span>
-            ) : null}
-          </h2>
-        </div>
-        {isLoading ? (
-          <p className="text-[12px] font-light text-[#9a9a9a]">Loading dates...</p>
-        ) : bookableDates.length === 0 ? (
-          <p className="text-[12px] font-light text-[#9a9a9a]">
-            {form.city
-              ? 'No dates are available yet.'
-              : 'Select a city on the previous page to see available dates.'}
-          </p>
-        ) : (
-          <div className="grid w-full grid-cols-4 gap-2">
-            {bookableDates.map(({ iso, date, enabled }) => {
-              const selected = enabled && form.appointmentDate === iso
-              return (
-                <button
-                  key={iso}
-                  type="button"
-                  disabled={!enabled}
-                  onClick={() => {
-                    if (!enabled) return
-                    pickDate(iso)
-                  }}
-                  aria-pressed={selected}
-                  aria-disabled={!enabled}
-                  className={[
-                    'flex h-20 w-full min-w-0 origin-center flex-col items-center justify-center gap-1 rounded-[8px] transition duration-200',
-                    enabled
-                      ? 'hover:z-[1] hover:scale-[1.03]'
-                      : 'pointer-events-none cursor-not-allowed opacity-40',
-                    selected ? selectedDateClass : idleDateClass,
-                  ].join(' ')}
-                >
-                  <span
-                    className={
-                      selected
-                        ? 'text-[13px] font-medium leading-4 text-white'
-                        : 'text-[13px] font-medium leading-4 text-[#9a9a9a]'
-                    }
-                  >
-                    {DAY_LABELS[date.getDay()]}
-                  </span>
-                  <span
-                    className={
-                      selected
-                        ? 'text-[22px] font-semibold leading-6 text-white'
-                        : 'text-[22px] font-semibold leading-6 text-[#cccccc]'
-                    }
-                  >
-                    {date.getDate()}
-                  </span>
-                </button>
-              )
-            })}
+    <div className="flex min-w-0 flex-col gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-x-8">
+        <section className="flex min-w-0 flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <PreferredDateIcon />
+            <h2 className={sectionLabelClass}>
+              Preferred Date
+              {showMissingRequired && !form.appointmentDate ? (
+                <span className="text-[#ff6b6b]"> * Field is required</span>
+              ) : null}
+            </h2>
           </div>
-        )}
-      </section>
+          {isLoading ? (
+            <p className="text-[12px] font-light text-[#9a9a9a]">Loading dates...</p>
+          ) : bookableDates.length === 0 ? (
+            <p className="text-[12px] font-light text-[#9a9a9a]">
+              {form.city
+                ? 'No dates are available yet.'
+                : 'Select a city on the previous page to see available dates.'}
+            </p>
+          ) : (
+            <div className="grid w-full grid-cols-4 gap-2">
+              {bookableDates.map(({ iso, date, enabled }) => {
+                const selected = enabled && form.appointmentDate === iso
+                return (
+                  <button
+                    key={iso}
+                    type="button"
+                    disabled={!enabled}
+                    onClick={() => {
+                      if (!enabled) return
+                      pickDate(iso)
+                    }}
+                    aria-pressed={selected}
+                    aria-disabled={!enabled}
+                    className={[
+                      'flex h-20 w-full min-w-0 origin-center flex-col items-center justify-center gap-1 rounded-[8px] transition duration-200',
+                      enabled
+                        ? 'hover:z-[1] hover:scale-[1.03]'
+                        : 'pointer-events-none cursor-not-allowed opacity-40',
+                      selected ? selectedDateClass : idleDateClass,
+                    ].join(' ')}
+                  >
+                    <span
+                      className={
+                        selected
+                          ? 'text-[13px] font-medium leading-4 text-white'
+                          : 'text-[13px] font-medium leading-4 text-[#9a9a9a]'
+                      }
+                    >
+                      {DAY_LABELS[date.getDay()]}
+                    </span>
+                    <span
+                      className={
+                        selected
+                          ? 'text-[22px] font-semibold leading-6 text-white'
+                          : 'text-[22px] font-semibold leading-6 text-[#cccccc]'
+                      }
+                    >
+                      {date.getDate()}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="flex min-w-0 flex-col gap-3">
+          <div className="flex items-start gap-2">
+            <User className="mt-0.5 size-5 shrink-0 text-[#9A9A9A]" strokeWidth={1.75} />
+            <h2 className={sectionLabelClass}>
+              Do you want an in-person Doctor consultation? (2nd week of September)
+              {isMissingConsultation ? (
+                <span className="text-[#ff6b6b]"> * Field is required</span>
+              ) : null}
+            </h2>
+          </div>
+          <div className="flex h-10 gap-6 overflow-visible">
+            <button
+              type="button"
+              onClick={() => setConsultation('yes')}
+              className={[
+                'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                consultationChoice === 'yes'
+                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                  : 'bg-white/5 text-[#999]',
+              ].join(' ')}
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              onClick={() => setConsultation('no')}
+              className={[
+                'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                consultationChoice === 'no'
+                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+                  : 'bg-white/5 text-[#999]',
+              ].join(' ')}
+            >
+              No
+            </button>
+          </div>
+        </section>
+      </div>
 
       <section className="flex min-w-0 flex-col gap-3">
         <div className="flex items-center gap-2">
@@ -1665,7 +1704,12 @@ function ScheduleStep({
         ) : cabinsForDate.length === 0 ? (
           <p className="text-[12px] font-light text-[#9a9a9a]">No cabins are available on this date.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-2">
+          <div
+            className="grid w-full gap-2"
+            style={{
+              gridTemplateColumns: `repeat(${Math.max(cabinsForDate.length, 1)}, minmax(0, 1fr))`,
+            }}
+          >
             {cabinsForDate.map((cabin) => {
               const selected = form.appointmentCabin === cabin.name
               return (
@@ -1706,7 +1750,7 @@ function ScheduleStep({
         ) : !selectedCabin ? (
           <p className="text-[12px] font-light text-[#9a9a9a]">Select a cabin to see time slots.</p>
         ) : (
-          <div className="grid w-full grid-cols-3 gap-x-2 gap-y-3 px-1 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid w-full grid-cols-3 gap-x-2 gap-y-3 px-1 sm:grid-cols-5 lg:grid-cols-10">
             {timeSlots.map((slot) => {
               const selected = form.appointmentTime === slot.display
               const remaining = slot.spotLeft
@@ -1735,46 +1779,6 @@ function ScheduleStep({
           </div>
         )}
       </section>
-
-      {showConsultation ? (
-        <section className="flex min-w-0 flex-col gap-3">
-          <div className="flex items-start gap-2">
-            <User className="mt-0.5 size-5 shrink-0 text-[#9A9A9A]" strokeWidth={1.75} />
-            <h2 className={sectionLabelClass}>
-              Do you want an in-person Doctor consultation? (2nd week of September)
-              {isMissingConsultation ? (
-                <span className="text-[#ff6b6b]"> * Field is required</span>
-              ) : null}
-            </h2>
-          </div>
-          <div className="flex h-10 gap-6 overflow-visible">
-            <button
-              type="button"
-              onClick={() => setConsultation('yes')}
-              className={[
-                'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                consultationChoice === 'yes'
-                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                  : 'bg-white/5 text-[#999]',
-              ].join(' ')}
-            >
-              Yes
-            </button>
-            <button
-              type="button"
-              onClick={() => setConsultation('no')}
-              className={[
-                'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                consultationChoice === 'no'
-                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                  : 'bg-white/5 text-[#999]',
-              ].join(' ')}
-            >
-              No
-            </button>
-          </div>
-        </section>
-      ) : null}
     </div>
   )
 }
