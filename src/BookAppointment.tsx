@@ -1109,6 +1109,13 @@ export default function BookAppointment() {
             </ContinueButton>
           ) : !hideGlobalContinue ? (
             <div className="mt-3 shrink-0">
+              {step === 1 ? (
+                <p className="mb-[25px] hidden font-sans text-[11px] font-normal leading-normal text-[#9A9A9A] lg:block">
+                  Disclaimer: By voluntarily providing your information, you consent to its use
+                  solely for the Bio AI Health Checkup and related results. Your data will be kept
+                  confidential and handled securely.
+                </p>
+              ) : null}
               <ContinueButton
                 variant={continueVariant}
                 disabled={step === 2 && isLoadingSchedule}
@@ -1192,7 +1199,8 @@ function PersonalStep({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-8 lg:gap-y-6">
+    <div className="flex min-w-0 flex-col gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-8 lg:gap-y-6">
       <div className="flex min-w-0 flex-col gap-1">
         {labelRow(User, 'Full Name', undefined, Boolean(fullNameError), fullNameError)}
         <div className="flex gap-2">
@@ -1328,6 +1336,13 @@ function PersonalStep({
           onChange={(e) => update('employeeId', sanitizeEmployeeId(e.target.value))}
         />
       </div>
+      </div>
+
+      <p className="font-sans text-[11px] font-normal leading-normal text-[#9A9A9A] lg:hidden">
+        Disclaimer: By voluntarily providing your information, you consent to its use solely for
+        the Bio AI Health Checkup and related results. Your data will be kept confidential and
+        handled securely.
+      </p>
     </div>
   )
 }
