@@ -1575,6 +1575,46 @@ function ScheduleStep({
     update('doctorConsultation', value)
   }
 
+  const doctorConsultationSection = (
+    <section className="flex min-w-0 flex-col gap-3">
+      <div className="flex items-start gap-2">
+        <User className="mt-0.5 size-5 shrink-0 text-[#9A9A9A]" strokeWidth={1.75} />
+        <h2 className={sectionLabelClass}>
+          Do you want an in-person Doctor consultation? (2nd week of September)
+          {isMissingConsultation ? (
+            <span className="text-[#ff6b6b]"> * Field is required</span>
+          ) : null}
+        </h2>
+      </div>
+      <div className="flex h-10 gap-6 overflow-visible">
+        <button
+          type="button"
+          onClick={() => setConsultation('yes')}
+          className={[
+            'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+            consultationChoice === 'yes'
+              ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+              : 'bg-white/5 text-[#999]',
+          ].join(' ')}
+        >
+          Yes
+        </button>
+        <button
+          type="button"
+          onClick={() => setConsultation('no')}
+          className={[
+            'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
+            consultationChoice === 'no'
+              ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
+              : 'bg-white/5 text-[#999]',
+          ].join(' ')}
+        >
+          No
+        </button>
+      </div>
+    </section>
+  )
+
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-x-8">
@@ -1644,43 +1684,7 @@ function ScheduleStep({
           )}
         </section>
 
-        <section className="flex min-w-0 flex-col gap-3">
-          <div className="flex items-start gap-2">
-            <User className="mt-0.5 size-5 shrink-0 text-[#9A9A9A]" strokeWidth={1.75} />
-            <h2 className={sectionLabelClass}>
-              Do you want an in-person Doctor consultation? (2nd week of September)
-              {isMissingConsultation ? (
-                <span className="text-[#ff6b6b]"> * Field is required</span>
-              ) : null}
-            </h2>
-          </div>
-          <div className="flex h-10 gap-6 overflow-visible">
-            <button
-              type="button"
-              onClick={() => setConsultation('yes')}
-              className={[
-                'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                consultationChoice === 'yes'
-                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                  : 'bg-white/5 text-[#999]',
-              ].join(' ')}
-            >
-              Yes
-            </button>
-            <button
-              type="button"
-              onClick={() => setConsultation('no')}
-              className={[
-                'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                consultationChoice === 'no'
-                  ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-                  : 'bg-white/5 text-[#999]',
-              ].join(' ')}
-            >
-              No
-            </button>
-          </div>
-        </section>
+        <div className="hidden lg:block">{doctorConsultationSection}</div>
       </div>
 
       <section className="flex min-w-0 flex-col gap-3">
@@ -1779,6 +1783,8 @@ function ScheduleStep({
           </div>
         )}
       </section>
+
+      <div className="lg:hidden">{doctorConsultationSection}</div>
     </div>
   )
 }
