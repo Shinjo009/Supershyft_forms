@@ -73,15 +73,31 @@ export function FamilyHistoryMcqShell({
               </p>
             </div>
           ) : null}
-          <button
-            type="button"
-            onClick={onNext}
-            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(164,86,234,0.25)]"
-            style={{ backgroundImage: NEXT_BUTTON_GRADIENT }}
-            aria-label="Next question"
-          >
-            <img src={nextChevronIcon} alt="" className="size-5" aria-hidden />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(164,86,234,0.25)]"
+              style={{ backgroundImage: NEXT_BUTTON_GRADIENT }}
+              aria-label="Previous question"
+            >
+              <img
+                src={nextChevronIcon}
+                alt=""
+                className="size-5 scale-x-[-1]"
+                aria-hidden
+              />
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              className="flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(164,86,234,0.25)]"
+              style={{ backgroundImage: NEXT_BUTTON_GRADIENT }}
+              aria-label="Next question"
+            >
+              <img src={nextChevronIcon} alt="" className="size-5" aria-hidden />
+            </button>
+          </div>
         </div>
       </footer>
     </div>

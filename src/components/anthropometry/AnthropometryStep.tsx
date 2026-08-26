@@ -3,7 +3,6 @@ import {
   submitQuestionnaireResponses,
   type QuestionnaireQuestion,
 } from '../../api/questionnaire'
-import hipGif from '../../assets/anthropometry/hip-gif.gif'
 import waistGif from '../../assets/anthropometry/waist-gif.gif'
 import { getAccessToken } from '../../lib/authStorage'
 import { isFrontendOnly } from '../../lib/frontendOnly'
@@ -21,7 +20,6 @@ import {
   clamp,
   convertCircumference,
   convertWeight,
-  DEFAULT_HIP_INCHES,
   extractUnitOptionsFromQuestion,
   seedAnthropometryFromQuestions,
   findQuestionByAliasesAndHints,
@@ -47,6 +45,16 @@ import {
 } from './anthropometryConfig'
 import './anthropometry.css'
 
+function isHipQuestion(question: QuestionnaireQuestion): boolean {
+  const key = String(question.question_key || '')
+    .trim()
+    .toLowerCase()
+  const text = String(question.question_text || '')
+    .trim()
+    .toLowerCase()
+  return key.includes('hip') || text.includes('hip')
+}
+
 export function AnthropometryStep({
   questions = [],
   assessmentInstanceId,
@@ -63,7 +71,11 @@ export function AnthropometryStep({
     followup: AnthropometryFollowupValues
   }) => void
 }) {
-  const [seeded] = useState(() => seedAnthropometryFromQuestions(questions))
+  const visibleQuestions = useMemo(
+    () => questions.filter((question) => !isHipQuestion(question)),
+    [questions],
+  )
+  const [seeded] = useState(() => seedAnthropometryFromQuestions(visibleQuestions))
   const [index, setIndex] = useState(0)
   const [height, setHeight] = useState(seeded.primary.height)
   const [weight, setWeight] = useState<number | null>(seeded.primary.weight)
@@ -73,24 +85,26 @@ export function AnthropometryStep({
   const [waistUnit, setWaistUnit] = useState(seeded.primary.waistUnit)
   const [heightFeet, setHeightFeet] = useState(seeded.primary.heightFeet)
   const [heightInches, setHeightInches] = useState(seeded.primary.heightInches)
-  const [hipSize, setHipSize] = useState(seeded.followup.hipSize ?? Math.round(DEFAULT_HIP_INCHES))
-  const [hipUnit, setHipUnit] = useState(seeded.followup.hipUnit || 'In')
   const [showWaistInfo, setShowWaistInfo] = useState(false)
-  const [showHipInfo, setShowHipInfo] = useState(false)
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
-  const heightLabel = getQuestionText(questions, ['height'], ['height'], 'What is you height ?')
-  const weightLabel = getQuestionText(questions, ['weight'], ['weight', 'body weight'], 'What is you weight?')
-  const waistLabel = getQuestionText(questions, ['waist_circumference', 'waist'], ['waist'], 'What is you waist size ?')
-  const hipLabel = getQuestionText(questions, ['hip_circumference', 'hip'], ['hip'], 'What is you hip size ?')
+  const heightLabel = getQuestionText(visibleQuestions, ['height'], ['height'], 'What is you height ?')
+  const weightLabel = getQuestionText(
+    visibleQuestions,
+    ['weight'],
+    ['weight', 'body weight'],
+    'What is you weight?',
+  )
+  const waistLabel = getQuestionText(
+    visibleQuestions,
+    ['waist_circumference', 'waist'],
+    ['waist'],
+    'What is you waist size ?',
+  )
 
-  const previews = [
-    { line1: weightLabel },
-    { line1: waistLabel },
-    { line1: hipLabel },
-  ]
+  const previews = [{ line1: weightLabel }, { line1: waistLabel }]
 
   const isLast = index >= ANTHRO_QUESTION_COUNT - 1
   const isWeightValid = isProvidedNumber(weight)
@@ -110,7 +124,7 @@ export function AnthropometryStep({
     throughIndex: number,
     followup: AnthropometryFollowupValues = {},
   ) => {
-    const responses = buildAnthropometryResponses(questions, currentPrimary(), followup, {
+    const responses = buildAnthropometryResponses(visibleQuestions, currentPrimary(), followup, {
       throughIndex,
     })
 
@@ -153,7 +167,7 @@ export function AnthropometryStep({
     })
   }
 
-  const completeSection = async (followup: AnthropometryFollowupValues) => {
+  const completeSection = async (followup: AnthropometryFollowupValues = {}) => {
     await saveProgress(ANTHRO_QUESTION_COUNT - 1, followup)
     onComplete({
       primary: currentPrimary(),
@@ -183,10 +197,7 @@ export function AnthropometryStep({
 
     void runSave(async () => {
       if (isLast) {
-        await completeSection({
-          hipSize: roundToTenth(hipSize),
-          hipUnit,
-        })
+        await completeSection({})
         return
       }
 
@@ -217,7 +228,7 @@ export function AnthropometryStep({
     >
       {index === 0 ? (
         <HeightQuestion
-          questions={questions}
+          questions={visibleQuestions}
           label={heightLabel}
           height={height}
           heightUnit={heightUnit}
@@ -233,7 +244,7 @@ export function AnthropometryStep({
 
       {index === 1 ? (
         <WeightQuestion
-          questions={questions}
+          questions={visibleQuestions}
           label={weightLabel}
           weight={weight}
           weightUnit={weightUnit}
@@ -248,7 +259,7 @@ export function AnthropometryStep({
 
       {index === 2 ? (
         <WaistQuestion
-          questions={questions}
+          questions={visibleQuestions}
           label={waistLabel}
           waist={waist}
           waistUnit={waistUnit}
@@ -258,37 +269,11 @@ export function AnthropometryStep({
         />
       ) : null}
 
-      {index === 3 ? (
-        <HipQuestion
-          questions={questions}
-          label={hipLabel}
-          hipSize={hipSize}
-          hipUnit={hipUnit}
-          onHipChange={setHipSize}
-          onUnitChange={setHipUnit}
-          onOpenInfo={() => setShowHipInfo(true)}
-          onSkip={() => {
-            if (isSaving) return
-            void runSave(async () => {
-              await completeSection({
-                hipUnit,
-              })
-            })
-          }}
-        />
-      ) : null}
-
       <AnthropometryInfoPopup
         open={showWaistInfo}
         label="Waist size information"
         gifSrc={waistGif}
         onClose={() => setShowWaistInfo(false)}
-      />
-      <AnthropometryInfoPopup
-        open={showHipInfo}
-        label="Hip size information"
-        gifSrc={hipGif}
-        onClose={() => setShowHipInfo(false)}
       />
     </AnthropometryMcqShell>
   )
@@ -513,8 +498,6 @@ function WeightQuestion({
 
 const WAIST_ALIASES = ['waist_circumference', 'waist']
 const WAIST_HINTS = ['waist']
-const HIP_ALIASES = ['hip_circumference', 'hip_size', 'hip']
-const HIP_HINTS = ['hip']
 
 function CircumferenceQuestion({
   questions,
@@ -529,7 +512,6 @@ function CircumferenceQuestion({
   onChange,
   onUnitChange,
   onOpenInfo,
-  onSkip,
 }: {
   questions: QuestionnaireQuestion[]
   label: string
@@ -543,7 +525,6 @@ function CircumferenceQuestion({
   onChange: (value: number) => void
   onUnitChange: (unit: string) => void
   onOpenInfo: () => void
-  onSkip?: () => void
 }) {
   const question = useMemo(() => findQuestionByAliasesAndHints(questions, aliases, hints), [aliases, hints, questions])
   const unitOptions = useMemo(
@@ -605,11 +586,6 @@ function CircumferenceQuestion({
           onChange={(next) => onChange(clamp(Math.round(next), range.min, range.max))}
         />
       </div>
-      {onSkip ? (
-        <button type="button" className="text-sm font-normal tracking-tight text-zinc-400 underline" onClick={onSkip}>
-          Skip
-        </button>
-      ) : null}
     </div>
   )
 }
@@ -645,44 +621,6 @@ function WaistQuestion({
       onChange={onWaistChange}
       onUnitChange={onUnitChange}
       onOpenInfo={onOpenInfo}
-    />
-  )
-}
-
-function HipQuestion({
-  questions,
-  label,
-  hipSize,
-  hipUnit,
-  onHipChange,
-  onUnitChange,
-  onOpenInfo,
-  onSkip,
-}: {
-  questions: QuestionnaireQuestion[]
-  label: string
-  hipSize: number
-  hipUnit: string
-  onHipChange: (value: number) => void
-  onUnitChange: (unit: string) => void
-  onOpenInfo: () => void
-  onSkip: () => void
-}) {
-  return (
-    <CircumferenceQuestion
-      questions={questions}
-      label={label}
-      index={3}
-      value={hipSize}
-      unit={hipUnit}
-      kind="hip"
-      aliases={HIP_ALIASES}
-      hints={HIP_HINTS}
-      infoLabel="Open hip size information"
-      onChange={onHipChange}
-      onUnitChange={onUnitChange}
-      onOpenInfo={onOpenInfo}
-      onSkip={onSkip}
     />
   )
 }

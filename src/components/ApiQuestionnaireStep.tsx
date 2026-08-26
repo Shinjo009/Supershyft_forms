@@ -990,22 +990,39 @@ export function ApiQuestionnaireStep({
               </p>
             </div>
           ) : null}
-          <button
-            type="button"
-            onClick={handleNext}
-            disabled={isSaving || !answered}
-            className={`flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px ${nextShadow} disabled:cursor-not-allowed disabled:opacity-40`}
-            style={{ backgroundImage: nextGradient }}
-            aria-label={
-              isSaving
-                ? 'Saving answer'
-                : !answered
-                  ? 'Answer this question to continue'
-                  : 'Next question'
-            }
-          >
-            <img src={nextChevronIcon} alt="" className="size-4" aria-hidden />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={handleBack}
+              disabled={isSaving}
+              className={`flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px ${nextShadow} disabled:cursor-not-allowed disabled:opacity-40`}
+              style={{ backgroundImage: nextGradient }}
+              aria-label="Previous question"
+            >
+              <img
+                src={nextChevronIcon}
+                alt=""
+                className="size-4 scale-x-[-1]"
+                aria-hidden
+              />
+            </button>
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={isSaving || !answered}
+              className={`flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px ${nextShadow} disabled:cursor-not-allowed disabled:opacity-40`}
+              style={{ backgroundImage: nextGradient }}
+              aria-label={
+                isSaving
+                  ? 'Saving answer'
+                  : !answered
+                    ? 'Answer this question to continue'
+                    : 'Next question'
+              }
+            >
+              <img src={nextChevronIcon} alt="" className="size-4" aria-hidden />
+            </button>
+          </div>
         </div>
       </footer>
     </div>

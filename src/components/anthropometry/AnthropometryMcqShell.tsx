@@ -83,18 +83,37 @@ export function AnthropometryMcqShell({
                 </p>
               </div>
             ) : null}
-            <button
-              type="button"
-              onClick={onNext}
-              disabled={nextDisabled}
-              className="flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(144,223,158,0.5)] disabled:cursor-not-allowed disabled:opacity-40"
-              style={{ backgroundImage: ANTHRO_NEXT_BUTTON_GRADIENT }}
-              aria-label={
-                isSaving ? 'Saving answer' : showNextPreview ? 'Next question' : 'Continue'
-              }
-            >
-              <img src={nextChevronIcon} alt="" className="size-5" aria-hidden />
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              {onBack ? (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  disabled={isSaving}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(144,223,158,0.5)] disabled:cursor-not-allowed disabled:opacity-40"
+                  style={{ backgroundImage: ANTHRO_NEXT_BUTTON_GRADIENT }}
+                  aria-label="Previous question"
+                >
+                  <img
+                    src={nextChevronIcon}
+                    alt=""
+                    className="size-5 scale-x-[-1]"
+                    aria-hidden
+                  />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={onNext}
+                disabled={nextDisabled}
+                className="flex size-10 shrink-0 items-center justify-center rounded-full border border-solid border-[#969696] p-px shadow-[0_8px_32px_0_rgba(144,223,158,0.5)] disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ backgroundImage: ANTHRO_NEXT_BUTTON_GRADIENT }}
+                aria-label={
+                  isSaving ? 'Saving answer' : showNextPreview ? 'Next question' : 'Continue'
+                }
+              >
+                <img src={nextChevronIcon} alt="" className="size-5" aria-hidden />
+              </button>
+            </div>
           </div>
         </footer>
       ) : null}

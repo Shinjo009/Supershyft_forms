@@ -31,7 +31,7 @@ export const DEFAULT_HIP_CM = 97
 
 export const IN_TO_CM = 2.54
 
-export const ANTHRO_QUESTION_COUNT = 4
+export const ANTHRO_QUESTION_COUNT = 3
 
 export const ANTHRO_PROGRESS_COLOR = '#90DF9E'
 
@@ -522,14 +522,6 @@ export function buildAnthropometryResponses(
       value: merged.waist,
       unitLabel: merged.waistUnit,
       minIndex: 2,
-      wholeNumber: true,
-    },
-    {
-      aliases: ['hip_circumference', 'hip_size', 'hip'],
-      textHints: ['hip'],
-      value: merged.hipSize,
-      unitLabel: merged.hipUnit || 'In',
-      minIndex: 3,
       wholeNumber: true,
     },
   ]
