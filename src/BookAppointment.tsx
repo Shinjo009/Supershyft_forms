@@ -22,8 +22,6 @@ import { PreferredDateCalendar } from './components/PreferredDateCalendar'
 import {
   clampBookingDate,
   formatPreferredDateLabel,
-  getBookingDateBounds,
-  toIsoDate,
 } from './lib/bookingDates'
 import { loadPincodeLookup, lookupPincode } from './lib/pincodeLookup'
 import { onboardUserForEngagement, type OnboardUserForEngagementPayload } from './api/onboard'
@@ -1885,7 +1883,6 @@ function ScheduleStep({
   showMissingRequired?: boolean
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false)
-  const { min: bookingMin, max: bookingMax } = useMemo(() => getBookingDateBounds(), [])
 
   useEffect(() => {
     const clamped = clampBookingDate(form.appointmentDate)
@@ -1959,10 +1956,6 @@ function ScheduleStep({
           </span>
           <ChevronRight className="size-5 shrink-0 text-[#9a9a9a]" aria-hidden />
         </button>
-        <p className="text-[11px] font-light text-[#999]">
-          Selectable: {formatPreferredDateLabel(toIsoDate(bookingMin))} – 30 Jun{' '}
-          {bookingMax.getFullYear()}
-        </p>
         <PreferredDateCalendar
           open={calendarOpen}
           value={form.appointmentDate}
