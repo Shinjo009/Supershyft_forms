@@ -20,7 +20,7 @@ export type OnboardUserForEngagementPayload = {
   blood_collection_cabin?: string | null
   participants_employee_id: string
   participant_blood_group: string
-  consultation: {
+  consultations: {
     eye: boolean
     doctor: boolean
   }

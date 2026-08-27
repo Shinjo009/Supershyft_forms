@@ -559,7 +559,7 @@ export default function BookAppointment() {
           resolveCabinKey(engagementSchedule, form.appointmentCabin, form.appointmentDate) || null,
         participants_employee_id: participantId,
         participant_blood_group: 'NA',
-        consultation: {
+        consultations: {
           eye: false,
           doctor: form.doctorConsultation === 'yes',
         },
