@@ -1874,13 +1874,13 @@ function ScheduleStep({
   }, [form.appointmentDate, update])
 
   const timeSlots = [
-    '06:00 AM',
-    '07:00 AM',
-    '08:00 AM',
-    '09:00 AM',
-    '10:00 AM',
-    '11:00 AM',
-    '12:00 PM',
+    '06:00 am - 07:00 am',
+    '07:00 am - 08:00 am',
+    '08:00 am - 09:00 am',
+    '09:00 am - 10:00 am',
+    '10:00 am - 11:00 am',
+    '11:00 am - 12:00 pm',
+    '12:00 pm - 01:00 pm',
   ]
 
   const selectedSlotClass =
@@ -1973,8 +1973,8 @@ function ScheduleStep({
                 aria-pressed={selected}
                 className={[
                   isMobile
-                    ? 'flex h-10 w-full items-center justify-center rounded-full border text-[13px] transition'
-                    : 'flex h-[44px] w-full items-center justify-center rounded-[6px] border text-sm transition',
+                    ? 'flex h-10 w-full items-center justify-center rounded-full border px-1 text-center text-[10px] leading-tight transition'
+                    : 'flex h-[44px] w-full items-center justify-center rounded-[6px] border px-1 text-center text-xs leading-tight transition',
                   selected ? selectedSlotClass : idleSlotClass,
                 ].join(' ')}
               >
