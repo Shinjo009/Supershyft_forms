@@ -1895,14 +1895,14 @@ function ScheduleStep({
   }, [form.appointmentDate, update])
 
   const timeSlots = [
-    '06:00 AM',
-    '07:00 AM',
-    '08:00 AM',
-    '09:00 AM',
-    '10:00 AM',
-    '11:00 AM',
-    '12:00 PM',
-    '01:00 PM',
+    '06:00 am - 07:00 am',
+    '07:00 am - 08:00 am',
+    '08:00 am - 09:00 am',
+    '09:00 am - 10:00 am',
+    '10:00 am - 11:00 am',
+    '11:00 am - 12:00 pm',
+    '12:00 pm - 01:00 pm',
+    '01:00 pm - 02:00 pm',
   ]
 
   const selectedSlotClass =
@@ -1984,7 +1984,7 @@ function ScheduleStep({
             <p className="text-[10px] font-light text-[#ccc]">Collection window is of 1 hour</p>
           </div>
         </div>
-        <div className={isMobile ? 'grid w-full grid-cols-3 gap-2' : 'grid w-full grid-cols-3 gap-4'}>
+        <div className={isMobile ? 'grid w-full grid-cols-2 gap-2' : 'grid w-full grid-cols-2 gap-4 lg:grid-cols-3'}>
           {timeSlots.map((slot) => {
             const selected = form.appointmentTime === slot
             return (
@@ -1995,8 +1995,8 @@ function ScheduleStep({
                 aria-pressed={selected}
                 className={[
                   isMobile
-                    ? 'flex h-10 w-full items-center justify-center rounded-full border text-[13px] transition'
-                    : 'flex h-[44px] w-full items-center justify-center rounded-[6px] border text-sm transition',
+                    ? 'flex min-h-10 w-full items-center justify-center rounded-full border px-2 py-2 text-[11px] leading-tight transition'
+                    : 'flex h-[44px] w-full items-center justify-center rounded-[6px] border px-2 text-[13px] transition',
                   selected ? selectedSlotClass : idleSlotClass,
                 ].join(' ')}
               >
