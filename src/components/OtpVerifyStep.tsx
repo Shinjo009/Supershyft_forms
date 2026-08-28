@@ -33,6 +33,7 @@ export function OtpVerifyStep({
 }: Props) {
   const [digits, setDigits] = useState<string[]>(() => Array.from({ length: OTP_LENGTH }, () => ''))
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS)
+  const [hasResent, setHasResent] = useState(false)
   const inputRefs = useRef<Array<HTMLInputElement | null>>([])
   const otp = digits.join('')
   const canVerify = otp.length === OTP_LENGTH && !isVerifying
@@ -113,6 +114,7 @@ export function OtpVerifyStep({
     if (!canResend) return
     setDigits(Array.from({ length: OTP_LENGTH }, () => ''))
     setSecondsLeft(RESEND_SECONDS)
+    setHasResent(true)
     onResend()
     window.requestAnimationFrame(() => inputRefs.current[0]?.focus())
   }
@@ -129,6 +131,7 @@ export function OtpVerifyStep({
         <p className="text-[12px] leading-4 text-[#9a9a9a]">
           Enter the 6-digit code sent to your WhatsApp at{' '}
           <span className="font-medium text-[#ccc]">{maskIndianMobile(phone)}</span>
+          {hasResent ? ' and email' : ''}
         </p>
         {onChangeNumber ? (
           <button
