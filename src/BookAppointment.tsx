@@ -14,7 +14,6 @@ import {
   Mars,
   Phone,
   User,
-  Users,
   Venus,
   X,
 } from 'lucide-react'
@@ -47,15 +46,6 @@ import preferredDateIcon from './assets/figma/preferred-date-icon.svg'
 import preferredTimeIcon from './assets/figma/preferred-time-icon.svg'
 import addMemberUsersIcon from './assets/figma/add-member-users.svg'
 import memberCheckIcon from './assets/figma/member-check.svg'
-
-const RELATION_OPTIONS = [
-  'Parent',
-  'Sibling',
-  'Spouse',
-  'Child',
-  'Grandparent',
-  'Other',
-] as const
 
 const TIME_SLOTS = [
   '06:00 - 07:00 AM',
@@ -2031,8 +2021,6 @@ function ConfirmStep({
   const AdditionalGenderIcon = additionalMember.gender === 'female' ? Venus : Mars
   const addressLine =
     [form.houseNo, form.areaStreet].map((p) => p.trim()).filter(Boolean).join(', ') || '—'
-  const relationLabel =
-    RELATION_OPTIONS.find((o) => o.toLowerCase() === form.relation) ?? form.relation
 
   return (
     <div className="flex flex-col gap-6">
@@ -2080,9 +2068,8 @@ function ConfirmStep({
                   label={additionalMember.age ? `${additionalMember.age} Years` : '—'}
                   dense
                 />
-                <SummaryItem Icon={Mail} label={additionalMember.email || '—'} dense />
-                <SummaryItem Icon={Users} label={relationLabel || '—'} capitalize dense />
               </div>
+              <SummaryItem Icon={Mail} label={additionalMember.email || '—'} dense />
             </div>
           </>
         ) : null}
