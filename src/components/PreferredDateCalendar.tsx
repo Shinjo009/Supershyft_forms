@@ -189,7 +189,7 @@ export function PreferredDateCalendar({ open, value, onClose, onConfirm }: Props
                   inMonth && !selectable && 'cursor-not-allowed text-[#444]',
                   inMonth && selectable && !selected && 'text-white hover:bg-white/10',
                   selected &&
-                    'border border-[#999] bg-[#063533] font-normal text-white',
+                    'border border-[#4b8d83] bg-[#063533] font-normal text-white shadow-[0_0_5px_#4b8d83]',
                   isToday && selectable && !selected && 'ring-1 ring-white/20',
                 ]
                   .filter(Boolean)
@@ -211,7 +211,7 @@ export function PreferredDateCalendar({ open, value, onClose, onConfirm }: Props
           }}
           className="flex h-[52px] w-full items-center justify-center rounded-[36px] border border-[#969696] bg-gradient-to-r from-[#296359] to-[#41ab99] text-base font-bold text-white shadow-[0_12px_10px_rgba(255,255,255,0.15)] transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Confirm date
+          Confirm Date
         </button>
         </div>
       </div>

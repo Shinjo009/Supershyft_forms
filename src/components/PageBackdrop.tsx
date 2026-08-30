@@ -5,10 +5,13 @@ import { APP_COLUMN_CLASS } from './mcq/mcqLayout'
 export function PageBackdrop({
   children,
   mobileBackgroundSrc,
+  fullBleed = false,
 }: {
   children: React.ReactNode
   /** Override the default wallpaper (e.g. Health Assessment screen) */
   mobileBackgroundSrc?: string
+  /** Stretch content to the true viewport width (no max-width column). */
+  fullBleed?: boolean
 }) {
   const mobileBg = mobileBackgroundSrc ?? backgroundMobileSvg
 
@@ -21,7 +24,9 @@ export function PageBackdrop({
           className="size-full object-cover object-top"
         />
       </div>
-      <div className={`relative z-[1] ${APP_COLUMN_CLASS}`}>{children}</div>
+      <div className={`relative z-[1] h-full w-full ${fullBleed ? '' : APP_COLUMN_CLASS}`}>
+        {children}
+      </div>
     </div>
   )
 }

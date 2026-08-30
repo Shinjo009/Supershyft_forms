@@ -1,4 +1,4 @@
-const STEPS = ['Personal', 'Confirm', 'OTP'] as const
+const STEPS = ['Personal', 'Address', 'Schedule'] as const
 const BOOKING_STEP_COUNT = STEPS.length
 
 type Props = {
@@ -8,15 +8,17 @@ type Props = {
 }
 
 function activeStep(current: number) {
-  return current >= 5 ? BOOKING_STEP_COUNT : Math.max(1, Math.min(BOOKING_STEP_COUNT, current))
+  // 1 Personal → 2 Address → 3 Schedule → 4 Add Member → 5 Confirm → 6+ post-booking
+  if (current >= 4) return BOOKING_STEP_COUNT
+  return Math.max(1, Math.min(BOOKING_STEP_COUNT, current))
 }
 
 /** Progress line width per active step (320px track). */
 function progressWidthPercent(current: number) {
-  if (current >= 5) return 100
+  if (current >= 4) return 100
   if (current === 1) return 14
   if (current === 2) return 50
-  if (current === 3) return 92
+  if (current === 3) return 94
   return 0
 }
 
@@ -41,10 +43,12 @@ export function Stepper({ current, maxReachable, onStepClick }: Props) {
         <div className="relative z-10 flex items-start justify-between">
           {STEPS.map((label, i) => {
             const step = i + 1
-            const active = current < 5 && step === current
-            const done = (current < 5 && step < current) || current >= 5
-            const reachable = maxReachable ?? current
-            const clickable = Boolean(onStepClick) && step !== current && step <= reachable
+            const visualCurrent = activeStep(current)
+            const active = current <= 3 && step === visualCurrent
+            const done = current > 3 || step < visualCurrent
+            const reachable = Math.min(maxReachable ?? current, BOOKING_STEP_COUNT)
+            const clickable =
+              Boolean(onStepClick) && step !== visualCurrent && step <= reachable && current < 4
 
             const circleClass = [
               'relative z-20 flex size-[30px] items-center justify-center rounded-[15px] text-[14px] font-semibold leading-none',

@@ -10,28 +10,39 @@ export function parseIsoDate(iso: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
-/** Sole bookable camp date: 24 August 2026 (Monday). */
-export const BOOKING_CAMP_ISO = '2026-08-24'
-
-export function getCampDate(): Date {
-  const camp = new Date(2026, 7, 24)
-  camp.setHours(0, 0, 0, 0)
-  return camp
+export function startOfDay(date = new Date()): Date {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  return d
 }
 
-/** Only 24 August 2026 is selectable. */
-export function getBookingDateBounds(): { min: Date; max: Date } {
-  const camp = getCampDate()
-  return { min: camp, max: camp }
+/** First selectable date: day after tomorrow (today + 2). */
+export function getEarliestBookableDate(from = new Date()): Date {
+  const d = startOfDay(from)
+  d.setDate(d.getDate() + 2)
+  return d
+}
+
+/** Default selected appointment ISO (earliest bookable day). */
+export function getDefaultAppointmentIso(from = new Date()): string {
+  return toIsoDate(getEarliestBookableDate(from))
+}
+
+/** @deprecated Prefer getDefaultAppointmentIso() — kept for older imports. */
+export const BOOKING_CAMP_ISO = getDefaultAppointmentIso()
+
+/** Selectable window: earliest bookable day through 6 months ahead. */
+export function getBookingDateBounds(from = new Date()): { min: Date; max: Date } {
+  const min = getEarliestBookableDate(from)
+  const max = new Date(min)
+  max.setMonth(max.getMonth() + 6)
+  return { min, max }
 }
 
 export function isDateInBookingRange(date: Date, min: Date, max: Date): boolean {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  const lo = new Date(min)
-  lo.setHours(0, 0, 0, 0)
-  const hi = new Date(max)
-  hi.setHours(0, 0, 0, 0)
+  const d = startOfDay(date)
+  const lo = startOfDay(min)
+  const hi = startOfDay(max)
   return d >= lo && d <= hi
 }
 
@@ -39,7 +50,7 @@ export function clampBookingDate(iso: string, bounds = getBookingDateBounds()): 
   const parsed = parseIsoDate(iso)
   if (!parsed) return ''
   if (isDateInBookingRange(parsed, bounds.min, bounds.max)) return iso
-  return ''
+  return toIsoDate(bounds.min)
 }
 
 const MONTH_NAMES = [
