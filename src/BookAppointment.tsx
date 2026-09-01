@@ -1453,6 +1453,9 @@ function AdditionalMemberPersonalStep({
           value={form.phone}
           onChange={(e) => update('phone', sanitizePhone(e.target.value))}
         />
+        <p className="text-[11px] leading-4 text-[#90df9e]">
+          Don&apos;t enter the same phone number as the first member.
+        </p>
       </div>
 
       <div className="flex flex-col gap-1">
@@ -1467,6 +1470,9 @@ function AdditionalMemberPersonalStep({
           value={form.email}
           onChange={(e) => update('email', sanitizeEmail(e.target.value))}
         />
+        <p className="text-[11px] leading-4 text-[#90df9e]">
+          Don&apos;t enter the same email as the first member.
+        </p>
       </div>
 
       <div className="flex flex-col gap-1">
