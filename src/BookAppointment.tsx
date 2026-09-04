@@ -1933,13 +1933,22 @@ function AddMemberStep({
           </div>
         </div>
 
-        <ContinueButton
-          variant="mobileBar"
-          className="mt-8 !h-[52px] w-full shrink-0 border border-[#969696] shadow-[0_12px_10px_rgba(255,255,255,0.15)]"
-          onClick={onContinue}
-        >
-          Continue
-        </ContinueButton>
+        <div className="mt-8 flex w-full shrink-0 flex-col gap-3">
+          <button
+            type="button"
+            onClick={onSkip}
+            className="inline-flex h-[52px] w-full items-center justify-center rounded-[36px] border border-[#969696] bg-transparent px-5 text-[14px] font-semibold text-white transition hover:bg-white/10"
+          >
+            Continue with one member
+          </button>
+          <ContinueButton
+            variant="mobileBar"
+            className="!h-[52px] w-full border border-[#969696] shadow-[0_12px_10px_rgba(255,255,255,0.15)]"
+            onClick={onContinue}
+          >
+            Add another member
+          </ContinueButton>
+        </div>
       </div>
     </div>
   )
