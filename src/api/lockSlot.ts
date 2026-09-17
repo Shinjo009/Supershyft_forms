@@ -1,25 +1,28 @@
-export type BookOnboardPayload = {
+export type LockSlotPayload = {
+  address_line: string
+  landmark: string
+  city: string
+  pincode: string
   user_id: number
   blood_collection_date: string
   blood_collection_time_slot_id: string
   blood_collection_time_slot: string
-  consultations: Record<string, never>
 }
 
-type ValidationErrorDetail = {
-  loc?: Array<string | number>
-  msg?: string
-  type?: string
-  input?: string
-  ctx?: Record<string, unknown>
-}
-
-type ValidationErrorResponse = {
-  detail?: ValidationErrorDetail[]
+export type LockSlotData = {
+  engagement_code?: string
+  status?: string
   message?: string
-  data?: {
-    message?: string
-  }
+  slot_id?: string
+  freeze_time?: string
+  vendor_billing_user_id?: string
+  zone_id?: string
+}
+
+type LockSlotResponse = {
+  data?: LockSlotData
+  meta?: Record<string, unknown>
+  message?: string
 }
 
 function trimTrailingSlash(value: string): string {
@@ -33,41 +36,28 @@ function firstNonEmpty(...values: Array<string | undefined>): string {
   return ''
 }
 
-function parseValidationMessage(data: unknown): string | null {
-  if (!data || typeof data !== 'object') return null
-  const response = data as ValidationErrorResponse
-
-  if (typeof response.message === 'string' && response.message.trim()) {
-    return response.message
-  }
-  if (typeof response.data?.message === 'string' && response.data.message.trim()) {
-    return response.data.message
-  }
-
-  if (!Array.isArray(response.detail) || response.detail.length === 0) return null
-
-  const messages = response.detail
-    .map((item) => item.msg)
-    .filter((msg): msg is string => typeof msg === 'string' && msg.length > 0)
-
-  return messages.length > 0 ? messages.join(', ') : null
-}
-
-export async function bookOnboardEngagement(payload: BookOnboardPayload): Promise<string> {
-  const baseUrl = firstNonEmpty(
+function getBaseUrl(): string {
+  return firstNonEmpty(
     import.meta.env.VITE_BACKEND_BASE_URL,
     import.meta.env.VITE_API_BASE_URL,
     import.meta.env.VITE_BASE_URL,
     import.meta.env.BACKEND_BASE_URL,
     import.meta.env.API_BASE_URL,
   )
+}
 
-  const engagementCode = firstNonEmpty(
+function getEngagementCode(): string {
+  return firstNonEmpty(
     import.meta.env.VITE_ENGAGEMENT_CODE,
     import.meta.env.VITE_CBTW_ENGAGEMENT_CODE,
     import.meta.env.ENGAGEMENT_CODE,
     'CBMU0626',
   )
+}
+
+export async function lockBookingSlot(payload: LockSlotPayload): Promise<LockSlotData> {
+  const baseUrl = getBaseUrl()
+  const engagementCode = getEngagementCode()
 
   if (!baseUrl) {
     throw new Error(
@@ -75,7 +65,7 @@ export async function bookOnboardEngagement(payload: BookOnboardPayload): Promis
     )
   }
 
-  const url = `${trimTrailingSlash(baseUrl)}/users/code/${encodeURIComponent(engagementCode)}/onboard/book`
+  const url = `${trimTrailingSlash(baseUrl)}/book/code/${encodeURIComponent(engagementCode)}/lock`
 
   const response = await fetch(url, {
     method: 'POST',
@@ -95,15 +85,19 @@ export async function bookOnboardEngagement(payload: BookOnboardPayload): Promis
     const statusPrefix = `Request failed (${response.status})`
     const traceSuffix = requestId ? ` [request-id: ${requestId}]` : ''
     const endpointHint = ` [url: ${url}] [engagement: ${engagementCode}]`
-    console.error('[onboard-book] request payload json', JSON.stringify(payload, null, 2))
-    console.error('[onboard-book] error response json', JSON.stringify(data, null, 2))
-
-    const validationMessage = parseValidationMessage(data)
-    if (validationMessage) {
-      throw new Error(`${statusPrefix}: ${validationMessage}${traceSuffix}${endpointHint}`)
-    }
+    console.error('[lock-slot] request payload json', JSON.stringify(payload, null, 2))
+    console.error('[lock-slot] error response json', JSON.stringify(data, null, 2))
 
     if (data && typeof data === 'object') {
+      const body = data as LockSlotResponse
+      const apiMessage =
+        (typeof body.data?.message === 'string' && body.data.message) ||
+        (typeof body.message === 'string' && body.message) ||
+        null
+      if (apiMessage) {
+        throw new Error(apiMessage)
+      }
+
       const jsonText = JSON.stringify(data)
       if (jsonText && jsonText !== '{}') {
         throw new Error(`${statusPrefix}: ${jsonText}${traceSuffix}${endpointHint}`)
@@ -114,12 +108,13 @@ export async function bookOnboardEngagement(payload: BookOnboardPayload): Promis
       throw new Error(`${statusPrefix}: ${data}${traceSuffix}${endpointHint}`)
     }
 
-    throw new Error(`${statusPrefix}. Unable to confirm booking.${traceSuffix}${endpointHint}`)
+    throw new Error(`${statusPrefix}. Unable to lock time slot.${traceSuffix}${endpointHint}`)
   }
 
-  if (typeof data === 'string' && data.trim()) {
-    return data
+  if (!data || typeof data !== 'object') {
+    throw new Error('Unexpected response while locking time slot.')
   }
 
-  return 'Booking confirmed'
+  const body = data as LockSlotResponse
+  return body.data || { status: 'success', message: 'Slot locked' }
 }

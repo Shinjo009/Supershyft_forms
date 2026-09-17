@@ -11,12 +11,15 @@ export type FormData = {
   landmark: string
   pincode: string
   city: string
+  state: string
   relation: string
   houseNumber: string
   useSamePhone: boolean
   useSameEmail: boolean
   appointmentDate: string
   appointmentTime: string
+  appointmentTimeSlotId: string
+  appointmentTimeValue: string
 }
 
 export const defaultFormData: FormData = {
@@ -32,10 +35,13 @@ export const defaultFormData: FormData = {
   landmark: '',
   pincode: '',
   city: '',
+  state: '',
   relation: 'spouse',
   houseNumber: '',
   useSamePhone: true,
   useSameEmail: true,
   appointmentDate: '',
   appointmentTime: '',
+  appointmentTimeSlotId: '',
+  appointmentTimeValue: '',
 }
