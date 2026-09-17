@@ -43,6 +43,17 @@ export function clampBookingDate(iso: string, bounds = getBookingDateBounds()): 
   return ''
 }
 
+export function getSelectableBookingDates(count = 6, now = new Date()): Date[] {
+  const { min, max } = getBookingDateBounds(now)
+  const dates: Date[] = []
+  const cursor = new Date(min)
+  while (dates.length < count && cursor <= max) {
+    dates.push(new Date(cursor))
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return dates
+}
+
 const MONTH_NAMES = [
   'January',
   'February',

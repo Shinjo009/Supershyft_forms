@@ -18,6 +18,9 @@ export type FormData = {
   useSameEmail: boolean
   appointmentDate: string
   appointmentTime: string
+  appointmentStmId: string
+  appointmentSlotTime: string
+  userId: number | null
 }
 
 export const defaultFormData: FormData = {
@@ -33,11 +36,14 @@ export const defaultFormData: FormData = {
   landmark: '',
   pincode: '',
   city: '',
-  state: 'Maharashtra',
+  state: '',
   relation: 'spouse',
   houseNumber: '',
   useSamePhone: true,
   useSameEmail: true,
   appointmentDate: '',
   appointmentTime: '',
+  appointmentStmId: '',
+  appointmentSlotTime: '',
+  userId: null,
 }

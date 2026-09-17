@@ -134,6 +134,20 @@ function resolveCelebalEngagementCode(gender: 'male' | 'female'): string {
   return gender === 'male' ? codes.male : codes.female
 }
 
+export function getBackendBaseUrl(): string {
+  return firstNonEmpty(
+    import.meta.env.VITE_BACKEND_BASE_URL,
+    import.meta.env.VITE_API_BASE_URL,
+    import.meta.env.VITE_BASE_URL,
+    import.meta.env.BACKEND_BASE_URL,
+    import.meta.env.API_BASE_URL,
+  )
+}
+
+export function getCelebalEngagementCodeForGender(gender: string): string {
+  return resolveCelebalEngagementCode(parseBookingGender(gender))
+}
+
 function parseValidationMessage(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null
   const response = data as ValidationErrorResponse
@@ -191,13 +205,7 @@ export async function onboardUserForEngagement(
 ): Promise<OnboardResult> {
   warnIfLegacyEngagementEnvConfigured()
 
-  const baseUrl = firstNonEmpty(
-    import.meta.env.VITE_BACKEND_BASE_URL,
-    import.meta.env.VITE_API_BASE_URL,
-    import.meta.env.VITE_BASE_URL,
-    import.meta.env.BACKEND_BASE_URL,
-    import.meta.env.API_BASE_URL,
-  )
+  const baseUrl = getBackendBaseUrl()
 
   const bookingGender = parseBookingGender(payload.gender)
   const engagementCode = resolveCelebalEngagementCode(bookingGender)

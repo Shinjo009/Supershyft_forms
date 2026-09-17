@@ -4,7 +4,6 @@ import {
   Building2,
   Calendar,
   Clock,
-  ChevronRight,
   House,
   Mail,
   Map,
@@ -18,13 +17,13 @@ import {
   Venus,
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
-import { PreferredDateCalendar } from './components/PreferredDateCalendar'
-import {
-  clampBookingDate,
-  formatPreferredDateLabel,
-} from './lib/bookingDates'
+import { getSelectableBookingDates, toIsoDate } from './lib/bookingDates'
 import { loadPincodeLookup, lookupPincode } from './lib/pincodeLookup'
-import { onboardUserForEngagement, type OnboardUserForEngagementPayload } from './api/onboard'
+import { checkServiceAvailability } from './api/checkServiceAvailability'
+import { fetchAvailableSlots, type AvailableSlot } from './api/availableSlots'
+import { createUser } from './api/createUser'
+import { lockBookingSlot } from './api/lockSlot'
+import { onboardBook } from './api/onboardBook'
 import { PageBackdrop } from './components/PageBackdrop'
 import { SavedMemberCard } from './components/SavedMemberCard'
 import { Stepper } from './components'
@@ -125,42 +124,6 @@ function markEmployeeIdAsBooked(employeeId: string) {
 
 function isTestEmployeeId(employeeId: string): boolean {
   return normalizeEmployeeId(employeeId) === TEST_EMPLOYEE_ID
-}
-
-/** Test ID stays HRM000 in the UI; API gets unique values so repeat QA bookings always register. */
-function employeeIdForOnboardApi(
-  employeeId: string,
-  gender: '' | 'male' | 'female',
-): string {
-  const normalized = normalizeEmployeeId(employeeId)
-  if (!isTestEmployeeId(normalized)) return normalized
-  const genderTag = gender === 'female' ? 'F' : gender === 'male' ? 'M' : 'X'
-  return `${TEST_EMPLOYEE_ID}-T-${genderTag}-${Date.now()}`
-}
-
-function contactForOnboardApi(employeeId: string, email: string, phone: string) {
-  if (!isTestEmployeeId(employeeId)) return { email, phone }
-  const tag = String(Date.now())
-  const at = email.indexOf('@')
-  const apiEmail =
-    at > 0 ? `${email.slice(0, at)}+t${tag}${email.slice(at)}` : `${email}+t${tag}@celebal-test.local`
-  const apiPhone = `9${tag.slice(-9)}`
-  return { email: apiEmail, phone: apiPhone }
-}
-
-function formatAddressForApi(form: FormData): string {
-  return [form.houseNumber, form.street, form.landmark]
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join(', ')
-}
-const toApiTimeSlot = (slot: string) => {
-  const normalized = slot.trim()
-  if (!normalized) return '9:00'
-  const firstPart = normalized.split('-')[0]?.trim() || normalized
-  const hour = Number.parseInt(firstPart.split(':')[0] || '', 10)
-  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return '9:00'
-  return `${hour}:00`
 }
 
 function useIsLg() {
@@ -274,6 +237,9 @@ export default function BookAppointment() {
   const [savedMembers] = useState<FormData[]>([])
   const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
+  const [isCheckingServiceability, setIsCheckingServiceability] = useState(false)
+  const [isCreatingUser, setIsCreatingUser] = useState(false)
+  const [isLockingSlot, setIsLockingSlot] = useState(false)
   const [uiError, setUiError] = useState('')
   const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
   const [attemptedAddressContinue, setAttemptedAddressContinue] = useState(false)
@@ -301,12 +267,15 @@ export default function BookAppointment() {
 
   const primaryMember = savedMembers[0]
 
-  const goNextFromPersonal = () => {
+  const goNextFromPersonal = async () => {
+    if (isCreatingUser) return
     const trimmedPhone = form.phone.trim()
     const trimmedEmail = form.email.trim()
     const trimmedAge = form.age.trim()
     const trimmedFirstName = form.firstName.trim()
     const trimmedLastName = form.lastName.trim()
+    const parsedAge = Number.parseInt(trimmedAge, 10)
+    const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
     setAttemptedPersonalContinue(true)
     if (!trimmedFirstName) {
       logClientError('First Name is required.')
@@ -357,7 +326,7 @@ export default function BookAppointment() {
       logClientError('Age is required.')
       return
     }
-    if (!/^\d{1,2}$/.test(trimmedAge)) {
+    if (!/^\d{1,2}$/.test(trimmedAge) || !Number.isFinite(safeAge)) {
       logClientError('Age must be up to 2 digits.')
       return
     }
@@ -370,24 +339,81 @@ export default function BookAppointment() {
       return
     }
 
-    setStep(2)
+    setIsCreatingUser(true)
+    try {
+      const result = await createUser({
+        first_name: trimmedFirstName,
+        last_name: trimmedLastName,
+        email: trimmedEmail,
+        phone: trimmedPhone,
+        gender: form.gender,
+        age: safeAge,
+        participants_employee_id: normalizedEmployeeId,
+      })
+      if (result.userId != null) {
+        update('userId', result.userId)
+      } else if (!result.alreadyExists) {
+        logClientError('User was created but no user id was returned. Please try again.')
+        return
+      }
+      setUiError('')
+      setStep(2)
+    } catch (error) {
+      logClientError(error instanceof Error ? error.message : 'Unable to create user.')
+    } finally {
+      setIsCreatingUser(false)
+    }
   }
 
-  const goNextFromSchedule = () => {
+  const goNextFromSchedule = async () => {
+    if (isLockingSlot) return
     setAttemptedScheduleContinue(true)
     if (!form.appointmentDate) {
       logClientError('Please select a schedule date.')
       return
     }
-    if (!form.appointmentTime) {
+    if (!form.appointmentTime || !form.appointmentStmId || !form.appointmentSlotTime) {
       logClientError('Please select a time slot.')
       return
     }
+    if (!form.gender) {
+      logClientError('Gender is required to lock this slot.')
+      return
+    }
+    if (form.userId == null) {
+      logClientError('User profile is missing. Please go back to Personal and continue again.')
+      return
+    }
 
-    setStep(4)
+    const addressLine = [form.houseNumber.trim(), form.street.trim()].filter(Boolean).join(', ')
+    if (!addressLine || !form.city.trim() || !form.pincode.trim()) {
+      logClientError('Complete your address before locking a slot.')
+      return
+    }
+
+    setIsLockingSlot(true)
+    try {
+      await lockBookingSlot(form.gender, {
+        address_line: addressLine,
+        landmark: form.landmark.trim(),
+        city: form.city.trim(),
+        pincode: form.pincode.trim(),
+        user_id: form.userId,
+        blood_collection_date: form.appointmentDate,
+        blood_collection_time_slot_id: form.appointmentStmId,
+        blood_collection_time_slot: form.appointmentSlotTime,
+      })
+      setUiError('')
+      setStep(4)
+    } catch (error) {
+      logClientError(error instanceof Error ? error.message : 'Unable to lock this time slot.')
+    } finally {
+      setIsLockingSlot(false)
+    }
   }
 
-  const goNextFromAddress = () => {
+  const goNextFromAddress = async () => {
+    if (isCheckingServiceability) return
     setAttemptedAddressContinue(true)
     const trimmedHouseNumber = form.houseNumber.trim()
     const trimmedStreet = form.street.trim()
@@ -402,10 +428,6 @@ export default function BookAppointment() {
     }
     if (!trimmedStreet) {
       logClientError('Area/ Street is required.')
-      return
-    }
-    if (!trimmedLandmark) {
-      logClientError('Landmark is required.')
       return
     }
     if (!trimmedPincode) {
@@ -424,8 +446,36 @@ export default function BookAppointment() {
       logClientError('State is required.')
       return
     }
+    if (!form.gender) {
+      logClientError('Gender is required to check serviceability.')
+      return
+    }
 
-    setStep(3)
+    const addressLine = [trimmedHouseNumber, trimmedStreet].filter(Boolean).join(', ')
+
+    setIsCheckingServiceability(true)
+    try {
+      const result = await checkServiceAvailability(form.gender, {
+        address_line: addressLine,
+        landmark: trimmedLandmark,
+        city: trimmedCity,
+        pincode: trimmedPincode,
+      })
+
+      if (result.status !== 'serviceable') {
+        logClientError(result.message || 'This location is not serviceable.')
+        return
+      }
+
+      setUiError('')
+      setStep(3)
+    } catch (error) {
+      logClientError(
+        error instanceof Error ? error.message : 'Unable to check serviceability for this location.',
+      )
+    } finally {
+      setIsCheckingServiceability(false)
+    }
   }
 
   const allMembers = useMemo(() => [...savedMembers, form], [savedMembers, form])
@@ -434,18 +484,20 @@ export default function BookAppointment() {
     const normalizedEmployeeId = normalizeEmployeeId(form.employeeId)
     if (isSubmittingBooking) return
 
-    const trimmedPhone = form.phone.trim()
-    const trimmedEmail = form.email.trim()
-    const trimmedAge = form.age.trim()
-    const parsedAge = Number.parseInt(form.age, 10)
-    const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
-
-    if (!form.firstName.trim()) {
-      logClientError('First Name is required.')
+    if (!form.gender) {
+      logClientError('Gender is required.')
       return
     }
-    if (!form.lastName.trim()) {
-      logClientError('Last Name is required.')
+    if (form.userId == null) {
+      logClientError('User profile is missing. Please go back to Personal and continue again.')
+      return
+    }
+    if (!form.appointmentDate) {
+      logClientError('Please select a schedule date.')
+      return
+    }
+    if (!form.appointmentStmId || !form.appointmentSlotTime) {
+      logClientError('Please select a time slot.')
       return
     }
     if (!normalizedEmployeeId) {
@@ -460,85 +512,28 @@ export default function BookAppointment() {
       logClientError('This Employee ID has already used the booking.')
       return
     }
-    if (!trimmedEmail) {
-      logClientError('Email is required.')
-      return
-    }
-    if (!EMAIL_REGEX.test(trimmedEmail)) {
-      logClientError('Please enter a valid email address.')
-      return
-    }
-    if (!trimmedPhone) {
-      logClientError('Phone is required.')
-      return
-    }
-    if (!/^\d{10}$/.test(trimmedPhone)) {
-      logClientError('Phone must be exactly 10 digits.')
-      return
-    }
-    if (!form.gender) {
-      logClientError('Gender is required.')
-      return
-    }
-    if (!/^\d{1,2}$/.test(trimmedAge) || !Number.isFinite(safeAge)) {
-      logClientError('Age must be up to 2 digits.')
-      return
-    }
-    if (!form.appointmentDate) {
-      logClientError('Please select a schedule date.')
-      return
-    }
-    const apiAddress = formatAddressForApi(form)
-    const apiPincode = form.pincode.trim()
-    const apiCity = form.city.trim()
-    const apiState = form.state.trim()
-    if (!apiAddress) {
-      logClientError('House No./ Building is required.')
-      return
-    }
-    if (!apiPincode || !/^\d{6}$/.test(apiPincode)) {
-      logClientError('Pincode must be 6 digits.')
-      return
-    }
-    if (!apiCity) {
-      logClientError('City is required.')
-      return
-    }
-    if (!apiState) {
-      logClientError('State is required.')
-      return
-    }
 
     setIsSubmittingBooking(true)
 
     try {
-      const wantsDoctorConsultation = form.personalizedDoctorConsultation === 'yes'
-      const apiContact = contactForOnboardApi(normalizedEmployeeId, trimmedEmail, trimmedPhone)
-
-      const payload: OnboardUserForEngagementPayload = {
-        age: safeAge,
-        first_name: form.firstName,
-        last_name: form.lastName,
-        email: apiContact.email,
-        phone: apiContact.phone,
-        gender: form.gender,
-        address: apiAddress,
-        pincode: apiPincode,
-        city: apiCity,
-        state: apiState,
-        country: 'India',
+      await onboardBook(form.gender, {
+        user_id: form.userId,
         blood_collection_date: form.appointmentDate,
-        blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
-        participants_employee_id: employeeIdForOnboardApi(normalizedEmployeeId, form.gender),
-        participant_blood_group: 'NA',
-        want_doctor_consultation: wantsDoctorConsultation,
-      }
-
-      await onboardUserForEngagement(payload)
+        blood_collection_time_slot_id: form.appointmentStmId,
+        blood_collection_time_slot: form.appointmentSlotTime,
+        consultations: {},
+      })
       markEmployeeIdAsBooked(normalizedEmployeeId)
       setStep(5)
     } catch (error) {
-      logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
+      const message = error instanceof Error ? error.message : 'Unable to confirm booking.'
+      // API sometimes returns a success phrase that was previously thrown as an error.
+      if (/^booking\s+confirm(ed|ation)?\.?$/i.test(message.trim())) {
+        markEmployeeIdAsBooked(normalizedEmployeeId)
+        setStep(5)
+        return
+      }
+      logClientError(message)
     } finally {
       setIsSubmittingBooking(false)
     }
@@ -700,8 +695,9 @@ export default function BookAppointment() {
                       isLg={isLg}
                       inputClass={inputClass}
                       labelRow={labelRow}
-                      onContinue={goNextFromPersonal}
+                      onContinue={() => void goNextFromPersonal()}
                       showMobileContinue
+                      isCreatingUser={isCreatingUser}
                       showMissingRequired={attemptedPersonalContinue}
                       savedMembers={savedMembers}
                       expandedMemberIndex={expandedMemberIndex}
@@ -718,8 +714,9 @@ export default function BookAppointment() {
                     isLg={isLg}
                     inputClass={inputClass}
                     labelRow={labelRow}
-                    onContinue={goNextFromPersonal}
+                    onContinue={() => void goNextFromPersonal()}
                     showMobileContinue
+                    isCreatingUser={isCreatingUser}
                     showMissingRequired={attemptedPersonalContinue}
                     savedMembers={savedMembers}
                     expandedMemberIndex={expandedMemberIndex}
@@ -776,13 +773,20 @@ export default function BookAppointment() {
                 <div className="mt-auto shrink-0 px-6 pt-4 pb-[30px]">
                   <ContinueButton
                     variant="mobileBar"
+                    disabled={
+                      (step === 2 && isCheckingServiceability) || (step === 3 && isLockingSlot)
+                    }
                     onClick={() => {
-                      if (step === 1) goNextFromPersonal()
-                      else if (step === 2) goNextFromAddress()
-                      else goNextFromSchedule()
+                      if (step === 1) void goNextFromPersonal()
+                      else if (step === 2) void goNextFromAddress()
+                      else void goNextFromSchedule()
                     }}
                   >
-                    Continue
+                    {step === 2 && isCheckingServiceability
+                      ? 'Checking...'
+                      : step === 3 && isLockingSlot
+                        ? 'Locking...'
+                        : 'Continue'}
                   </ContinueButton>
                 </div>
               ) : null
@@ -795,13 +799,20 @@ export default function BookAppointment() {
               >
                 {step < 4 && (
                   <ContinueButton
+                    disabled={
+                      (step === 2 && isCheckingServiceability) || (step === 3 && isLockingSlot)
+                    }
                     onClick={() => {
-                      if (step === 1) goNextFromPersonal()
-                      else if (step === 2) goNextFromAddress()
-                      else goNextFromSchedule()
+                      if (step === 1) void goNextFromPersonal()
+                      else if (step === 2) void goNextFromAddress()
+                      else void goNextFromSchedule()
                     }}
                   >
-                    Continue
+                    {step === 2 && isCheckingServiceability
+                      ? 'Checking...'
+                      : step === 3 && isLockingSlot
+                        ? 'Locking...'
+                        : 'Continue'}
                   </ContinueButton>
                 )}
               </div>
@@ -871,6 +882,7 @@ function PersonalStep({
   labelRow,
   onContinue,
   showMobileContinue,
+  isCreatingUser = false,
   showMissingRequired,
   savedMembers,
   expandedMemberIndex,
@@ -891,6 +903,7 @@ function PersonalStep({
   ) => React.ReactNode
   onContinue: () => void
   showMobileContinue: boolean
+  isCreatingUser?: boolean
   showMissingRequired?: boolean
   savedMembers: FormData[]
   expandedMemberIndex: number | null
@@ -1227,8 +1240,12 @@ function PersonalStep({
 
         {showMobileContinue && (
           <div className="pb-4">
-            <ContinueButton variant="mobileBar" onClick={onContinue}>
-              Continue
+            <ContinueButton
+              variant="mobileBar"
+              disabled={isCreatingUser}
+              onClick={onContinue}
+            >
+              {isCreatingUser ? 'Saving...' : 'Continue'}
             </ContinueButton>
           </div>
         )}
@@ -1409,7 +1426,9 @@ function PersonalStep({
         </div>
 
         <div className="mt-4 flex justify-end">
-          <ContinueButton onClick={onContinue}>Continue</ContinueButton>
+          <ContinueButton disabled={isCreatingUser} onClick={onContinue}>
+            {isCreatingUser ? 'Saving...' : 'Continue'}
+          </ContinueButton>
         </div>
       </>
     )
@@ -1505,7 +1524,9 @@ function PersonalStep({
       </div>
 
       <div className="mt-4 flex justify-end">
-        <ContinueButton onClick={onContinue}>Continue</ContinueButton>
+        <ContinueButton disabled={isCreatingUser} onClick={onContinue}>
+          {isCreatingUser ? 'Saving...' : 'Continue'}
+        </ContinueButton>
       </div>
     </>
   )
@@ -1668,7 +1689,7 @@ function AddressStep({
       </div>
 
       <div className="flex flex-col gap-1">
-        {labelRow(Building2, 'Landmark', undefined, isMobile, isMissing(form.landmark))}
+        {labelRow(Building2, 'Landmark', undefined, isMobile)}
         <input
           className={fieldClass}
           placeholder="opp. Pink Salt Cafe"
@@ -1882,37 +1903,111 @@ function ScheduleStep({
   isMobile: boolean
   showMissingRequired?: boolean
 }) {
-  const [calendarOpen, setCalendarOpen] = useState(false)
+  const availableDates = useMemo(() => getSelectableBookingDates(6), [])
+  const [slots, setSlots] = useState<AvailableSlot[]>([])
+  const [slotsLoading, setSlotsLoading] = useState(false)
+  const [slotsError, setSlotsError] = useState('')
 
   useEffect(() => {
-    const clamped = clampBookingDate(form.appointmentDate)
-    if (form.appointmentDate && clamped !== form.appointmentDate) {
-      update('appointmentDate', clamped)
+    const allowed = new Set(availableDates.map((d) => toIsoDate(d)))
+    if (form.appointmentDate && !allowed.has(form.appointmentDate)) {
+      update('appointmentDate', '')
+      update('appointmentTime', '')
+      update('appointmentStmId', '')
+      update('appointmentSlotTime', '')
     }
-  }, [form.appointmentDate, update])
+  }, [availableDates, form.appointmentDate, update])
 
-  const timeSlots = [
-    '06:00 am - 07:00 am',
-    '07:00 am - 08:00 am',
-    '08:00 am - 09:00 am',
-    '09:00 am - 10:00 am',
-    '10:00 am - 11:00 am',
-    '11:00 am - 12:00 pm',
-    '12:00 pm - 01:00 pm',
-    '01:00 pm - 02:00 pm',
-  ]
+  useEffect(() => {
+    if (!form.appointmentDate) {
+      setSlots([])
+      setSlotsError('')
+      setSlotsLoading(false)
+      return
+    }
+    if (!form.gender) {
+      setSlots([])
+      setSlotsError('Gender is required to load time slots.')
+      setSlotsLoading(false)
+      return
+    }
+
+    const addressLine = [form.houseNumber.trim(), form.street.trim()].filter(Boolean).join(', ')
+    if (!addressLine || !form.city.trim() || !form.pincode.trim()) {
+      setSlots([])
+      setSlotsError('Complete your address to load time slots.')
+      setSlotsLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setSlotsLoading(true)
+    setSlotsError('')
+    setSlots([])
+
+    void (async () => {
+      try {
+        const nextSlots = await fetchAvailableSlots(form.gender, {
+          address_line: addressLine,
+          landmark: form.landmark.trim(),
+          city: form.city.trim(),
+          pincode: form.pincode.trim(),
+          blood_collection_date: form.appointmentDate,
+        })
+        if (cancelled) return
+        setSlots(nextSlots)
+      } catch (error) {
+        if (cancelled) return
+        setSlots([])
+        setSlotsError(
+          error instanceof Error ? error.message : 'Unable to load time slots for this date.',
+        )
+        update('appointmentTime', '')
+        update('appointmentStmId', '')
+        update('appointmentSlotTime', '')
+      } finally {
+        if (!cancelled) setSlotsLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    form.appointmentDate,
+    form.gender,
+    form.houseNumber,
+    form.street,
+    form.landmark,
+    form.city,
+    form.pincode,
+    update,
+  ])
 
   const selectedSlotClass =
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
   const idleSlotClass = 'border-white/[0.08] bg-white/5'
-
-  const dateButtonLabel = form.appointmentDate
-    ? formatPreferredDateLabel(form.appointmentDate)
-    : 'Select date'
+  const selectedDateClass =
+    'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent text-white'
+  const idleDateClass = 'border-white/[0.08] bg-white/5 text-[#9a9a9a]'
 
   const sectionLabelClass = isMobile
     ? 'font-sans text-[14px] font-medium leading-normal text-[#9A9A9A]'
     : 'text-[24px] font-medium leading-none text-white'
+
+  const selectDate = (iso: string) => {
+    if (form.appointmentDate === iso) return
+    update('appointmentDate', iso)
+    update('appointmentTime', '')
+    update('appointmentStmId', '')
+    update('appointmentSlotTime', '')
+  }
+
+  const selectSlot = (slot: AvailableSlot) => {
+    update('appointmentTime', slot.label)
+    update('appointmentStmId', slot.stmId)
+    update('appointmentSlotTime', slot.slotTime)
+  }
 
   return (
     <div className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-6' : 'gap-9'}`}>
@@ -1935,33 +2030,32 @@ function ScheduleStep({
             ) : null}
           </h2>
         )}
-        <button
-          type="button"
-          onClick={() => setCalendarOpen(true)}
-          aria-haspopup="dialog"
-          aria-expanded={calendarOpen}
-          className={[
-            'flex w-full items-center justify-between gap-3 rounded-[6px] border border-white/[0.08] bg-white/5 px-4 transition hover:bg-white/[0.08]',
-            isMobile ? 'min-h-[52px]' : 'min-h-[56px]',
-            showMissingRequired && !form.appointmentDate ? 'border-[#ff6b6b]/60' : '',
-          ].join(' ')}
-        >
-          <span
-            className={[
-              'font-sans text-left text-[14px] font-medium leading-normal',
-              form.appointmentDate ? 'text-white' : 'text-[#9a9a9a]',
-            ].join(' ')}
-          >
-            {dateButtonLabel}
-          </span>
-          <ChevronRight className="size-5 shrink-0 text-[#9a9a9a]" aria-hidden />
-        </button>
-        <PreferredDateCalendar
-          open={calendarOpen}
-          value={form.appointmentDate}
-          onClose={() => setCalendarOpen(false)}
-          onConfirm={(iso) => update('appointmentDate', iso)}
-        />
+        <div className="-mx-1 w-[calc(100%+8px)] overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max gap-3">
+            {availableDates.map((date) => {
+              const iso = toIsoDate(date)
+              const selected = form.appointmentDate === iso
+              return (
+                <button
+                  key={iso}
+                  type="button"
+                  onClick={() => selectDate(iso)}
+                  aria-pressed={selected}
+                  className={[
+                    'flex h-[72px] w-[72px] shrink-0 flex-col items-center justify-center gap-1 rounded-[12px] border transition',
+                    selected ? selectedDateClass : idleDateClass,
+                    showMissingRequired && !form.appointmentDate ? 'border-[#ff6b6b]/40' : '',
+                  ].join(' ')}
+                >
+                  <span className="text-[12px] font-medium leading-none">
+                    {DAY_LABELS[date.getDay()]}
+                  </span>
+                  <span className="text-[20px] font-semibold leading-none">{date.getDate()}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </section>
 
       <section className={`flex flex-col items-start self-stretch ${isMobile ? 'gap-3' : 'gap-6'}`}>
@@ -1977,29 +2071,39 @@ function ScheduleStep({
             <p className="text-[10px] font-light text-[#ccc]">Collection window is of 1 hour</p>
           </div>
         </div>
-        <div className={isMobile ? 'grid w-full grid-cols-2 gap-2' : 'grid w-full grid-cols-2 gap-4 lg:grid-cols-3'}>
-          {timeSlots.map((slot) => {
-            const selected = form.appointmentTime === slot
-            return (
-              <button
-                key={slot}
-                type="button"
-                onClick={() => update('appointmentTime', slot)}
-                aria-pressed={selected}
-                className={[
-                  isMobile
-                    ? 'flex min-h-10 w-full items-center justify-center rounded-full border px-2 py-2 text-[11px] leading-tight transition'
-                    : 'flex h-[44px] w-full items-center justify-center rounded-[6px] border px-2 text-[13px] transition',
-                  selected ? selectedSlotClass : idleSlotClass,
-                ].join(' ')}
-              >
-                <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>{slot}</span>
-              </button>
-            )
-          })}
-        </div>
-      </section>
 
+        {!form.appointmentDate ? (
+          <p className="text-[12px] font-light text-[#999]">Select a preferred date to see available time slots.</p>
+        ) : slotsLoading ? (
+          <p className="text-[12px] font-light text-[#999]">Loading available time slots…</p>
+        ) : slotsError ? (
+          <p className="text-[12px] font-light text-[#ff6b6b]">{slotsError}</p>
+        ) : slots.length === 0 ? (
+          <p className="text-[12px] font-light text-[#999]">No time slots available for this date.</p>
+        ) : (
+          <div className={isMobile ? 'grid w-full grid-cols-2 gap-2' : 'grid w-full grid-cols-2 gap-4 lg:grid-cols-3'}>
+            {slots.map((slot) => {
+              const selected = form.appointmentTime === slot.label
+              return (
+                <button
+                  key={slot.stmId || `${slot.slotTime}-${slot.endTime}`}
+                  type="button"
+                  onClick={() => selectSlot(slot)}
+                  aria-pressed={selected}
+                  className={[
+                    isMobile
+                      ? 'flex min-h-10 w-full items-center justify-center rounded-full border px-2 py-2 text-[11px] leading-tight transition'
+                      : 'flex h-[44px] w-full items-center justify-center rounded-[6px] border px-2 text-[13px] transition',
+                    selected ? selectedSlotClass : idleSlotClass,
+                  ].join(' ')}
+                >
+                  <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>{slot.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </section>
     </div>
   )
 }
