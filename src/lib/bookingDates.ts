@@ -123,18 +123,18 @@ export function monthWithinBounds(year: number, month: number, min: Date, max: D
   return monthEnd >= min && monthStart <= max
 }
 
-/** All selectable booking dates from min through max (inclusive). */
-export function getBookableDates(bounds = getBookingDateBounds()): Date[] {
-  const dates: Date[] = []
-  const cursor = new Date(bounds.min)
-  cursor.setHours(0, 0, 0, 0)
-  const end = new Date(bounds.max)
-  end.setHours(0, 0, 0, 0)
-  while (cursor <= end) {
-    dates.push(new Date(cursor))
-    cursor.setDate(cursor.getDate() + 1)
-  }
-  return dates
+/** Next 6 bookable days starting from day-after-tomorrow. */
+export function getPreferredDateOptions(count = 6, from = new Date()): Date[] {
+  const start = getEarliestBookableDate(from)
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
+    return d
+  })
+}
+
+export function getPreferredDateDayLabel(date: Date): string {
+  return DAY_LABELS[date.getDay()]
 }
 
 export function formatShortBookingDate(iso: string): string {

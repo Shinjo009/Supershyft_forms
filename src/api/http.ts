@@ -28,17 +28,24 @@ export function getBackendBaseUrl(): string {
 
 export class ApiError extends Error {
   status: number
+  data?: unknown
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, data?: unknown) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.data = data
   }
 }
 
 export function getApiErrorStatus(error: unknown): number | null {
   if (error instanceof ApiError) return error.status
   return null
+}
+
+export function getApiErrorData(error: unknown): unknown {
+  if (error instanceof ApiError) return error.data
+  return undefined
 }
 
 type ValidationErrorDetail = {
@@ -168,7 +175,7 @@ async function jsonRequest<T = unknown>(options: {
   }
 
   if (!response.ok) {
-    throw new ApiError(parseErrorMessage(data, response.status), response.status)
+    throw new ApiError(parseErrorMessage(data, response.status), response.status, data)
   }
 
   return data as T

@@ -5,7 +5,6 @@ import {
   Calendar,
   Check,
   ChevronDown,
-  ChevronRight,
   ChevronUp,
   Clock,
   Home,
@@ -18,15 +17,19 @@ import {
   X,
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
-import { formatPreferredDateLabel, parseIsoDate } from './lib/bookingDates'
-import { PreferredDateCalendar } from './components/PreferredDateCalendar'
 import {
-  onboardUserForEngagement,
-  type OnboardUserForEngagementPayload,
-} from './api/onboard'
-// import { resendBookingOtp, sendBookingOtp, verifyBookingOtp } from './api/otp'
+  getPreferredDateDayLabel,
+  getPreferredDateOptions,
+  toIsoDate,
+} from './lib/bookingDates'
 import { createEmployeeUser } from './api/users'
-import { isFrontendOnly } from './lib/frontendOnly'
+import {
+  checkServiceAvailability,
+  confirmOnboardBooking,
+  fetchAvailableSlots,
+  formatStoredSlotLabel,
+  lockBookingSlot,
+} from './api/booking'
 import { PageBackdrop } from './components/PageBackdrop'
 import { Stepper } from './components'
 import { lookupPincode } from './lib/pincodeLookup'
@@ -46,17 +49,6 @@ import preferredDateIcon from './assets/figma/preferred-date-icon.svg'
 import preferredTimeIcon from './assets/figma/preferred-time-icon.svg'
 import addMemberUsersIcon from './assets/figma/add-member-users.svg'
 import memberCheckIcon from './assets/figma/member-check.svg'
-
-const TIME_SLOTS = [
-  '06:00 - 07:00 AM',
-  '07:00 - 08:00 AM',
-  '08:00 - 09:00 AM',
-  '09:00 - 10:00 AM',
-  '10:00 - 11:00 AM',
-  '11:00 - 12:00 PM',
-  '12:00 - 01:00 PM',
-  '01:00 - 02:00 PM',
-] as const
 
 const SELECTED_CHIP_BG =
   'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
@@ -81,80 +73,15 @@ const logClientError = (message: string) => {
   }
 }
 
-function generateEmployeeIdForApi(): string {
-  return `HRM${Date.now()}`
+function buildAddressLineForAvailability(
+  form: Pick<FormData, 'houseNo' | 'areaStreet'> | Pick<AdditionalMemberForm, 'houseNo' | 'areaStreet'>,
+): string {
+  return [form.houseNo, form.areaStreet].map((part) => part.trim()).filter(Boolean).join(', ')
 }
 
 function bookingAge(form: Pick<FormData, 'age'>, fallback = 25): number {
   const parsed = Number.parseInt(form.age, 10)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
-}
-
-function additionalMemberToFormData(
-  additional: AdditionalMemberForm,
-  primary: FormData,
-): FormData {
-  return {
-    ...primary,
-    firstName: additional.firstName,
-    lastName: additional.lastName,
-    phone: additional.phone,
-    email: additional.email,
-    age: additional.age,
-    gender: additional.gender,
-    houseNo: additional.houseNo,
-    areaStreet: additional.areaStreet,
-    landmark: additional.landmark,
-    pincode: additional.pincode,
-    city: additional.city,
-    state: additional.state || primary.state,
-    appointmentDate: additional.appointmentDate,
-    appointmentTime: additional.appointmentTime,
-  }
-}
-
-function buildOnboardPayload(
-  form: FormData,
-  employeeId: string,
-): OnboardUserForEngagementPayload {
-  const address = formatBookingAddress(form) || 'NA'
-  return {
-    age: bookingAge(form),
-    first_name: form.firstName.trim(),
-    last_name: form.lastName.trim(),
-    email: form.email.trim(),
-    phone: form.phone.trim(),
-    gender: form.gender || 'male',
-    address,
-    pincode: form.pincode.trim() || '000000',
-    city: form.city.trim() || 'NA',
-    state: form.state.trim() || 'Maharashtra',
-    country: 'India',
-    blood_collection_date: form.appointmentDate,
-    blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
-    participants_employee_id: employeeId,
-    participant_blood_group: 'NA',
-    want_doctor_consultation: false,
-  }
-}
-
-/** Convert UI slots like "09:30 AM" to API "09:00" / "13:00" hour form. */
-function toApiTimeSlot(slot: string): string {
-  const formatHour = (hour: number) => `${String(hour).padStart(2, '0')}:00`
-  const normalized = slot.trim()
-  if (!normalized) return '09:00'
-  const match = normalized.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
-  if (match) {
-    let hour = Number.parseInt(match[1], 10)
-    const meridiem = match[3].toUpperCase()
-    if (meridiem === 'PM' && hour !== 12) hour += 12
-    if (meridiem === 'AM' && hour === 12) hour = 0
-    return formatHour(hour)
-  }
-  const firstPart = normalized.split('-')[0]?.trim() || normalized
-  const hour = Number.parseInt(firstPart.split(':')[0] || '', 10)
-  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return '09:00'
-  return formatHour(hour)
 }
 
 type IconType = React.ComponentType<{ className?: string; strokeWidth?: number }>
@@ -233,19 +160,23 @@ export default function BookAppointment() {
   )
   const [attemptedAdditionalContinue, setAttemptedAdditionalContinue] = useState(false)
   const [attemptedAdditionalAddressContinue, setAttemptedAdditionalAddressContinue] = useState(false)
-  const [bookingDisplayId, setBookingDisplayId] = useState('')
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
   const [uiError, setUiError] = useState('')
   const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
   const [attemptedAddressContinue, setAttemptedAddressContinue] = useState(false)
   const [isLookingUpPincode, setIsLookingUpPincode] = useState(false)
   const [isLookingUpAdditionalPincode, setIsLookingUpAdditionalPincode] = useState(false)
+  const [isCheckingServiceAvailability, setIsCheckingServiceAvailability] = useState(false)
+  const [isCreatingUser, setIsCreatingUser] = useState(false)
+  const [isLockingSlot, setIsLockingSlot] = useState(false)
   // const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
   // const [isResendingOtp, setIsResendingOtp] = useState(false)
-  const [hasCreatedUser, setHasCreatedUser] = useState(false)
+  const [, setHasCreatedUser] = useState(false)
   const [hasOnboarded, setHasOnboarded] = useState(false)
-  const [hasCreatedAdditionalUser, setHasCreatedAdditionalUser] = useState(false)
+  const [, setHasCreatedAdditionalUser] = useState(false)
   const [hasOnboardedAdditional, setHasOnboardedAdditional] = useState(false)
+  const [primaryUserId, setPrimaryUserId] = useState<number | null>(null)
+  const [additionalUserId, setAdditionalUserId] = useState<number | null>(null)
   // const [otpVerified, setOtpVerified] = useState(false)
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
@@ -309,8 +240,54 @@ export default function BookAppointment() {
     return () => window.removeEventListener(BOOK_APPOINTMENT_ERROR_EVENT, handler as EventListener)
   }, [])
 
-  const goNextFromPersonal = () => {
+  const createUserFromPersonalDetails = async (
+    memberForm: Pick<
+      FormData,
+      'firstName' | 'lastName' | 'phone' | 'email' | 'age' | 'gender' | 'houseNo' | 'areaStreet' | 'landmark' | 'pincode' | 'city' | 'state'
+    >,
+    markCreated: (userId?: number) => void,
+  ): Promise<boolean> => {
+    if (isCreatingUser) return false
+
+    setIsCreatingUser(true)
+    try {
+      const memberEmail = EMAIL_REGEX.test(memberForm.email.trim())
+        ? memberForm.email.trim()
+        : null
+      const result = await createEmployeeUser({
+        age: bookingAge(memberForm),
+        phone: memberForm.phone.trim(),
+        first_name: memberForm.firstName.trim() || null,
+        last_name: memberForm.lastName.trim() || null,
+        email: memberEmail,
+        gender: memberForm.gender || null,
+        address: formatBookingAddress(memberForm) || 'NA',
+        pin_code: memberForm.pincode.trim() || '000000',
+        city: memberForm.city.trim() || 'NA',
+        state: memberForm.state.trim() || 'Maharashtra',
+        country: 'India',
+        is_participant: true,
+        status: 'active',
+      })
+      markCreated(result.userId)
+      return true
+    } catch (error) {
+      logClientError(error instanceof Error ? error.message : 'Unable to create user.')
+      return false
+    } finally {
+      setIsCreatingUser(false)
+    }
+  }
+
+  const goNextFromPersonal = async () => {
+    if (isCreatingUser) return
+
     if (!ENFORCE_REQUIRED_FIELDS) {
+      const created = await createUserFromPersonalDetails(form, (userId) => {
+        setHasCreatedUser(true)
+        if (userId) setPrimaryUserId(userId)
+      })
+      if (!created) return
       setUiError('')
       setStep(2)
       return
@@ -366,12 +343,56 @@ export default function BookAppointment() {
       return
     }
 
+    const created = await createUserFromPersonalDetails(form, (userId) => {
+      setHasCreatedUser(true)
+      if (userId) setPrimaryUserId(userId)
+    })
+    if (!created) return
+
     setUiError('')
     setStep(2)
   }
 
-  const goNextFromAddress = () => {
+  const ensureAddressIsServiceable = async (addressForm: {
+    houseNo: string
+    areaStreet: string
+    landmark: string
+    city: string
+    pincode: string
+  }): Promise<boolean> => {
+    if (isCheckingServiceAvailability) return false
+
+    setIsCheckingServiceAvailability(true)
+    try {
+      const result = await checkServiceAvailability({
+        address_line: buildAddressLineForAvailability(addressForm),
+        landmark: addressForm.landmark.trim(),
+        city: addressForm.city.trim(),
+        pincode: addressForm.pincode.trim(),
+      })
+
+      if (result.status !== 'serviceable') {
+        logClientError(result.message || 'This location is not serviceable.')
+        return false
+      }
+
+      return true
+    } catch (error) {
+      logClientError(
+        error instanceof Error ? error.message : 'Unable to check service availability.',
+      )
+      return false
+    } finally {
+      setIsCheckingServiceAvailability(false)
+    }
+  }
+
+  const goNextFromAddress = async () => {
+    if (isCheckingServiceAvailability) return
+
     if (!ENFORCE_REQUIRED_FIELDS) {
+      const isServiceable = await ensureAddressIsServiceable(form)
+      if (!isServiceable) return
       setUiError('')
       setStep(3)
       return
@@ -404,11 +425,61 @@ export default function BookAppointment() {
       return
     }
 
+    const isServiceable = await ensureAddressIsServiceable(form)
+    if (!isServiceable) return
+
     setUiError('')
     setStep(3)
   }
 
-  const goNextFromSchedule = () => {
+  const lockSelectedSlot = async (
+    memberForm: Pick<
+      FormData,
+      | 'houseNo'
+      | 'areaStreet'
+      | 'landmark'
+      | 'city'
+      | 'pincode'
+      | 'appointmentDate'
+      | 'appointmentTime'
+      | 'appointmentSlotId'
+    >,
+    userId: number | null,
+  ): Promise<boolean> => {
+    if (isLockingSlot) return false
+
+    if (!userId) {
+      logClientError('Missing user id. Please go back and complete personal details again.')
+      return false
+    }
+    if (!memberForm.appointmentSlotId.trim()) {
+      logClientError('Please select a preferred time slot.')
+      return false
+    }
+
+    setIsLockingSlot(true)
+    try {
+      await lockBookingSlot({
+        address_line: buildAddressLineForAvailability(memberForm),
+        landmark: memberForm.landmark.trim(),
+        city: memberForm.city.trim(),
+        pincode: memberForm.pincode.trim(),
+        user_id: userId,
+        blood_collection_date: memberForm.appointmentDate,
+        blood_collection_time_slot_id: memberForm.appointmentSlotId.trim(),
+        blood_collection_time_slot: memberForm.appointmentTime.trim(),
+      })
+      return true
+    } catch (error) {
+      logClientError(error instanceof Error ? error.message : 'Unable to lock the selected time slot.')
+      return false
+    } finally {
+      setIsLockingSlot(false)
+    }
+  }
+
+  const goNextFromSchedule = async () => {
+    if (isLockingSlot) return
     if (!form.appointmentDate) {
       logClientError('Please select a preferred date.')
       return
@@ -417,6 +488,10 @@ export default function BookAppointment() {
       logClientError('Please select a preferred time slot.')
       return
     }
+
+    const locked = await lockSelectedSlot(form, primaryUserId)
+    if (!locked) return
+
     setUiError('')
     setStep(4)
   }
@@ -432,12 +507,20 @@ export default function BookAppointment() {
     setAttemptedAdditionalAddressContinue(false)
     setHasCreatedAdditionalUser(false)
     setHasOnboardedAdditional(false)
+    setAdditionalUserId(null)
     setUiError('')
     setStep(8)
   }
 
-  const goNextFromAdditionalMember = () => {
+  const goNextFromAdditionalMember = async () => {
+    if (isCreatingUser) return
+
     if (!ENFORCE_REQUIRED_FIELDS) {
+      const created = await createUserFromPersonalDetails(additionalMember, (userId) => {
+        setHasCreatedAdditionalUser(true)
+        if (userId) setAdditionalUserId(userId)
+      })
+      if (!created) return
       setUiError('')
       setStep(6)
       return
@@ -495,12 +578,22 @@ export default function BookAppointment() {
       return
     }
 
+    const created = await createUserFromPersonalDetails(additionalMember, (userId) => {
+      setHasCreatedAdditionalUser(true)
+      if (userId) setAdditionalUserId(userId)
+    })
+    if (!created) return
+
     setUiError('')
     setStep(6)
   }
 
-  const goNextFromAdditionalAddress = () => {
+  const goNextFromAdditionalAddress = async () => {
+    if (isCheckingServiceAvailability) return
+
     if (!ENFORCE_REQUIRED_FIELDS) {
+      const isServiceable = await ensureAddressIsServiceable(additionalMember)
+      if (!isServiceable) return
       setUiError('')
       setStep(7)
       return
@@ -533,11 +626,15 @@ export default function BookAppointment() {
       return
     }
 
+    const isServiceable = await ensureAddressIsServiceable(additionalMember)
+    if (!isServiceable) return
+
     setUiError('')
     setStep(7)
   }
 
-  const goNextFromAdditionalSchedule = () => {
+  const goNextFromAdditionalSchedule = async () => {
+    if (isLockingSlot) return
     if (!additionalMember.appointmentDate) {
       logClientError('Please select a preferred date.')
       return
@@ -546,6 +643,10 @@ export default function BookAppointment() {
       logClientError('Please select a preferred time slot.')
       return
     }
+
+    const locked = await lockSelectedSlot(additionalMember, additionalUserId)
+    if (!locked) return
+
     setUiError('')
     setStep(8)
   }
@@ -733,6 +834,10 @@ export default function BookAppointment() {
         logClientError('Please select a schedule date.')
         return
       }
+      if (!form.appointmentTime.trim() || !form.appointmentSlotId.trim()) {
+        logClientError('Please select a preferred time slot.')
+        return
+      }
       if (!form.houseNo.trim()) {
         logClientError('House No./ Building is required.')
         return
@@ -760,13 +865,28 @@ export default function BookAppointment() {
       return
     }
 
-    if (!isFrontendOnly()) {
-      if (!form.gender) {
-        logClientError('Gender is required.')
+    if (!primaryUserId) {
+      logClientError('Missing user id. Please go back and complete personal details again.')
+      return
+    }
+    if (!form.appointmentDate || !form.appointmentTime.trim() || !form.appointmentSlotId.trim()) {
+      logClientError('Please select a preferred date and time slot.')
+      return
+    }
+
+    if (hasAdditional) {
+      if (!additionalUserId) {
+        logClientError(
+          'Missing second member user id. Please go back and complete their personal details again.',
+        )
         return
       }
-      if (!Number.isFinite(safeAge)) {
-        logClientError('Age is required.')
+      if (
+        !additionalMember.appointmentDate ||
+        !additionalMember.appointmentTime.trim() ||
+        !additionalMember.appointmentSlotId.trim()
+      ) {
+        logClientError('Please select a preferred date and time slot for the second member.')
         return
       }
     }
@@ -774,73 +894,27 @@ export default function BookAppointment() {
     setUiError('')
     setIsSubmittingBooking(true)
 
-    const submitMember = async (
-      memberForm: FormData,
-      flags: { created: boolean; onboarded: boolean },
-      markCreated: () => void,
-      markOnboarded: () => void,
-      preferredEmployeeId?: string,
-    ) => {
-      const memberAge = bookingAge(memberForm)
-      const memberEmail = EMAIL_REGEX.test(memberForm.email.trim())
-        ? memberForm.email.trim()
-        : null
-
-      if (!flags.created) {
-        await createEmployeeUser({
-          age: memberAge,
-          phone: memberForm.phone.trim(),
-          first_name: memberForm.firstName.trim() || null,
-          last_name: memberForm.lastName.trim() || null,
-          email: memberEmail,
-          gender: memberForm.gender || null,
-          address: formatBookingAddress(memberForm) || 'NA',
-          pin_code: memberForm.pincode.trim() || '000000',
-          city: memberForm.city.trim() || 'NA',
-          state: memberForm.state.trim() || 'Maharashtra',
-          country: 'India',
-          is_participant: true,
-          status: 'active',
-        })
-        markCreated()
-      }
-
-      if (!flags.onboarded) {
-        const apiEmployeeId =
-          preferredEmployeeId?.replace(/\s/g, '') || generateEmployeeIdForApi()
-        const onboardResult = await onboardUserForEngagement(
-          buildOnboardPayload(memberForm, apiEmployeeId),
-        )
-        markOnboarded()
-        return { apiEmployeeId, alreadyEnrolled: Boolean(onboardResult.alreadyEnrolled) }
-      }
-
-      return {
-        apiEmployeeId: preferredEmployeeId?.replace(/\s/g, '') || '',
-        alreadyEnrolled: false,
-      }
-    }
-
     try {
-      const primaryResult = await submitMember(
-        form,
-        { created: hasCreatedUser, onboarded: hasOnboarded },
-        () => setHasCreatedUser(true),
-        () => setHasOnboarded(true),
-        bookingDisplayId,
-      )
-      if (primaryResult.apiEmployeeId) {
-        setBookingDisplayId(primaryResult.apiEmployeeId)
+      if (!hasOnboarded) {
+        await confirmOnboardBooking({
+          user_id: primaryUserId,
+          blood_collection_date: form.appointmentDate,
+          blood_collection_time_slot_id: form.appointmentSlotId.trim(),
+          blood_collection_time_slot: form.appointmentTime.trim(),
+          consultations: {},
+        })
+        setHasOnboarded(true)
       }
 
-      if (hasAdditional) {
-        const additionalForm = additionalMemberToFormData(additionalMember, form)
-        await submitMember(
-          additionalForm,
-          { created: hasCreatedAdditionalUser, onboarded: hasOnboardedAdditional },
-          () => setHasCreatedAdditionalUser(true),
-          () => setHasOnboardedAdditional(true),
-        )
+      if (hasAdditional && !hasOnboardedAdditional) {
+        await confirmOnboardBooking({
+          user_id: additionalUserId!,
+          blood_collection_date: additionalMember.appointmentDate,
+          blood_collection_time_slot_id: additionalMember.appointmentSlotId.trim(),
+          blood_collection_time_slot: additionalMember.appointmentTime.trim(),
+          consultations: {},
+        })
+        setHasOnboardedAdditional(true)
       }
 
       setStep(9)
@@ -1040,8 +1114,15 @@ export default function BookAppointment() {
               <ContinueButton
                 variant={continueVariant}
                 onClick={handleStepContinue}
+                disabled={isCheckingServiceAvailability || isCreatingUser || isLockingSlot}
               >
-                Continue
+                {isCreatingUser
+                  ? 'Saving…'
+                  : isLockingSlot
+                    ? 'Locking…'
+                    : isCheckingServiceAvailability
+                      ? 'Checking…'
+                      : 'Continue'}
               </ContinueButton>
             </div>
           ) : null}
@@ -1712,9 +1793,10 @@ function formatScheduleBannerDate(iso: string): string {
 
 function formatScheduleBannerTime(slot: string): string {
   if (!slot) return '—'
-  const start = slot.split('-')[0]?.trim()
-  if (!start) return slot
-  const meridiem = slot.includes('PM') ? 'PM' : slot.includes('AM') ? 'AM' : ''
+  const label = formatStoredSlotLabel(slot)
+  const start = label.split('-')[0]?.trim()
+  if (!start) return label || slot
+  const meridiem = label.includes('PM') ? 'PM' : label.includes('AM') ? 'AM' : ''
   const normalized = start.replace(/^0/, '')
   return meridiem ? `${normalized} ${meridiem}` : normalized
 }
@@ -1734,35 +1816,178 @@ function PreferredDatePicker({
     errorType?: 'missing' | 'invalid',
   ) => React.ReactNode
 }) {
-  const [calendarOpen, setCalendarOpen] = useState(false)
-  const hasDate = Boolean(parseIsoDate(value))
-  const displayLabel = hasDate ? formatPreferredDateLabel(value) : 'Select date'
+  const dateOptions = getPreferredDateOptions(6)
+  const selectedIso =
+    value && dateOptions.some((d) => toIsoDate(d) === value)
+      ? value
+      : toIsoDate(dateOptions[0])
+
+  useEffect(() => {
+    if (value !== selectedIso) onChange(selectedIso)
+    // Parent passes a fresh inline onChange each render; sync only when value is wrong.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, selectedIso])
 
   return (
     <div className="flex flex-col gap-3">
       {labelRow(PreferredDateIcon, 'Preferred Date')}
-      <button
-        type="button"
-        onClick={() => setCalendarOpen(true)}
-        className="flex h-10 w-full items-center justify-between gap-3 rounded-[8px] border border-[rgba(154,154,154,0.35)] bg-white/5 px-4 text-left transition hover:border-[rgba(154,154,154,0.55)]"
-        aria-label={hasDate ? `Preferred date ${displayLabel}, change date` : 'Choose preferred date'}
-      >
-        <span
-          className={[
-            'truncate text-[14px] font-normal leading-none',
-            hasDate ? 'text-white' : 'text-[rgba(255,255,255,0.6)]',
-          ].join(' ')}
-        >
-          {displayLabel}
-        </span>
-        <ChevronRight className="size-4 shrink-0 text-white" strokeWidth={2} aria-hidden />
-      </button>
-      <PreferredDateCalendar
-        open={calendarOpen}
-        value={value}
-        onClose={() => setCalendarOpen(false)}
-        onConfirm={onChange}
-      />
+      <div className="flex gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {dateOptions.map((date) => {
+          const iso = toIsoDate(date)
+          const selected = selectedIso === iso
+          return (
+            <button
+              key={iso}
+              type="button"
+              onClick={() => onChange(iso)}
+              className={[
+                'flex h-[56px] w-[72px] shrink-0 flex-col items-center justify-center rounded-[10px] transition',
+                selected
+                  ? SELECTED_CHIP_BG
+                  : 'bg-[rgba(75,141,131,0.2)] text-[rgba(154,154,154,0.9)]',
+              ].join(' ')}
+              aria-pressed={selected}
+            >
+              <span className="text-[12px] font-medium leading-none">
+                {getPreferredDateDayLabel(date)}
+              </span>
+              <span className="mt-1 text-[16px] font-semibold leading-none">{date.getDate()}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function PreferredTimeSlots({
+  address,
+  date,
+  value,
+  slotId,
+  onChange,
+  labelRow,
+}: {
+  address: Pick<FormData, 'houseNo' | 'areaStreet' | 'landmark' | 'city' | 'pincode'>
+  date: string
+  value: string
+  slotId: string
+  onChange: (selection: { slotTime: string; stmId: string } | null) => void
+  labelRow: (
+    Icon: IconType,
+    label: string,
+    extra?: React.ReactNode,
+    showRequired?: boolean,
+    errorType?: 'missing' | 'invalid',
+  ) => React.ReactNode
+}) {
+  const [slots, setSlots] = useState<Array<{ slotTime: string; stmId: string; label: string }>>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const addressLine = [address.houseNo, address.areaStreet]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(', ')
+  const landmark = address.landmark.trim()
+  const city = address.city.trim()
+  const pincode = address.pincode.trim()
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadSlots = async () => {
+      if (!date || !addressLine || !city || !pincode) {
+        setSlots([])
+        setError('')
+        if (value || slotId) onChange(null)
+        return
+      }
+
+      setIsLoading(true)
+      setError('')
+      try {
+        const result = await fetchAvailableSlots({
+          address_line: addressLine,
+          landmark,
+          city,
+          pincode,
+          blood_collection_date: date,
+        })
+        if (cancelled) return
+
+        const nextSlots = result.slots.map((slot) => ({
+          slotTime: slot.slotTime,
+          stmId: slot.stmId,
+          label: slot.label,
+        }))
+        setSlots(nextSlots)
+
+        const stillValid = nextSlots.some(
+          (slot) =>
+            (slot.stmId && slot.stmId === slotId) ||
+            slot.slotTime === value ||
+            slot.label === value,
+        )
+        if (!stillValid) {
+          const first = nextSlots[0]
+          onChange(first ? { slotTime: first.slotTime, stmId: first.stmId } : null)
+        }
+        if (nextSlots.length === 0) {
+          setError('No time slots available for this date.')
+        }
+      } catch (err) {
+        if (cancelled) return
+        setSlots([])
+        onChange(null)
+        setError(err instanceof Error ? err.message : 'Unable to load time slots.')
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    void loadSlots()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, addressLine, landmark, city, pincode])
+
+  return (
+    <div className="flex flex-col gap-3 pb-2">
+      <div className="flex flex-col gap-1">
+        {labelRow(PreferredTimeIcon, 'Preferred Time Slot')}
+        <p className="pl-7 text-[10px] font-light leading-normal text-[#ccc]">
+          Collection window is of 1 hour
+        </p>
+      </div>
+      {isLoading ? (
+        <p className="px-1 text-[13px] text-[#9a9a9a]">Loading available slots…</p>
+      ) : error ? (
+        <p className="px-1 text-[13px] text-[#ff6b6b]">{error}</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-2 px-1">
+          {slots.map((slot) => {
+            const selected =
+              (slot.stmId && slot.stmId === slotId) ||
+              value === slot.slotTime ||
+              value === slot.label
+            return (
+              <button
+                key={slot.stmId || slot.slotTime}
+                type="button"
+                onClick={() => onChange({ slotTime: slot.slotTime, stmId: slot.stmId })}
+                className={[
+                  'flex h-10 items-center justify-center rounded-full px-2.5 text-[14px] font-medium transition',
+                  selected ? SELECTED_CHIP_BG : 'bg-white/5 text-[rgba(154,154,154,0.8)]',
+                ].join(' ')}
+              >
+                {slot.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -1841,32 +2066,17 @@ function AdditionalMemberScheduleStep({
           labelRow={labelRow}
         />
 
-        <div className="flex flex-col gap-3 pb-2">
-          <div className="flex flex-col gap-1">
-            {labelRow(PreferredTimeIcon, 'Preferred Time Slot')}
-            <p className="pl-7 text-[10px] font-light leading-normal text-[#ccc]">
-              Collection window is of 1 hour
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 px-1">
-            {TIME_SLOTS.map((slot) => {
-              const selected = form.appointmentTime === slot
-              return (
-                <button
-                  key={slot}
-                  type="button"
-                  onClick={() => update('appointmentTime', slot)}
-                  className={[
-                    'flex h-10 items-center justify-center rounded-full px-2.5 text-[14px] font-medium transition',
-                    selected ? SELECTED_CHIP_BG : 'bg-white/5 text-[rgba(154,154,154,0.8)]',
-                  ].join(' ')}
-                >
-                  {slot}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        <PreferredTimeSlots
+          address={form}
+          date={form.appointmentDate}
+          value={form.appointmentTime}
+          slotId={form.appointmentSlotId}
+          onChange={(selection) => {
+            update('appointmentTime', selection?.slotTime || '')
+            update('appointmentSlotId', selection?.stmId || '')
+          }}
+          labelRow={labelRow}
+        />
       </div>
     </div>
   )
@@ -1977,32 +2187,17 @@ function ScheduleStep({
         labelRow={labelRow}
       />
 
-      <div className="flex flex-col gap-3 pb-2">
-        <div className="flex flex-col gap-1">
-          {labelRow(PreferredTimeIcon, 'Preferred Time Slot')}
-          <p className="pl-7 text-[10px] font-light leading-normal text-[#ccc]">
-            Collection window is of 1 hour
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-2 px-1">
-          {TIME_SLOTS.map((slot) => {
-            const selected = form.appointmentTime === slot
-            return (
-              <button
-                key={slot}
-                type="button"
-                onClick={() => update('appointmentTime', slot)}
-                className={[
-                  'flex h-10 items-center justify-center rounded-full px-2.5 text-[14px] font-medium transition',
-                  selected ? SELECTED_CHIP_BG : 'bg-white/5 text-[rgba(154,154,154,0.8)]',
-                ].join(' ')}
-              >
-                {slot}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+      <PreferredTimeSlots
+        address={form}
+        date={form.appointmentDate}
+        value={form.appointmentTime}
+        slotId={form.appointmentSlotId}
+        onChange={(selection) => {
+          update('appointmentTime', selection?.slotTime || '')
+          update('appointmentSlotId', selection?.stmId || '')
+        }}
+        labelRow={labelRow}
+      />
     </div>
   )
 }
@@ -2138,7 +2333,7 @@ function ConfirmStep({
               <SummaryItem Icon={User} label={primaryName} dense />
               <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-[11px] text-[#ccc]">
                 <SummaryItem Icon={Calendar} label={formatBookingDate(form.appointmentDate)} dense />
-                <SummaryItem Icon={Clock} label={form.appointmentTime || '—'} dense />
+                <SummaryItem Icon={Clock} label={formatStoredSlotLabel(form.appointmentTime) || '—'} dense />
               </div>
             </div>
 
@@ -2159,14 +2354,18 @@ function ConfirmStep({
                   label={formatBookingDate(additionalMember.appointmentDate)}
                   dense
                 />
-                <SummaryItem Icon={Clock} label={additionalMember.appointmentTime || '—'} dense />
+                <SummaryItem
+                  Icon={Clock}
+                  label={formatStoredSlotLabel(additionalMember.appointmentTime) || '—'}
+                  dense
+                />
               </div>
             </div>
           </>
         ) : (
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-[11px] text-[#ccc]">
             <SummaryItem Icon={Calendar} label={formatBookingDate(form.appointmentDate)} dense />
-            <SummaryItem Icon={Clock} label={form.appointmentTime || '—'} dense />
+            <SummaryItem Icon={Clock} label={formatStoredSlotLabel(form.appointmentTime) || '—'} dense />
           </div>
         )}
       </section>
@@ -2220,7 +2419,8 @@ function formatBookingDate(iso: string): string {
 
 function formatConfirmedDateTime(iso: string, slot: string): string {
   const date = formatBookingDate(iso)
-  const compact = slot
+  const label = formatStoredSlotLabel(slot)
+  const compact = label
     .trim()
     .replace(/\s*-\s*/g, '-')
     .replace(/\b0(\d:)/g, '$1')

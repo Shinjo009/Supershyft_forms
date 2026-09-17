@@ -14,6 +14,7 @@ export type FormData = {
   relation: string
   appointmentDate: string
   appointmentTime: string
+  appointmentSlotId: string
 }
 
 export const defaultFormData: FormData = {
@@ -31,7 +32,8 @@ export const defaultFormData: FormData = {
   state: '',
   relation: 'spouse',
   appointmentDate: '',
-  appointmentTime: '06:00 - 07:00 AM',
+  appointmentTime: '',
+  appointmentSlotId: '',
 }
 
 export function formatBookingAddress(form: Pick<FormData, 'houseNo' | 'areaStreet' | 'landmark'>): string {
@@ -57,6 +59,7 @@ export type AdditionalMemberForm = {
   useSameAddress: boolean
   appointmentDate: string
   appointmentTime: string
+  appointmentSlotId: string
 }
 
 export const defaultAdditionalMemberForm: AdditionalMemberForm = {
@@ -74,5 +77,6 @@ export const defaultAdditionalMemberForm: AdditionalMemberForm = {
   state: '',
   useSameAddress: false,
   appointmentDate: '',
-  appointmentTime: '06:00 - 07:00 AM',
+  appointmentTime: '',
+  appointmentSlotId: '',
 }

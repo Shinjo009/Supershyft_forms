@@ -1,6 +1,6 @@
 import { isFrontendOnly } from '../lib/frontendOnly'
 import { applyAuthTokensFromResponse } from '../lib/authStorage'
-import { getApiErrorStatus, publicPost } from './http'
+import { getApiErrorData, getApiErrorStatus, publicPost } from './http'
 
 export type EmployeeCreateUserPayload = {
   age: number
@@ -41,7 +41,7 @@ function readUserId(data: unknown): number | undefined {
     row.data && typeof row.data === 'object' && !Array.isArray(row.data)
       ? (row.data as Record<string, unknown>)
       : row
-  const raw = nested.user_id ?? nested.id
+  const raw = nested.user_id ?? nested.id ?? row.user_id ?? row.id
   const id = Number(raw)
   return Number.isFinite(id) && id > 0 ? id : undefined
 }
@@ -54,7 +54,7 @@ export async function createEmployeeUser(
       phone: payload.phone,
       age: payload.age,
     })
-    return { userId: 0, alreadyExisted: false }
+    return { userId: 1, alreadyExisted: false }
   }
 
   console.info('[users] create', {
@@ -69,8 +69,9 @@ export async function createEmployeeUser(
     return { userId: readUserId(data), alreadyExisted: false }
   } catch (error) {
     if (isAlreadyExistsError(error)) {
-      console.info('[users] already exists; continuing', { phone: payload.phone })
-      return { alreadyExisted: true }
+      const userId = readUserId(getApiErrorData(error))
+      console.info('[users] already exists; continuing', { phone: payload.phone, userId })
+      return { alreadyExisted: true, userId }
     }
     throw error
   }
