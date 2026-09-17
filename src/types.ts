@@ -18,6 +18,9 @@ export type FormData = {
   useSameEmail: boolean
   appointmentDate: string
   appointmentTime: string
+  appointmentSlotId: string
+  /** Raw slot start from available-slots, e.g. "07:00:00". */
+  appointmentSlotStart: string
 }
 
 export const defaultFormData: FormData = {
@@ -33,11 +36,13 @@ export const defaultFormData: FormData = {
   landmark: '',
   pincode: '',
   city: '',
-  state: 'Maharashtra',
+  state: '',
   relation: 'spouse',
   houseNumber: '',
   useSamePhone: true,
   useSameEmail: true,
   appointmentDate: '',
   appointmentTime: '',
+  appointmentSlotId: '',
+  appointmentSlotStart: '',
 }

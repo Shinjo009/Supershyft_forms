@@ -96,6 +96,28 @@ function resolveEngagementCode(gender: 'male' | 'female'): string {
   return assertEngagementCode(fromEnv)
 }
 
+export function getBackendBaseUrl(): string {
+  const baseUrl = firstNonEmpty(
+    import.meta.env.VITE_BACKEND_BASE_URL,
+    import.meta.env.VITE_API_BASE_URL,
+    import.meta.env.VITE_BASE_URL,
+    import.meta.env.BACKEND_BASE_URL,
+    import.meta.env.API_BASE_URL,
+  )
+
+  if (!baseUrl) {
+    throw new Error(
+      'Missing API base URL. Copy .env.example to .env, set VITE_BACKEND_BASE_URL, and restart the dev server.',
+    )
+  }
+
+  return trimTrailingSlash(baseUrl)
+}
+
+export function resolveEngagementCodeFromGender(gender: string): string {
+  return resolveEngagementCode(parseBookingGender(gender))
+}
+
 function parseValidationMessage(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null
   const response = data as ValidationErrorResponse
@@ -139,14 +161,6 @@ function parseOnboardSuccess(
 export async function onboardUserForEngagement(
   payload: OnboardUserForEngagementPayload,
 ): Promise<OnboardResult> {
-  const baseUrl = firstNonEmpty(
-    import.meta.env.VITE_BACKEND_BASE_URL,
-    import.meta.env.VITE_API_BASE_URL,
-    import.meta.env.VITE_BASE_URL,
-    import.meta.env.BACKEND_BASE_URL,
-    import.meta.env.API_BASE_URL,
-  )
-
   const bookingGender = parseBookingGender(payload.gender)
   const engagementCode = resolveEngagementCode(bookingGender)
   const apiPayload: OnboardUserForEngagementPayload = {
@@ -154,13 +168,8 @@ export async function onboardUserForEngagement(
     gender: bookingGender,
   }
 
-  if (!baseUrl) {
-    throw new Error(
-      'Missing API base URL. Copy .env.example to .env, set VITE_BACKEND_BASE_URL, and restart the dev server.',
-    )
-  }
-
-  const url = `${trimTrailingSlash(baseUrl)}/users/code/${encodeURIComponent(engagementCode)}/onboard`
+  const baseUrl = getBackendBaseUrl()
+  const url = `${baseUrl}/users/code/${encodeURIComponent(engagementCode)}/onboard`
 
   console.info('[onboard] Celebal booking', {
     engagementCode,
