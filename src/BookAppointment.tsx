@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
 import { loadPincodeLookup, lookupPincode } from './lib/pincodeLookup'
-import { onboardBook } from './api/onboardBook'
+import { onboardUserForEngagement } from './api/onboard'
 import { createUser } from './api/users'
 import { lockBookingSlot } from './api/lockSlot'
 import { checkServiceAvailability } from './api/serviceAvailability'
@@ -493,16 +493,25 @@ export default function BookAppointment() {
     setIsSubmittingBooking(true)
 
     try {
-      await onboardBook(
-        {
-          user_id: userId,
-          blood_collection_date: form.appointmentDate,
-          blood_collection_time_slot_id: form.appointmentSlotId,
-          blood_collection_time_slot: form.appointmentSlotStart || form.appointmentTime,
-          consultations: {},
-        },
-        form.gender,
-      )
+      const parsedAge = Number.parseInt(form.age.trim(), 10)
+      await onboardUserForEngagement({
+        age: parsedAge,
+        first_name: form.firstName.trim(),
+        last_name: form.lastName.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        gender: form.gender,
+        address: formatAddressLine(form),
+        pincode: form.pincode.trim(),
+        city: form.city.trim(),
+        state: form.state.trim(),
+        country: 'India',
+        blood_collection_date: form.appointmentDate,
+        blood_collection_time_slot: form.appointmentSlotStart || form.appointmentTime,
+        participants_employee_id: normalizedEmployeeId,
+        participant_blood_group: '',
+        want_doctor_consultation: form.personalizedDoctorConsultation === 'yes',
+      })
       markEmployeeIdAsBooked(normalizedEmployeeId)
       window.location.assign(paymentUrl)
     } catch (error) {
