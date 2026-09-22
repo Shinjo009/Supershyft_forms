@@ -141,19 +141,21 @@ export async function checkServiceAvailability(
   const response = await publicPost<CheckServiceAvailabilityResponse>(path, payload)
   const data = response?.data
   const status = String(data?.status || '').trim().toLowerCase() || 'unknown'
+  const rawMessage = typeof data?.message === 'string' ? data.message.trim() : ''
+  const isLatLongMessage = /lat\s*long/i.test(rawMessage)
   const message =
-    (typeof data?.message === 'string' && data.message.trim()) ||
-    (status === 'not_serviceable'
-      ? 'This location is not serviceable.'
-      : status === 'serviceable'
-        ? 'Serviceable'
-        : 'Unable to confirm service availability.')
+    status === 'not_serviceable' || isLatLongMessage
+      ? 'Location not serviceable.'
+      : rawMessage ||
+        (status === 'serviceable'
+          ? 'Serviceable'
+          : 'Unable to confirm service availability.')
   const zoneId =
     data?.zone_id === undefined || data?.zone_id === null ? undefined : String(data.zone_id)
 
   return {
     engagementCode: String(data?.engagement_code || engagementCode),
-    status,
+    status: isLatLongMessage && status === 'unknown' ? 'not_serviceable' : status,
     message,
     zoneId,
   }

@@ -372,15 +372,14 @@ export default function BookAppointment() {
       })
 
       if (result.status !== 'serviceable') {
-        logClientError(result.message || 'This location is not serviceable.')
+        logClientError(result.message || 'Location not serviceable.')
         return false
       }
 
       return true
     } catch (error) {
-      logClientError(
-        error instanceof Error ? error.message : 'Unable to check service availability.',
-      )
+      const raw = error instanceof Error ? error.message : 'Unable to check service availability.'
+      logClientError(/lat\s*long|not serviceable/i.test(raw) ? 'Location not serviceable.' : raw)
       return false
     } finally {
       setIsCheckingServiceAvailability(false)
