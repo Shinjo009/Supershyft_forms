@@ -422,7 +422,7 @@ export default function BookAppointment() {
 
       if (availability.status !== 'serviceable') {
         logClientError(
-          availability.message?.trim() || 'This location is not serviceable.',
+          availability.message?.trim() || 'Address not serviceable.',
         )
         return
       }

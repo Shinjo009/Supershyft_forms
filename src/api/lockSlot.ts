@@ -1,3 +1,5 @@
+import { toUserFacingServiceabilityMessage } from './serviceabilityMessage'
+
 export type LockSlotPayload = {
   address_line: string
   landmark: string
@@ -95,7 +97,7 @@ export async function lockBookingSlot(payload: LockSlotPayload): Promise<LockSlo
         (typeof body.message === 'string' && body.message) ||
         null
       if (apiMessage) {
-        throw new Error(apiMessage)
+        throw new Error(toUserFacingServiceabilityMessage(apiMessage))
       }
 
       const jsonText = JSON.stringify(data)

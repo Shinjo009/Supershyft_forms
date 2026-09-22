@@ -1,3 +1,5 @@
+import { toUserFacingServiceabilityMessage } from './serviceabilityMessage'
+
 export type CheckServiceAvailabilityPayload = {
   address_line: string
   landmark: string
@@ -91,7 +93,7 @@ export async function checkServiceAvailability(
         (typeof body.message === 'string' && body.message) ||
         null
       if (apiMessage) {
-        throw new Error(apiMessage)
+        throw new Error(toUserFacingServiceabilityMessage(apiMessage))
       }
 
       const jsonText = JSON.stringify(data)
@@ -117,5 +119,10 @@ export async function checkServiceAvailability(
     throw new Error('Unexpected response while checking service availability.')
   }
 
-  return availability
+  return {
+    ...availability,
+    message: availability.message
+      ? toUserFacingServiceabilityMessage(availability.message)
+      : availability.message,
+  }
 }

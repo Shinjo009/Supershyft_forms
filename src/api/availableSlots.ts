@@ -1,3 +1,5 @@
+import { toUserFacingServiceabilityMessage } from './serviceabilityMessage'
+
 export type AvailableSlotsPayload = {
   address_line: string
   landmark: string
@@ -113,7 +115,7 @@ export async function fetchAvailableSlots(
         (typeof body.message === 'string' && body.message) ||
         null
       if (apiMessage) {
-        throw new Error(apiMessage)
+        throw new Error(toUserFacingServiceabilityMessage(apiMessage))
       }
 
       const jsonText = JSON.stringify(data)
