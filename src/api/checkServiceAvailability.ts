@@ -28,6 +28,16 @@ function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '')
 }
 
+const LOCATION_NOT_SERVICEABLE = 'This address is not serviceable.'
+
+/** Prefer a clear user-facing line over raw API copy (e.g. "Lat Long is not serviceable"). */
+function toUserFacingServiceabilityMessage(message: string | undefined, fallback: string): string {
+  const trimmed = typeof message === 'string' ? message.trim() : ''
+  if (!trimmed) return fallback
+  if (/lat\s*[-_]?\s*long/i.test(trimmed)) return LOCATION_NOT_SERVICEABLE
+  return trimmed
+}
+
 export async function checkServiceAvailability(
   gender: string,
   payload: CheckServiceAvailabilityPayload,
@@ -62,7 +72,9 @@ export async function checkServiceAvailability(
     if (data && typeof data === 'object') {
       const row = data as ServiceAvailabilityResponse
       if (row.data?.message) {
-        throw new Error(row.data.message)
+        throw new Error(
+          toUserFacingServiceabilityMessage(row.data.message, LOCATION_NOT_SERVICEABLE),
+        )
       }
       const jsonText = JSON.stringify(data)
       if (jsonText && jsonText !== '{}') {
@@ -81,11 +93,11 @@ export async function checkServiceAvailability(
 
   const row = (data as ServiceAvailabilityResponse).data
   const statusRaw = (row?.status || '').trim().toLowerCase()
+  const rawMessage = typeof row?.message === 'string' ? row.message.trim() : ''
   const message =
-    (typeof row?.message === 'string' && row.message.trim()) ||
-    (statusRaw === 'serviceable'
-      ? 'Serviceable'
-      : 'This location is not serviceable.')
+    statusRaw === 'serviceable'
+      ? rawMessage || 'Serviceable'
+      : toUserFacingServiceabilityMessage(rawMessage, LOCATION_NOT_SERVICEABLE)
 
   if (statusRaw === 'serviceable') {
     return {
