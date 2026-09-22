@@ -24,6 +24,23 @@ type ServiceAvailabilityResponse = {
   meta?: Record<string, unknown>
 }
 
+const ADDRESS_NOT_SERVICEABLE = 'This address is not serviceable.'
+
+/** Prefer user-facing copy over technical lat/long API messages. */
+function toUserFacingMessage(status: string, apiMessage: string | undefined): string {
+  const normalizedStatus = status.trim().toLowerCase()
+  const trimmed = apiMessage?.trim() || ''
+  const looksLikeLatLong =
+    /lat[\s_-]*long|latitude|longitude|geocod/i.test(trimmed)
+
+  if (normalizedStatus === 'not_serviceable' || looksLikeLatLong) {
+    return ADDRESS_NOT_SERVICEABLE
+  }
+  if (trimmed) return trimmed
+  if (normalizedStatus === 'serviceable') return 'Serviceable'
+  return 'Unable to confirm service availability.'
+}
+
 export async function checkServiceAvailability(
   payload: CheckServiceAvailabilityPayload,
   gender: string,
@@ -64,7 +81,7 @@ export async function checkServiceAvailability(
       const body = data as ServiceAvailabilityResponse
       const apiMessage = body.data?.message?.trim()
       if (apiMessage) {
-        throw new Error(apiMessage)
+        throw new Error(toUserFacingMessage(body.data?.status || '', apiMessage))
       }
       const jsonText = JSON.stringify(data)
       if (jsonText && jsonText !== '{}') {
@@ -82,13 +99,7 @@ export async function checkServiceAvailability(
   const body = (data && typeof data === 'object' ? data : {}) as ServiceAvailabilityResponse
   const row = body.data
   const status = (row?.status || '').trim().toLowerCase() || 'unknown'
-  const message =
-    row?.message?.trim() ||
-    (status === 'serviceable'
-      ? 'Serviceable'
-      : status === 'not_serviceable'
-        ? 'This location is not serviceable.'
-        : 'Unable to confirm service availability.')
+  const message = toUserFacingMessage(status, row?.message)
 
   return {
     engagementCode: row?.engagement_code?.trim() || engagementCode,

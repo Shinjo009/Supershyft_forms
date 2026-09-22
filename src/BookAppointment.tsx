@@ -451,7 +451,7 @@ export default function BookAppointment() {
       )
 
       if (result.status !== 'serviceable') {
-        logClientError(result.message || 'This location is not serviceable.')
+        logClientError(result.message || 'This address is not serviceable.')
         return
       }
 
