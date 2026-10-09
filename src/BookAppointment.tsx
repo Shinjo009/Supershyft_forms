@@ -32,6 +32,7 @@ import {
 } from './api/booking'
 import { PageBackdrop } from './components/PageBackdrop'
 import { Stepper } from './components'
+import { toUserFacingError } from './lib/userFacingError'
 import { lookupPincode } from './lib/pincodeLookup'
 import {
   defaultAdditionalMemberForm,
@@ -67,9 +68,10 @@ const sanitizePincode = (value: string) => value.replace(/\D/g, '').slice(0, 6)
 const sanitizeAddressLine = (value: string) => value.replace(/\s+/g, ' ').slice(0, 120)
 const BOOK_APPOINTMENT_ERROR_EVENT = 'book-appointment:error'
 const logClientError = (message: string) => {
-  console.error(`[BookAppointment] ${message}`)
+  const friendly = toUserFacingError(message)
+  console.error(`[BookAppointment] ${message}${friendly !== message ? ` → ${friendly}` : ''}`)
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(BOOK_APPOINTMENT_ERROR_EVENT, { detail: message }))
+    window.dispatchEvent(new CustomEvent(BOOK_APPOINTMENT_ERROR_EVENT, { detail: friendly }))
   }
 }
 
@@ -1939,7 +1941,7 @@ function PreferredTimeSlots({
         if (cancelled) return
         setSlots([])
         onChange(null)
-        setError(err instanceof Error ? err.message : 'Unable to load time slots.')
+        setError(toUserFacingError(err, 'Please try again.'))
       } finally {
         if (!cancelled) setIsLoading(false)
       }
