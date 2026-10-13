@@ -43,22 +43,24 @@ export function clampBookingDate(iso: string, bounds = getBookingDateBounds()): 
   return ''
 }
 
-export const BOOKING_CITIES = ['Pune', 'Bangalore', 'Gurugram', 'Hyderabad'] as const
+export const BOOKING_CITIES = ['Mumbai', 'Pune'] as const
 export type BookingCity = (typeof BOOKING_CITIES)[number]
 
+/** Fixed Mumbai camp slot while Pune is temporarily unavailable. */
+export const MUMBAI_BLOOD_COLLECTION = {
+  date: '2026-10-16',
+  timeSlot: '07:30',
+} as const
+
 export const CITY_LOCATION: Record<BookingCity, { state: string; pincode: string }> = {
+  Mumbai: { state: 'Maharashtra', pincode: '400001' },
   Pune: { state: 'Maharashtra', pincode: '411001' },
-  Bangalore: { state: 'Karnataka', pincode: '560001' },
-  Gurugram: { state: 'Haryana', pincode: '122001' },
-  Hyderabad: { state: 'Telangana', pincode: '500001' },
 }
 
-/** Month is 0-indexed. Pune 1–3 Sep, Bangalore 31 Aug–3 Sep, Gurugram 1 Sep, Hyderabad 2–3 Sep. */
+/** Month is 0-indexed. Kept for date helpers; the booking form no longer collects a schedule. */
 const CITY_SCHEDULE_MONTH_DAYS: Record<BookingCity, Array<[month: number, day: number]>> = {
+  Mumbai: [],
   Pune: [[8, 1], [8, 2], [8, 3]],
-  Bangalore: [[7, 31], [8, 1], [8, 2], [8, 3]],
-  Gurugram: [[8, 1]],
-  Hyderabad: [[8, 2], [8, 3]],
 }
 
 export function isBookingCity(city: string): city is BookingCity {

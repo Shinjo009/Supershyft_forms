@@ -15,8 +15,8 @@ export type OnboardUserForEngagementPayload = {
   city: string
   state: string
   country: string
-  blood_collection_date: string
-  blood_collection_time_slot: string
+  blood_collection_date: string | null
+  blood_collection_time_slot: string | null
   blood_collection_cabin?: string | null
   participants_employee_id: string
   participant_blood_group: string
@@ -220,7 +220,7 @@ export function saveOnboardTokens(tokens: OnboardTokens): void {
 export async function onboardUserForEngagement(
   payload: OnboardUserForEngagementPayload,
 ): Promise<OnboardResult> {
-  const engagementCode = resolveEngagementCode(payload.city, payload.gender)
+  const engagementCode = resolveEngagementCode(payload.city)
 
   if (isFrontendOnly()) {
     const bookingGender = parseBookingGender(payload.gender)

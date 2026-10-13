@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ArrowLeft,
-  Building2,
   Calendar,
   Clock,
-  Hash,
+  Droplet,
   Mail,
   MapPin,
   Mars,
@@ -14,28 +13,14 @@ import {
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
 import {
-  BOOKING_CITIES,
   CITY_LOCATION,
-  formatShortBookingDate,
+  MUMBAI_BLOOD_COLLECTION,
   isBookingCity,
-  parseIsoDate,
 } from './lib/bookingDates'
 import {
   onboardUserForEngagement,
   type OnboardUserForEngagementPayload,
 } from './api/onboard'
-import {
-  getAllBookableDates,
-  getAllScheduleDates,
-  getCabinDay,
-  getCabinsForDate,
-  getSlotDisplays,
-  isScheduleDateEnabled,
-  loadEngagementSchedule,
-  resolveCabinKey,
-  type EngagementSchedule,
-} from './api/engagements'
-import { resolveEngagementCode } from './lib/engagementCode'
 import { createEmployeeUser } from './api/users'
 import { resendBookingOtp, sendBookingOtp, verifyBookingOtp } from './api/otp'
 import {
@@ -75,7 +60,6 @@ import {
 import { AppointmentJourneyCompleteStep } from './components/AppointmentJourneyCompleteStep'
 import { OtpVerifyStep } from './components/OtpVerifyStep'
 import { Dropdown } from './components/ui/dropdown-01'
-import bookingSuccessGif from './assets/animation-gif.gif'
 import backgroundAssessmentSvg from './assets/Background.svg'
 import lastPageBackgroundSvg from './assets/lastpage BG.svg'
 import nutritionEndBackgroundSvg from './assets/nutritionend.svg'
@@ -83,6 +67,7 @@ import nutritionLogBackgroundSvg from './assets/nutritionlogstart.svg'
 import familyHistoryBackgroundSvg from './assets/family history.svg'
 import lifestyleHabitsBackgroundSvg from './assets/lifestyle-habits/background.svg'
 import superShyftLogo from './assets/SuperShyft - Logo [Final]-03 7 (1).svg'
+import bookingSuccessGif from './assets/animation-gif.gif'
 
 function mergeQuestionnaireQuestions(
   previous: QuestionnaireQuestion[] | undefined,
@@ -121,6 +106,8 @@ const RELATION_OPTIONS = [
   'Other',
 ] as const
 
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const
+
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
 const NAME_REGEX = /^[A-Za-z]+(?: [A-Za-z]+)*$/
 const PHONE_REGEX = /^[6-9]\d{9}$/
@@ -129,7 +116,6 @@ const sanitizeName = (value: string) => value.replace(/[^A-Za-z\s]/g, '').replac
 const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
 const sanitizeEmail = (value: string) => value.replace(/\s/g, '')
-const sanitizeEmployeeId = (value: string) => value.replace(/\s/g, '').slice(0, 40)
 const generateParticipantId = (phone: string) => `HRM${phone || String(Date.now()).slice(-10)}`
 const BOOK_APPOINTMENT_ERROR_EVENT = 'book-appointment:error'
 const logClientError = (message: string) => {
@@ -139,50 +125,11 @@ const logClientError = (message: string) => {
   }
 }
 
-/** Convert UI slots like "9:10 AM" to API 24-hour "HH:mm". */
-function toApiTimeSlot(slot: string): string {
-  const normalized = slot.trim()
-  if (!normalized) return '09:00'
-  const match = normalized.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
-  if (match) {
-    let hour = Number.parseInt(match[1], 10)
-    const minute = match[2]
-    const meridiem = match[3].toUpperCase()
-    if (meridiem === 'PM' && hour !== 12) hour += 12
-    if (meridiem === 'AM' && hour === 12) hour = 0
-    return `${String(hour).padStart(2, '0')}:${minute}`
-  }
-  return '09:00'
-}
-
 function formatAddressForApi(form: FormData): string {
   return form.city.trim()
 }
 
 type IconType = React.ComponentType<{ className?: string; strokeWidth?: number }>
-
-function applyScheduleDefaults(form: FormData, schedule: EngagementSchedule): FormData {
-  const allDates = getAllBookableDates(schedule)
-  const dateOk = allDates.includes(form.appointmentDate)
-  const appointmentDate = dateOk ? form.appointmentDate : ''
-  const cabinsForDate = getCabinsForDate(schedule, appointmentDate)
-  const selected =
-    cabinsForDate.find(
-      (cabin) => cabin.name === form.appointmentCabin || cabin.name === form.appointmentCabinName,
-    ) ?? null
-  const day =
-    selected && appointmentDate ? getCabinDay(schedule, selected.name, appointmentDate) : null
-  const slots = getSlotDisplays(day)
-  const timeOk = Boolean(selected) && slots.includes(form.appointmentTime)
-
-  return {
-    ...form,
-    appointmentDate,
-    appointmentCabin: selected?.name ?? '',
-    appointmentCabinName: selected?.name ?? '',
-    appointmentTime: timeOk ? form.appointmentTime : '',
-  }
-}
 
 function labelRow(
   Icon: IconType,
@@ -221,7 +168,15 @@ function labelRow(
 export default function BookAppointment() {
   const [step, setStep] = useState(1)
   const [maxReachedStep, setMaxReachedStep] = useState(1)
-  const [form, setForm] = useState<FormData>(defaultFormData)
+  const [form, setForm] = useState<FormData>(() => ({
+    ...defaultFormData,
+    gender: 'male',
+    city: 'Mumbai',
+    state: CITY_LOCATION.Mumbai.state,
+    pincode: CITY_LOCATION.Mumbai.pincode,
+    appointmentDate: MUMBAI_BLOOD_COLLECTION.date,
+    appointmentTime: MUMBAI_BLOOD_COLLECTION.timeSlot,
+  }))
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
   const [isLoadingAssessmentCategories, setIsLoadingAssessmentCategories] = useState(false)
   const [assessmentInstanceId, setAssessmentInstanceId] = useState<number | null>(null)
@@ -248,12 +203,9 @@ export default function BookAppointment() {
   const [highestHubStep, setHighestHubStep] = useState(6)
   const [uiError, setUiError] = useState('')
   const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
-  const [attemptedScheduleContinue, setAttemptedScheduleContinue] = useState(false)
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
   const [isResendingOtp, setIsResendingOtp] = useState(false)
   const [otpVerified, setOtpVerified] = useState(false)
-  const [engagementSchedule, setEngagementSchedule] = useState<EngagementSchedule | null>(null)
-  const [isLoadingSchedule, setIsLoadingSchedule] = useState(false)
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     if (uiError) setUiError('')
@@ -277,33 +229,6 @@ export default function BookAppointment() {
     window.addEventListener(BOOK_APPOINTMENT_ERROR_EVENT, handler as EventListener)
     return () => window.removeEventListener(BOOK_APPOINTMENT_ERROR_EVENT, handler as EventListener)
   }, [])
-
-  useEffect(() => {
-    if (step !== 2) return
-
-    const engagementCode = resolveEngagementCode(form.city, form.gender)
-    let cancelled = false
-    setIsLoadingSchedule(true)
-
-    void loadEngagementSchedule(engagementCode, form.city)
-      .then((schedule) => {
-        if (cancelled) return
-        setEngagementSchedule(schedule)
-        setForm((current) => applyScheduleDefaults(current, schedule))
-      })
-      .catch((error) => {
-        if (cancelled) return
-        setEngagementSchedule(null)
-        logClientError(error instanceof Error ? error.message : 'Unable to load cabins and slots.')
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingSchedule(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [step, form.city, form.gender])
 
   const goNextFromPersonal = () => {
     const trimmedPhone = form.phone.trim()
@@ -362,6 +287,10 @@ export default function BookAppointment() {
         logClientError('Please select a city.')
         return
       }
+      if (!form.bloodGroup.trim()) {
+        logClientError('Please select a blood group.')
+        return
+      }
     }
 
     if (!trimmedPhone || !PHONE_REGEX.test(trimmedPhone)) {
@@ -405,48 +334,6 @@ export default function BookAppointment() {
     } finally {
       setIsResendingOtp(false)
     }
-  }
-
-  const goNextFromSchedule = () => {
-    setAttemptedScheduleContinue(true)
-    if (!ENFORCE_REQUIRED_FIELDS) {
-      setUiError('')
-      setStep(3)
-      return
-    }
-    if (isLoadingSchedule) {
-      logClientError('Please wait for available dates to load.')
-      return
-    }
-    const dates = getAllBookableDates(engagementSchedule)
-    if (!form.appointmentDate || !dates.includes(form.appointmentDate)) {
-      logClientError('Please select a schedule date.')
-      return
-    }
-    if (!form.appointmentCabin) {
-      logClientError('Please pick a cabin.')
-      return
-    }
-    const cabinsForDate = getCabinsForDate(engagementSchedule, form.appointmentDate)
-    if (!cabinsForDate.some((cabin) => cabin.name === form.appointmentCabin)) {
-      logClientError('Please pick a cabin for this date.')
-      return
-    }
-    const day = engagementSchedule
-      ? getCabinDay(engagementSchedule, form.appointmentCabin, form.appointmentDate)
-      : null
-    const slots = getSlotDisplays(day)
-    if (!form.appointmentTime || !slots.includes(form.appointmentTime)) {
-      logClientError('Please select a time slot.')
-      return
-    }
-    if (!form.doctorConsultation) {
-      logClientError('Please select doctor consultation preference.')
-      return
-    }
-
-    setUiError('')
-    setStep(3)
   }
 
   const handleConfirmBooking = async () => {
@@ -493,32 +380,8 @@ export default function BookAppointment() {
         logClientError('Please select a city.')
         return
       }
-      if (!form.appointmentDate || !getAllBookableDates(engagementSchedule).includes(form.appointmentDate)) {
-        logClientError('Please select a schedule date.')
-        return
-      }
-      if (!form.appointmentCabin) {
-        logClientError('Please pick a cabin.')
-        return
-      }
-      if (
-        !getCabinsForDate(engagementSchedule, form.appointmentDate).some(
-          (cabin) => cabin.name === form.appointmentCabin,
-        )
-      ) {
-        logClientError('Please pick a cabin for this date.')
-        return
-      }
-      const day = engagementSchedule
-        ? getCabinDay(engagementSchedule, form.appointmentCabin, form.appointmentDate)
-        : null
-      const slots = getSlotDisplays(day)
-      if (!form.appointmentTime || !slots.includes(form.appointmentTime)) {
-        logClientError('Please select a time slot.')
-        return
-      }
-      if (!form.doctorConsultation) {
-        logClientError('Please select doctor consultation preference.')
+      if (!form.bloodGroup.trim()) {
+        logClientError('Please select a blood group.')
         return
       }
     }
@@ -553,15 +416,14 @@ export default function BookAppointment() {
         city: apiCity,
         state: apiState || 'Maharashtra',
         country: 'India',
-        blood_collection_date: form.appointmentDate,
-        blood_collection_time_slot: toApiTimeSlot(form.appointmentTime),
-        blood_collection_cabin:
-          resolveCabinKey(engagementSchedule, form.appointmentCabin, form.appointmentDate) || null,
+        blood_collection_date: form.appointmentDate || null,
+        blood_collection_time_slot: form.appointmentTime || null,
+        blood_collection_cabin: null,
         participants_employee_id: participantId,
-        participant_blood_group: 'NA',
+        participant_blood_group: form.bloodGroup.trim(),
         consultations: {
           eye: false,
-          doctor: form.doctorConsultation === 'yes',
+          doctor: false,
         },
       }
 
@@ -581,8 +443,10 @@ export default function BookAppointment() {
         status: 'active',
       })
       const onboardResult = await onboardUserForEngagement(payload)
-      setPreviewAvailable(Boolean(onboardResult.previewAvailable))
-      setPreferredAssessmentInstanceId(onboardResult.assessmentInstanceId ?? null)
+      const nextPreviewAvailable = Boolean(onboardResult.previewAvailable)
+      const nextAssessmentInstanceId = onboardResult.assessmentInstanceId ?? null
+      setPreviewAvailable(nextPreviewAvailable)
+      setPreferredAssessmentInstanceId(nextAssessmentInstanceId)
       if (otpVerified) {
         setStep(5)
         return
@@ -592,7 +456,7 @@ export default function BookAppointment() {
       } catch (otpError) {
         logClientError(otpError instanceof Error ? otpError.message : 'Unable to send OTP.')
       }
-      setStep(4)
+      setStep(3)
     } catch (error) {
       logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
     } finally {
@@ -639,25 +503,29 @@ export default function BookAppointment() {
     setCategoryQuestions(withDrafts)
   }
 
-  const handleContinueToAssessment = async () => {
+  const handleContinueToAssessment = async (overrides?: {
+    previewAvailable?: boolean
+    preferredAssessmentInstanceId?: number | null
+  }) => {
     if (isLoadingAssessmentCategories) return
+
+    const usePreview = overrides?.previewAvailable ?? previewAvailable
+    const preferredId =
+      overrides?.preferredAssessmentInstanceId ?? preferredAssessmentInstanceId
 
     setUiError('')
     setIsLoadingAssessmentCategories(true)
 
     try {
       const accessToken = getAccessToken()
-      const result = await loadAssessmentCategoriesForStep2(
-        accessToken,
-        preferredAssessmentInstanceId,
-      )
-      const categories = previewAvailable
+      const result = await loadAssessmentCategoriesForStep2(accessToken, preferredId)
+      const categories = usePreview
         ? result.categories.map((category) => ({ ...category, status: 'pending' }))
         : result.categories
       setAssessmentInstanceId(result.assessmentInstanceId)
       setAssessmentCategories(categories)
       setCompletedCategoryIds(
-        previewAvailable
+        usePreview
           ? []
           : categories
               .filter((category) => isCategoryCompleted(category, []))
@@ -665,7 +533,7 @@ export default function BookAppointment() {
       )
       console.info('[assessment] step 2 categories loaded', {
         assessmentInstanceId: result.assessmentInstanceId,
-        previewAvailable,
+        previewAvailable: usePreview,
         categories: categories.map((c) => c.category_key),
       })
       setStep(6)
@@ -872,18 +740,17 @@ export default function BookAppointment() {
 
   const mobileScreenTitle = 'Book Appointment for Bio-AI health camp.'
 
-  const showBack = step > 1 && step !== 4 && step !== 5 && step !== 13
-  const hideGlobalContinue = step === 3 || step === 4 || step === 5 || step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12 || step === 13
-  const hideStepper = step >= 5
+  const showBack = step > 1 && step !== 3 && step !== 5 && step !== 13
+  const hideGlobalContinue = step === 2 || step === 3 || step >= 5
+  const hideStepper = step >= 4
   const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12
-  const confirmStepperBorder = step === 3
+  const confirmStepperBorder = step === 2
 
   const handleStepContinue = () => {
     if (step === 1) goNextFromPersonal()
-    else goNextFromSchedule()
   }
 
-  const continueVariant = step === 2 ? 'mobileBar' : 'mobileBarCompact'
+  const continueVariant = 'mobileBarCompact'
 
   const isQuestionnaireFlow = step >= 6
   const activeCategoryKey = normalizeCategoryKey(activeCategory?.category_key || '')
@@ -927,7 +794,7 @@ export default function BookAppointment() {
 
   return (
     <PageBackdrop
-      wide={step <= 4}
+      wide={step <= 3}
       wallpaperSrc={questionnaireWallpaper}
       cssWallpaper={isAnthroSection ? ANTHRO_PAGE_BACKGROUND : undefined}
       tone={questionnaireTone}
@@ -972,7 +839,7 @@ export default function BookAppointment() {
             <Stepper
               current={step}
               maxReachable={maxReachedStep}
-              onStepClick={step === 4 ? undefined : (target) => setStep(target)}
+              onStepClick={step === 3 ? undefined : (target) => setStep(target)}
             />
           </div>
         )}
@@ -1011,15 +878,6 @@ export default function BookAppointment() {
               />
             )}
             {step === 2 && (
-              <ScheduleStep
-                form={form}
-                update={update}
-                schedule={engagementSchedule}
-                isLoading={isLoadingSchedule}
-                showMissingRequired={ENFORCE_REQUIRED_FIELDS && attemptedScheduleContinue}
-              />
-            )}
-            {step === 3 && (
               <ConfirmStep
                 form={form}
                 onEdit={(s) => setStep(s)}
@@ -1027,7 +885,7 @@ export default function BookAppointment() {
                 isSubmitting={isSubmittingBooking}
               />
             )}
-            {step === 4 && (
+            {step === 3 && (
               <OtpVerifyStep
                 key={form.phone}
                 phone={form.phone}
@@ -1037,9 +895,7 @@ export default function BookAppointment() {
                 onResend={handleResendOtp}
               />
             )}
-            {step === 5 && (
-              <BookingConfirmedStep form={form} />
-            )}
+            {step === 5 && <BookingConfirmedStep form={form} />}
             {step === 6 && (
               <HealthAssessmentStep
                 categories={assessmentCategories}
@@ -1103,7 +959,9 @@ export default function BookAppointment() {
               variant="mobileBar"
               className="mt-6 !h-[52px] w-full shrink-0 border border-[#969696] shadow-[0_12px_20px_rgba(255,255,255,0.15)]"
               disabled={isLoadingAssessmentCategories}
-              onClick={handleContinueToAssessment}
+              onClick={() => {
+                void handleContinueToAssessment()
+              }}
             >
               {isLoadingAssessmentCategories
                 ? 'Loading...'
@@ -1120,12 +978,8 @@ export default function BookAppointment() {
                   confidential and handled securely.
                 </p>
               ) : null}
-              <ContinueButton
-                variant={continueVariant}
-                disabled={step === 2 && isLoadingSchedule}
-                onClick={handleStepContinue}
-              >
-                {step === 2 && isLoadingSchedule ? 'Loading slots...' : 'Continue'}
+              <ContinueButton variant={continueVariant} onClick={handleStepContinue}>
+                Continue
               </ContinueButton>
             </div>
           ) : null}
@@ -1188,6 +1042,7 @@ function PersonalStep({
         : undefined
 
   const applyCity = (city: string) => {
+    if (city === 'Pune') return
     update('city', city)
     if (isBookingCity(city)) {
       update('state', CITY_LOCATION[city].state)
@@ -1195,6 +1050,11 @@ function PersonalStep({
     } else {
       update('state', '')
       update('pincode', '')
+    }
+    if (city === 'Mumbai') {
+      update('appointmentDate', MUMBAI_BLOOD_COLLECTION.date)
+      update('appointmentTime', MUMBAI_BLOOD_COLLECTION.timeSlot)
+      return
     }
     update('appointmentDate', '')
     update('appointmentTime', '')
@@ -1282,10 +1142,6 @@ function PersonalStep({
             onClick={() => {
               if (form.gender === 'male') return
               update('gender', 'male')
-              update('appointmentCabin', '')
-              update('appointmentCabinName', '')
-              update('appointmentDate', '')
-              update('appointmentTime', '')
             }}
             className={[
               'flex flex-1 origin-center items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
@@ -1302,10 +1158,6 @@ function PersonalStep({
             onClick={() => {
               if (form.gender === 'female') return
               update('gender', 'female')
-              update('appointmentCabin', '')
-              update('appointmentCabinName', '')
-              update('appointmentDate', '')
-              update('appointmentTime', '')
             }}
             className={[
               'flex flex-1 origin-center items-center justify-center gap-2.5 rounded-full px-2.5 py-1 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
@@ -1325,19 +1177,18 @@ function PersonalStep({
         <Dropdown
           value={form.city}
           placeholder="Select city"
-          options={BOOKING_CITIES}
+          options={[{ value: 'Mumbai' }, { value: 'Pune', disabled: true }]}
           onChange={applyCity}
         />
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(Hash, 'Employee ID')}
-        <input
-          className={mobileFieldInput}
-          placeholder="Employee ID"
-          autoComplete="off"
-          value={form.employeeId}
-          onChange={(e) => update('employeeId', sanitizeEmployeeId(e.target.value))}
+        {labelRow(Droplet, 'Blood Group', undefined, isMissing(form.bloodGroup))}
+        <Dropdown
+          value={form.bloodGroup}
+          placeholder="Select blood group"
+          options={BLOOD_GROUPS}
+          onChange={(value) => update('bloodGroup', value)}
         />
       </div>
       </div>
@@ -1363,8 +1214,8 @@ function ConfirmStep({
   isSubmitting: boolean
 }) {
   return (
-    <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4">
-      <h2 className="text-[18px] font-semibold text-white lg:col-span-2">Confirm details</h2>
+    <div className="flex flex-col gap-3">
+      <h2 className="text-[18px] font-semibold text-white">Confirm details</h2>
 
       <section className="rounded-[8px] bg-white/5 p-3">
         <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
@@ -1376,35 +1227,8 @@ function ConfirmStep({
         <MemberSummary member={form} showRelation={false} dense />
       </section>
 
-      <section className="rounded-[8px] bg-white/5 p-3">
-        <div className="mb-3 flex items-center justify-between border-b border-white/20 pb-2">
-          <h3 className="text-[15px] font-semibold text-white">Schedule</h3>
-          <button type="button" className="text-[13px] font-medium text-[#4b8d83]" onClick={() => onEdit(2)}>
-            Edit
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-3 text-[11px] font-light text-[#ccc]">
-          <SummaryItem Icon={Calendar} label={formatBookingDate(form.appointmentDate)} dense />
-          <SummaryItem Icon={Clock} label={form.appointmentTime || '—'} dense />
-          <div className="col-span-2">
-            <SummaryItem Icon={Building2} label={form.appointmentCabinName || form.appointmentCabin || '—'} dense />
-          </div>
-          <div className="col-span-2">
-            <SummaryItem
-              Icon={User}
-              label={
-                form.doctorConsultation
-                  ? `Doctor consultation: ${form.doctorConsultation === 'yes' ? 'Yes' : 'No'}`
-                  : 'Doctor consultation: —'
-              }
-              dense
-            />
-          </div>
-        </div>
-      </section>
-
       <ContinueButton
-        className="mt-3 w-full max-w-none lg:col-span-2"
+        className="mt-3 w-full max-w-none"
         showChevron={false}
         variant="mobileBarCompact"
         disabled={isSubmitting}
@@ -1414,6 +1238,29 @@ function ConfirmStep({
       </ContinueButton>
     </div>
   )
+}
+
+const COLLECTION_DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+const COLLECTION_MONTH_LABELS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+] as const
+
+function formatCollectionDate(iso: string): string {
+  const date = new Date(`${iso}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return iso
+  return `${COLLECTION_DAY_LABELS[date.getDay()]}, ${date.getDate()} ${COLLECTION_MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`
+}
+
+function formatCollectionTime(slot: string): string {
+  const match = slot.trim().match(/^(\d{1,2}):(\d{2})$/)
+  if (!match) return slot || '—'
+  let hour = Number.parseInt(match[1], 10)
+  const minute = match[2]
+  const meridiem = hour >= 12 ? 'PM' : 'AM'
+  if (hour === 0) hour = 12
+  else if (hour > 12) hour -= 12
+  return `${hour}:${minute} ${meridiem}`
 }
 
 function MemberSummary({
@@ -1450,8 +1297,17 @@ function MemberSummary({
         <SummaryItem Icon={GenderIcon} label={genderLabel} dense={dense} />
         <SummaryItem Icon={Calendar} label={member.age ? `${member.age} Years` : '—'} dense={dense} />
         <SummaryItem Icon={MapPin} label={member.city || '—'} dense={dense} />
+        {member.city === 'Mumbai' && member.appointmentDate ? (
+          <div className="col-span-2">
+            <SummaryItem
+              Icon={Clock}
+              label={`${formatCollectionDate(member.appointmentDate)}, ${formatCollectionTime(member.appointmentTime)}`}
+              dense={dense}
+            />
+          </div>
+        ) : null}
         <div className="col-span-2">
-          <SummaryItem Icon={Hash} label={member.employeeId || '—'} dense={dense} />
+          <SummaryItem Icon={Droplet} label={member.bloodGroup ? `Blood group: ${member.bloodGroup}` : '—'} dense={dense} />
         </div>
         <div className="col-span-2">
           <SummaryItem Icon={Mail} label={member.email || '—'} dense={dense} />
@@ -1482,334 +1338,11 @@ function SummaryItem({
   )
 }
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
-
-function PreferredDateIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-      <path d="M6.66699 1.66699V5.00033M13.3337 1.66699V5.00033" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4.16667 3.33398H15.8333C16.7538 3.33398 17.5 4.08018 17.5 5.00065V16.6673C17.5 17.5878 16.7538 18.334 15.8333 18.334H4.16667C3.24619 18.334 2.5 17.5878 2.5 16.6673V5.00065C2.5 4.08018 3.24619 3.33398 4.16667 3.33398V3.33398" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2.5 8.33398H17.5" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function PreferredTimeSlotIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-      <circle cx="10" cy="10" r="7.5" stroke="#9A9A9A" strokeWidth="1.66667" />
-      <path d="M10 5.83398V10.0007H13.3333" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function PickCabinIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-      <path d="M3.33301 16.667V8.33366L9.99967 3.33366L16.6663 8.33366V16.667" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M8.33301 16.667V11.667H11.6663V16.667" stroke="#9A9A9A" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function ScheduleStep({
-  form,
-  update,
-  schedule,
-  isLoading,
-  showMissingRequired,
-}: {
-  form: FormData
-  update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
-  schedule: EngagementSchedule | null
-  isLoading: boolean
-  showMissingRequired?: boolean
-}) {
-  const cabins = schedule?.cabins ?? []
-  const bookableDates = useMemo(() => {
-    return getAllScheduleDates(schedule).flatMap((iso) => {
-      const date = parseIsoDate(iso)
-      return date ? [{ iso, date, enabled: isScheduleDateEnabled(schedule, iso) }] : []
-    })
-  }, [schedule])
-
-  const activeDate = form.appointmentDate || ''
-  const cabinsForDate = getCabinsForDate(schedule, activeDate)
-  const selectedCabin =
-    cabinsForDate.find((cabin) => cabin.name === form.appointmentCabin) ?? null
-  const cabinDay =
-    schedule && selectedCabin && activeDate
-      ? getCabinDay(schedule, selectedCabin.name, activeDate)
-      : null
-  const timeSlots = cabinDay?.slots ?? []
-  const timeHint =
-    timeSlots.length > 0
-      ? `${timeSlots[0].display} – ${timeSlots[timeSlots.length - 1].display}`
-      : ''
-
-  const selectedSlotClass =
-    'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
-  const idleSlotClass = 'border-white/[0.08] bg-white/5'
-  const selectedDateClass =
-    'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)]'
-  const idleDateClass = 'bg-white/5'
-  const sectionLabelClass = 'font-sans text-[14px] font-medium leading-normal text-[#9A9A9A]'
-
-  const pickDate = (iso: string) => {
-    update('appointmentDate', iso)
-    const nextCabins = getCabinsForDate(schedule, iso)
-    const cabinStillValid = nextCabins.some((cabin) => cabin.name === form.appointmentCabin)
-    if (!cabinStillValid) {
-      const autoCabin = nextCabins.length === 1 ? nextCabins[0].name : ''
-      update('appointmentCabin', autoCabin)
-      update('appointmentCabinName', autoCabin)
-    }
-    update('appointmentTime', '')
-  }
-
-  const pickCabin = (cabinName: string) => {
-    update('appointmentCabin', cabinName)
-    update('appointmentCabinName', cabinName)
-    update('appointmentTime', '')
-  }
-
-  const consultationChoice = form.doctorConsultation
-  const isMissingConsultation = Boolean(showMissingRequired && !consultationChoice)
-  const setConsultation = (value: 'yes' | 'no') => {
-    update('doctorConsultation', value)
-  }
-
-  const doctorConsultationSection = (
-    <section className="flex min-w-0 flex-col gap-3">
-      <div className="flex items-start gap-2">
-        <User className="mt-0.5 size-5 shrink-0 text-[#9A9A9A]" strokeWidth={1.75} />
-        <h2 className={sectionLabelClass}>
-          Do you want an in-person Doctor consultation? (2nd week of September)
-          {isMissingConsultation ? (
-            <span className="text-[#ff6b6b]"> * Field is required</span>
-          ) : null}
-        </h2>
-      </div>
-      <div className="flex h-10 gap-6 overflow-visible">
-        <button
-          type="button"
-          onClick={() => setConsultation('yes')}
-          className={[
-            'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-            consultationChoice === 'yes'
-              ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-              : 'bg-white/5 text-[#999]',
-          ].join(' ')}
-        >
-          Yes
-        </button>
-        <button
-          type="button"
-          onClick={() => setConsultation('no')}
-          className={[
-            'flex flex-1 origin-center items-center justify-center rounded-full px-3.5 py-2 text-[15px] leading-4 transition duration-200 hover:z-[1] hover:scale-[1.03]',
-            consultationChoice === 'no'
-              ? 'bg-[radial-gradient(ellipse_at_center,_#11795f_0%,_#1c493d_100%)] text-white'
-              : 'bg-white/5 text-[#999]',
-          ].join(' ')}
-        >
-          No
-        </button>
-      </div>
-    </section>
-  )
-
-  return (
-    <div className="flex min-w-0 flex-col gap-6">
-      <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-x-8">
-        <section className="flex min-w-0 flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <PreferredDateIcon />
-            <h2 className={sectionLabelClass}>
-              Preferred Date
-              {showMissingRequired && !form.appointmentDate ? (
-                <span className="text-[#ff6b6b]"> * Field is required</span>
-              ) : null}
-            </h2>
-          </div>
-          {isLoading ? (
-            <p className="text-[12px] font-light text-[#9a9a9a]">Loading dates...</p>
-          ) : bookableDates.length === 0 ? (
-            <p className="text-[12px] font-light text-[#9a9a9a]">
-              {form.city
-                ? 'No dates are available yet.'
-                : 'Select a city on the previous page to see available dates.'}
-            </p>
-          ) : (
-            <div className="grid w-full grid-cols-4 gap-2">
-              {bookableDates.map(({ iso, date, enabled }) => {
-                const selected = enabled && form.appointmentDate === iso
-                return (
-                  <button
-                    key={iso}
-                    type="button"
-                    disabled={!enabled}
-                    onClick={() => {
-                      if (!enabled) return
-                      pickDate(iso)
-                    }}
-                    aria-pressed={selected}
-                    aria-disabled={!enabled}
-                    className={[
-                      'flex h-20 w-full min-w-0 origin-center flex-col items-center justify-center gap-1 rounded-[8px] transition duration-200',
-                      enabled
-                        ? 'hover:z-[1] hover:scale-[1.03]'
-                        : 'pointer-events-none cursor-not-allowed opacity-40',
-                      selected ? selectedDateClass : idleDateClass,
-                    ].join(' ')}
-                  >
-                    <span
-                      className={
-                        selected
-                          ? 'text-[13px] font-medium leading-4 text-white'
-                          : 'text-[13px] font-medium leading-4 text-[#9a9a9a]'
-                      }
-                    >
-                      {DAY_LABELS[date.getDay()]}
-                    </span>
-                    <span
-                      className={
-                        selected
-                          ? 'text-[22px] font-semibold leading-6 text-white'
-                          : 'text-[22px] font-semibold leading-6 text-[#cccccc]'
-                      }
-                    >
-                      {date.getDate()}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </section>
-
-        <div className="hidden lg:block">{doctorConsultationSection}</div>
-      </div>
-
-      <section className="flex min-w-0 flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <PickCabinIcon />
-          <h2 className={sectionLabelClass}>
-            Pick Cabin
-            {showMissingRequired && !form.appointmentCabin ? (
-              <span className="text-[#ff6b6b]"> * Field is required</span>
-            ) : null}
-          </h2>
-        </div>
-        {isLoading ? (
-          <p className="text-[12px] font-light text-[#9a9a9a]">Loading cabins...</p>
-        ) : cabins.length === 0 ? (
-          <p className="text-[12px] font-light text-[#9a9a9a]">
-            No cabins are available for this city yet.
-          </p>
-        ) : !activeDate ? (
-          <p className="text-[12px] font-light text-[#9a9a9a]">Select a date to see available cabins.</p>
-        ) : cabinsForDate.length === 0 ? (
-          <p className="text-[12px] font-light text-[#9a9a9a]">No cabins are available on this date.</p>
-        ) : (
-          <div
-            className="grid w-full gap-2"
-            style={{
-              gridTemplateColumns: `repeat(${Math.max(cabinsForDate.length, 1)}, minmax(0, 1fr))`,
-            }}
-          >
-            {cabinsForDate.map((cabin) => {
-              const selected = form.appointmentCabin === cabin.name
-              return (
-                <button
-                  key={cabin.name}
-                  type="button"
-                  onClick={() => pickCabin(cabin.name)}
-                  aria-pressed={selected}
-                  className={[
-                    'flex h-12 min-w-0 origin-center items-center justify-center rounded-[8px] px-3 text-[14px] font-medium transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                    selected ? selectedDateClass : idleDateClass,
-                    selected ? 'text-white' : 'text-[#9a9a9a]',
-                  ].join(' ')}
-                >
-                  <span className="truncate">{cabin.name}</span>
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </section>
-
-      <section className="flex min-w-0 flex-col gap-3">
-        <div className="flex items-start gap-2">
-          <PreferredTimeSlotIcon />
-          <div className="flex flex-col gap-0.5">
-            <h2 className={sectionLabelClass}>
-              Preferred Time Slot
-              {showMissingRequired && !form.appointmentTime ? (
-                <span className="text-[#ff6b6b]"> * Field is required</span>
-              ) : null}
-            </h2>
-            {timeHint ? <p className="text-[10px] font-light text-[#ccc]">{timeHint}</p> : null}
-          </div>
-        </div>
-        {!activeDate ? (
-          <p className="text-[12px] font-light text-[#9a9a9a]">Select a date to see time slots.</p>
-        ) : !selectedCabin ? (
-          <p className="text-[12px] font-light text-[#9a9a9a]">Select a cabin to see time slots.</p>
-        ) : (
-          <div className="grid w-full grid-cols-3 gap-x-2 gap-y-3 px-1 sm:grid-cols-5 lg:grid-cols-10">
-            {timeSlots.map((slot) => {
-              const selected = form.appointmentTime === slot.display
-              const remaining = slot.spotLeft
-              const isFull = remaining <= 0
-              return (
-                <div key={slot.hhmm} className="flex min-w-0 flex-col items-center gap-1">
-                  <button
-                    type="button"
-                    disabled={isFull}
-                    onClick={() => update('appointmentTime', slot.display)}
-                    aria-pressed={selected}
-                    className={[
-                      'flex h-10 w-full items-center justify-center rounded-full border text-[12px] font-medium transition duration-200 hover:z-[1] hover:scale-[1.03]',
-                      selected ? selectedSlotClass : idleSlotClass,
-                      isFull ? 'cursor-not-allowed opacity-40 hover:scale-100' : '',
-                    ].join(' ')}
-                  >
-                    <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>{slot.display}</span>
-                  </button>
-                  <span className="text-[9px] font-light leading-none text-[#41ab99]">
-                    {isFull ? 'Full' : `${remaining} slot${remaining === 1 ? '' : 's'} left`}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </section>
-
-      <div className="lg:hidden">{doctorConsultationSection}</div>
-    </div>
-  )
-}
-
-const MONTH_LABELS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-] as const
-
-function formatBookingDate(iso: string): string {
-  if (!iso) return '—'
-  const d = new Date(`${iso}T00:00:00`)
-  if (Number.isNaN(d.getTime())) return iso
-  return `${DAY_LABELS[d.getDay()]}, ${d.getDate()} ${MONTH_LABELS[d.getMonth()]}`
-}
-
 function BookingConfirmedStep({ form }: { form: FormData }) {
-  const memberName =
-    [form.firstName, form.lastName].filter(Boolean).join(' ') || '—'
-  const bookingDate = formatShortBookingDate(form.appointmentDate)
-  const bookingDateTime = `${bookingDate}  |  ${form.appointmentTime || '—'}`
+  const memberName = [form.firstName, form.lastName].filter(Boolean).join(' ') || '—'
+  const bookingDateTime = form.appointmentDate
+    ? `${formatCollectionDate(form.appointmentDate)}  |  ${formatCollectionTime(form.appointmentTime)}`
+    : '—'
   const locationLabel =
     [form.city.trim(), form.appointmentCabinName.trim() || form.appointmentCabin.trim()]
       .filter(Boolean)
@@ -1825,9 +1358,7 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
           className="mx-auto h-[148px] w-[148px] object-contain"
         />
         <div className="flex w-full flex-col items-center gap-1 pb-1 text-center">
-          <h2 className="text-[18px] font-semibold tracking-[0.2px] text-white">
-            Slot Confirmed!
-          </h2>
+          <h2 className="text-[18px] font-semibold tracking-[0.2px] text-white">Slot Confirmed!</h2>
           <p className="text-[12px] leading-4 text-[#9a9a9a]">
             Complete the health assessment to confirm your booking.
           </p>
@@ -1837,15 +1368,11 @@ function BookingConfirmedStep({ form }: { form: FormData }) {
       <div className="w-full rounded-xl border border-white/10 bg-white/5 px-[17px] py-5 backdrop-blur-[12px]">
         <div className="flex w-full items-start justify-between">
           <div className="flex flex-col items-start gap-1">
-            <p className="text-[16px] font-semibold leading-5 tracking-[-0.96px] text-white">
-              Step 1
-            </p>
+            <p className="text-[16px] font-semibold leading-5 tracking-[-0.96px] text-white">Step 1</p>
             <p className="text-[11px] leading-[14px] text-[#90df9e]">Completed</p>
           </div>
           <div className="flex flex-col items-start gap-1">
-            <p className="text-[16px] font-semibold leading-5 tracking-[-0.96px] text-white">
-              Step 2
-            </p>
+            <p className="text-[16px] font-semibold leading-5 tracking-[-0.96px] text-white">Step 2</p>
             <p className="text-[11px] font-light leading-[14px] text-[#9a9a9a]">Pending</p>
           </div>
         </div>
@@ -1913,4 +1440,3 @@ function LocationIcon() {
     </svg>
   )
 }
-

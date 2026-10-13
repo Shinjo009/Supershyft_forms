@@ -204,7 +204,7 @@ export function Dropdown({
                     aria-selected={selected}
                     disabled={disabled}
                     initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    animate={{ opacity: disabled ? 0.4 : 1, x: 0 }}
                     transition={{ duration: 0.2, delay: Math.min(index * 0.03, 0.2) }}
                     onClick={() => {
                       if (disabled) return

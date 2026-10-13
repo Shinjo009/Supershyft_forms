@@ -4,6 +4,7 @@ export type FormData = {
   phone: string
   email: string
   employeeId: string
+  bloodGroup: string
   age: string
   gender: '' | 'male' | 'female'
   street: string
@@ -26,6 +27,7 @@ export const defaultFormData: FormData = {
   phone: '',
   email: '',
   employeeId: '',
+  bloodGroup: '',
   age: '',
   gender: '',
   street: '',

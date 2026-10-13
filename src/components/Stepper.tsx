@@ -1,4 +1,4 @@
-const STEPS = ['Personal', 'Schedule', 'Preview', 'OTP'] as const
+const STEPS = ['Personal', 'Preview', 'OTP'] as const
 
 type Props = {
   current: number
@@ -7,15 +7,13 @@ type Props = {
 }
 
 function activeStep(current: number) {
-  return current >= 5 ? 4 : Math.max(1, Math.min(4, current))
+  return Math.max(1, Math.min(STEPS.length, current))
 }
 
 function progressWidthPercent(current: number) {
-  if (current >= 5) return 100
   const step = activeStep(current)
-  if (step === 1) return 8
-  if (step === 2) return 36
-  if (step === 3) return 68
+  if (step <= 1) return 8
+  if (step === 2) return 50
   return 100
 }
 
@@ -27,7 +25,7 @@ export function Stepper({ current, maxReachable, onStepClick }: Props) {
     <div
       className="w-full"
       role="navigation"
-      aria-label={`Form progress, step ${stepForA11y} of 4: ${STEPS[stepForA11y - 1]}`}
+      aria-label={`Form progress, step ${stepForA11y} of ${STEPS.length}: ${STEPS[stepForA11y - 1]}`}
     >
       <div className="relative mx-auto w-full max-w-[360px]">
         <div className="pointer-events-none absolute left-[15px] right-[15px] top-[14px] h-px rounded-full bg-[#9a9a9a]/50" />
