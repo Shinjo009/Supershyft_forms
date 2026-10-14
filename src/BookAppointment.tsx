@@ -37,6 +37,7 @@ import {
   type QuestionnaireQuestion,
 } from './api/questionnaire'
 import { getAccessToken } from './lib/authStorage'
+import { toUserFacingError } from './lib/userFacingError'
 import { isFrontendOnly } from './lib/frontendOnly'
 import { applyAnswersToQuestions, type AnswerValue } from './lib/questionnaireVisibility'
 import { getMockQuestionnaireQuestions } from './data/mockApiQuestionnaires'
@@ -118,10 +119,13 @@ const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
 const sanitizeEmail = (value: string) => value.replace(/\s/g, '')
 const generateParticipantId = (phone: string) => `HRM${phone || String(Date.now()).slice(-10)}`
 const BOOK_APPOINTMENT_ERROR_EVENT = 'book-appointment:error'
-const logClientError = (message: string) => {
-  console.error(`[BookAppointment] ${message}`)
+const logClientError = (error: unknown, fallback = 'Something went wrong. Please try again.') => {
+  const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : fallback
+  console.error(`[BookAppointment] ${raw}`)
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(BOOK_APPOINTMENT_ERROR_EVENT, { detail: message }))
+    window.dispatchEvent(
+      new CustomEvent(BOOK_APPOINTMENT_ERROR_EVENT, { detail: toUserFacingError(error, fallback) }),
+    )
   }
 }
 
@@ -315,7 +319,7 @@ export default function BookAppointment() {
       }
       setStep(5)
     } catch (error) {
-      logClientError(error instanceof Error ? error.message : 'Unable to verify OTP.')
+      logClientError(error, 'Unable to verify OTP.')
     } finally {
       setIsVerifyingOtp(false)
     }
@@ -330,7 +334,7 @@ export default function BookAppointment() {
     try {
       await resendBookingOtp({ phone: form.phone.trim() })
     } catch (error) {
-      logClientError(error instanceof Error ? error.message : 'Unable to resend OTP.')
+      logClientError(error, 'Unable to resend OTP.')
     } finally {
       setIsResendingOtp(false)
     }
@@ -454,11 +458,11 @@ export default function BookAppointment() {
       try {
         await sendBookingOtp({ phone: trimmedPhone })
       } catch (otpError) {
-        logClientError(otpError instanceof Error ? otpError.message : 'Unable to send OTP.')
+        logClientError(otpError, 'Unable to send OTP.')
       }
       setStep(3)
     } catch (error) {
-      logClientError(error instanceof Error ? error.message : 'Unable to confirm booking.')
+      logClientError(error, 'Unable to confirm booking.')
     } finally {
       setIsSubmittingBooking(false)
     }
@@ -538,9 +542,7 @@ export default function BookAppointment() {
       })
       setStep(6)
     } catch (error) {
-      logClientError(
-        error instanceof Error ? error.message : 'Unable to load health assessment categories.',
-      )
+      logClientError(error, 'Unable to load health assessment categories.')
     } finally {
       setIsLoadingAssessmentCategories(false)
     }
@@ -623,9 +625,7 @@ export default function BookAppointment() {
         beginCategory(cachedQuestions)
         return
       }
-      logClientError(
-        error instanceof Error ? error.message : 'Unable to load questionnaire questions.',
-      )
+      logClientError(error, 'Unable to load questionnaire questions.')
       if (options?.returnStep) setStep(options.returnStep)
     } finally {
       setIsLoadingQuestionnaire(false)

@@ -118,7 +118,7 @@ async function authorizedRequest<T = unknown>(
   const data: unknown = isJson ? await response.json() : await response.text()
 
   if (!response.ok) {
-    throw new Error(parseErrorMessage(data, response.status))
+    throw new ApiError(parseErrorMessage(data, response.status), response.status)
   }
 
   return data as T

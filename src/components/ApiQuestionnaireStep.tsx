@@ -14,6 +14,7 @@ import {
   type QuestionnaireQuestion,
 } from '../api/questionnaire'
 import { getAccessToken } from '../lib/authStorage'
+import { toUserFacingError } from '../lib/userFacingError'
 import {
   buildNavigableQuestionnaireQuestions,
   findOtherFollowUpForParent,
@@ -421,7 +422,7 @@ export function ApiQuestionnaireStep({
       onDraftChangeRef.current?.(pruned, 0)
       onComplete?.(pruned)
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Unable to save your answer.')
+      setSaveError(toUserFacingError(error, 'Unable to save your answer.'))
     } finally {
       setIsSaving(false)
     }

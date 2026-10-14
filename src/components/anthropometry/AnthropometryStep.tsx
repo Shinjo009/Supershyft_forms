@@ -5,6 +5,7 @@ import {
 } from '../../api/questionnaire'
 import waistGif from '../../assets/anthropometry/waist-gif.gif'
 import { getAccessToken } from '../../lib/authStorage'
+import { toUserFacingError } from '../../lib/userFacingError'
 import { isFrontendOnly } from '../../lib/frontendOnly'
 import { AnthropometryMcqShell } from './AnthropometryMcqShell'
 import { HeightRulerPicker } from './HeightRulerPicker'
@@ -182,7 +183,7 @@ export function AnthropometryStep({
     try {
       await work()
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Unable to save your measurements.')
+      setSaveError(toUserFacingError(error, 'Unable to save your measurements.'))
     } finally {
       setIsSaving(false)
     }
