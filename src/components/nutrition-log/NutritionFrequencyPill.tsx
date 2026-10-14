@@ -10,6 +10,7 @@ export function NutritionFrequencyPill({
   selected,
   fullWidth,
   compact,
+  equal,
   className = '',
   onClick,
 }: {
@@ -17,17 +18,20 @@ export function NutritionFrequencyPill({
   selected: boolean
   fullWidth?: boolean
   compact?: boolean
+  /** Same fixed box for every option, including longer labels. */
+  equal?: boolean
   className?: string
   onClick: () => void
 }) {
-  const heightClass = compact ? 'min-h-[38px] py-1' : 'h-8 py-1'
-  const widthClass = fullWidth ? 'w-full' : compact ? 'w-full' : 'w-[154px] lg:w-[calc(50%-8px)]'
+  const heightClass = equal ? 'h-11 overflow-hidden py-1' : compact ? 'min-h-[38px] py-1' : 'h-8 py-1'
+  const widthClass = equal || fullWidth ? 'w-full' : compact ? 'w-full' : 'w-[154px] lg:w-[calc(50%-8px)]'
+  const labelClass = equal ? 'leading-4' : 'leading-6'
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center rounded-[24px] border border-solid px-[10px] text-center text-[12px] leading-6 text-white ${heightClass} ${widthClass} ${className} ${
+      className={`flex items-center justify-center rounded-[24px] border border-solid px-[10px] text-center text-[12px] text-white ${heightClass} ${widthClass} ${labelClass} ${className} ${
         selected ? 'font-semibold' : 'font-normal'
       }`}
       style={
@@ -43,7 +47,7 @@ export function NutritionFrequencyPill({
             }
       }
     >
-      {label}
+      {equal ? <span className="line-clamp-2 w-full">{label}</span> : label}
     </button>
   )
 }

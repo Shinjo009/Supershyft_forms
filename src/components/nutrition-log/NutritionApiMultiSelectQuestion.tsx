@@ -16,6 +16,7 @@ export function NutritionApiMultiSelectQuestion({
   onInfoClick,
   reserveTickSpaceForSelectedLabels = false,
   showFullOptionLabels = false,
+  equalCells = false,
 }: {
   questionLabel: string
   questionText: string
@@ -28,6 +29,8 @@ export function NutritionApiMultiSelectQuestion({
   reserveTickSpaceForSelectedLabels?: boolean
   /** Only for the coffee/tea type question: avoid `...` truncation for long labels. */
   showFullOptionLabels?: boolean
+  /** Same pill size for every option. */
+  equalCells?: boolean
 }) {
   const items = useMemo(() => collectNutritionApiOptions(options), [options])
 
@@ -43,6 +46,7 @@ export function NutritionApiMultiSelectQuestion({
         onToggle={onToggle}
         reserveTickSpaceForSelectedLabels={reserveTickSpaceForSelectedLabels}
         showFullOptionLabels={showFullOptionLabels}
+        equalCells={equalCells}
       />
     </div>
   )

@@ -18,6 +18,7 @@ function NutritionMultiSelectGridPill({
   fullWidth,
   reserveTickSpaceForSelectedLabels,
   showFullOptionLabels,
+  equalCells,
   onClick,
 }: {
   label: string
@@ -25,6 +26,7 @@ function NutritionMultiSelectGridPill({
   fullWidth?: boolean
   reserveTickSpaceForSelectedLabels: boolean
   showFullOptionLabels: boolean
+  equalCells: boolean
   onClick: () => void
 }) {
   return (
@@ -34,7 +36,7 @@ function NutritionMultiSelectGridPill({
       className={`relative flex w-full shrink-0 items-center justify-center rounded-[24px] border border-solid px-[10px] py-1 text-[12px] leading-4 text-white ${
         selected ? 'font-semibold' : 'font-normal'
       } ${reserveTickSpaceForSelectedLabels && selected ? 'pl-[30px]' : ''} ${
-        showFullOptionLabels ? 'min-h-[44px]' : 'h-8'
+        equalCells ? 'h-11 overflow-hidden' : showFullOptionLabels ? 'min-h-[44px]' : 'h-8'
       }`}
       style={
         selected
@@ -60,9 +62,11 @@ function NutritionMultiSelectGridPill({
       ) : null}
       <span
         className={
-          showFullOptionLabels
-            ? 'w-full break-words whitespace-normal text-center'
-            : 'max-w-full truncate text-center'
+          equalCells
+            ? 'line-clamp-2 w-full whitespace-normal text-center'
+            : showFullOptionLabels
+              ? 'w-full break-words whitespace-normal text-center'
+              : 'max-w-full truncate text-center'
         }
       >
         {label}
@@ -81,14 +85,17 @@ export function NutritionMultiSelectGridOptions<T extends string>({
   onToggle,
   reserveTickSpaceForSelectedLabels = false,
   showFullOptionLabels = false,
+  equalCells = false,
 }: {
   options: NutritionMultiSelectGridOption<T>[]
   selected: T[]
   onToggle: (value: T) => void
   reserveTickSpaceForSelectedLabels?: boolean
   showFullOptionLabels?: boolean
+  /** Same width and height for every option. Long labels wrap inside the pill. */
+  equalCells?: boolean
 }) {
-  const orderedOptions = showFullOptionLabels
+  const orderedOptions = !equalCells && showFullOptionLabels
     ? (() => {
         const shorts: NutritionMultiSelectGridOption<T>[] = []
         const longs: NutritionMultiSelectGridOption<T>[] = []
@@ -106,12 +113,12 @@ export function NutritionMultiSelectGridOptions<T extends string>({
       {orderedOptions.map((option) => {
         // When showFullOptionLabels is on, long labels span the full row so they never wrap.
         const autoFullWidth =
-          showFullOptionLabels && option.label.trim().length > LONG_LABEL_CHARS
+          !equalCells && showFullOptionLabels && option.label.trim().length > LONG_LABEL_CHARS
         const isCruciferousOption =
           String(option.id).toLowerCase() === 'cruciferous' ||
           option.label.toLowerCase().includes('cruciferous')
         // Cruciferous / long labels span the row, but keep the same 32px pill height as peers.
-        const isFullWidth = option.fullWidth || isCruciferousOption || autoFullWidth
+        const isFullWidth = !equalCells && (option.fullWidth || isCruciferousOption || autoFullWidth)
         const effectiveReserveTickSpaceForSelectedLabels =
           reserveTickSpaceForSelectedLabels || isFullWidth
 
@@ -123,6 +130,7 @@ export function NutritionMultiSelectGridOptions<T extends string>({
               selected={selected.includes(option.id)}
               reserveTickSpaceForSelectedLabels={effectiveReserveTickSpaceForSelectedLabels}
               showFullOptionLabels={showFullOptionLabels}
+              equalCells={equalCells}
               onClick={() => onToggle(option.id)}
             />
           </div>

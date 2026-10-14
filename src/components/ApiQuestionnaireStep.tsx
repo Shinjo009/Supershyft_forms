@@ -773,6 +773,7 @@ export function ApiQuestionnaireStep({
               onInfoClick={openInfo}
               reserveTickSpaceForSelectedLabels={useCoffeeTeaTypeLayout}
               showFullOptionLabels={useCoffeeTeaTypeLayout}
+              equalCells={useCoffeeTeaTypeLayout}
               onToggle={(value) => {
                 setSaveError('')
                 applyChoiceSelection(toggleMulti(selectedValues, value))

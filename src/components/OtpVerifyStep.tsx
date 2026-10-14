@@ -4,10 +4,10 @@ import { ContinueButton } from './ContinueButton'
 export const OTP_LENGTH = 6
 const RESEND_SECONDS = 30
 
-function maskIndianMobile(phone: string): string {
+function formatPhone(phone: string): string {
   const digits = phone.replace(/\D/g, '').slice(-10)
-  if (digits.length !== 10) return phone
-  return `+91 ${digits.slice(0, 2)}****${digits.slice(6)}`
+  if (digits.length !== 10) return phone.trim()
+  return `+91 ${digits}`
 }
 
 function digitsOnly(value: string, max = OTP_LENGTH): string {
@@ -16,6 +16,7 @@ function digitsOnly(value: string, max = OTP_LENGTH): string {
 
 type Props = {
   phone: string
+  email: string
   isVerifying?: boolean
   isResending?: boolean
   onVerify: (otp: string) => void
@@ -25,6 +26,7 @@ type Props = {
 
 export function OtpVerifyStep({
   phone,
+  email,
   isVerifying = false,
   isResending = false,
   onVerify,
@@ -33,7 +35,6 @@ export function OtpVerifyStep({
 }: Props) {
   const [digits, setDigits] = useState<string[]>(() => Array.from({ length: OTP_LENGTH }, () => ''))
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS)
-  const [hasResent, setHasResent] = useState(false)
   const inputRefs = useRef<Array<HTMLInputElement | null>>([])
   const otp = digits.join('')
   const canVerify = otp.length === OTP_LENGTH && !isVerifying
@@ -114,7 +115,6 @@ export function OtpVerifyStep({
     if (!canResend) return
     setDigits(Array.from({ length: OTP_LENGTH }, () => ''))
     setSecondsLeft(RESEND_SECONDS)
-    setHasResent(true)
     onResend()
     window.requestAnimationFrame(() => inputRefs.current[0]?.focus())
   }
@@ -129,9 +129,14 @@ export function OtpVerifyStep({
       <div className="flex flex-col gap-2">
         <h2 className="text-[18px] font-semibold text-white">Verify OTP</h2>
         <p className="text-[12px] leading-4 text-[#9a9a9a]">
-          Enter the 6-digit code sent to your WhatsApp at{' '}
-          <span className="font-medium text-[#ccc]">{maskIndianMobile(phone)}</span>
-          {hasResent ? ' and email' : ''}
+          Enter the 6-digit code sent to WhatsApp at{' '}
+          <span className="font-medium text-[#ccc]">{formatPhone(phone)}</span>
+          {email.trim() ? (
+            <>
+              {' '}
+              and <span className="font-medium text-[#ccc]">{email.trim()}</span>
+            </>
+          ) : null}
         </p>
         {onChangeNumber ? (
           <button

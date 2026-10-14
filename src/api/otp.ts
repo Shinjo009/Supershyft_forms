@@ -29,30 +29,56 @@ function requirePhone(phone: string | undefined): string {
   return normalized
 }
 
-export async function sendBookingOtp(target: BookingOtpTarget): Promise<void> {
-  const payload = { phone: requirePhone(target.phone) }
-
-  if (isFrontendOnly()) {
-    console.info('[frontend-only] skipped send-otp', payload)
-    return
-  }
-
-  console.info('[otp] send', payload)
-  const data = await publicPost('/auth/send-otp', payload)
-  applyAuthTokensFromResponse(data)
+export type BookingOtpSendResult = {
+  email: string
 }
 
-export async function resendBookingOtp(target: BookingOtpTarget): Promise<void> {
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+function readEmailField(row: Record<string, unknown> | null): string {
+  if (!row) return ''
+  const value = row.email
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+/** Email the OTP was sent to, returned by `/auth/resend-otp`. */
+export function readOtpDestinationEmail(data: unknown): string {
+  const root = asRecord(data)
+  if (!root) return ''
+  const direct = readEmailField(root)
+  if (direct) return direct
+  const nested = asRecord(root.data)
+  const fromData = readEmailField(nested)
+  if (fromData) return fromData
+  return readEmailField(asRecord(nested?.user)) || readEmailField(asRecord(root.user))
+}
+
+async function postResendOtp(
+  target: BookingOtpTarget,
+  action: 'send' | 'resend',
+): Promise<BookingOtpSendResult> {
   const payload = { phone: requirePhone(target.phone) }
 
   if (isFrontendOnly()) {
-    console.info('[frontend-only] skipped resend-otp', payload)
-    return
+    console.info(`[frontend-only] skipped resend-otp (${action})`, payload)
+    return { email: '' }
   }
 
-  console.info('[otp] resend', payload)
+  console.info(`[otp] ${action} via resend-otp`, payload)
   const data = await publicPost('/auth/resend-otp', payload)
   applyAuthTokensFromResponse(data)
+  return { email: readOtpDestinationEmail(data) }
+}
+
+export async function sendBookingOtp(target: BookingOtpTarget): Promise<BookingOtpSendResult> {
+  return postResendOtp(target, 'send')
+}
+
+export async function resendBookingOtp(target: BookingOtpTarget): Promise<BookingOtpSendResult> {
+  return postResendOtp(target, 'resend')
 }
 
 export async function verifyBookingOtp(target: BookingOtpTarget, otp: string): Promise<void> {

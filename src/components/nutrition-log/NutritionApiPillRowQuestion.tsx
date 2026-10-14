@@ -5,17 +5,7 @@ import { collectNutritionApiOptions } from './fitApiOptionsToNutrition'
 import { NutritionFrequencyPill } from './NutritionFrequencyPill'
 import { McqQuestionCopy } from '../mcq/McqQuestionCopy'
 
-/**
- * Coffee intake layout — matches the Figma design:
- * short numeric labels (e.g. "1-2 cups per day", "2-3 times a week") pair side-by-side,
- * long descriptive labels (e.g. "I do not drink coffee or tea") go full-width below.
- *
- * Short = starts with a digit (amount/frequency). Everything else is full-width.
- */
-function isShortCoffeeLabel(label: string): boolean {
-  return /^\d/.test(label.trim())
-}
-
+/** Every coffee/tea intake option uses the same pill box. */
 function CoffeeIntakeGrid({
   items,
   selectedValue,
@@ -25,35 +15,13 @@ function CoffeeIntakeGrid({
   selectedValue: string | null
   onSelect: (value: string) => void
 }) {
-  const shorts = items.filter((item) => isShortCoffeeLabel(item.label))
-  const longs = items.filter((item) => !isShortCoffeeLabel(item.label))
-
-  const pairs: { id: string; label: string }[][] = []
-  for (let i = 0; i < shorts.length; i += 2) {
-    pairs.push(shorts.slice(i, i + 2))
-  }
-
   return (
-    <div className="flex w-full flex-col gap-4">
-      {pairs.map((pair, rowIndex) => (
-        <div key={rowIndex} className={`flex w-full ${pair.length > 1 ? 'gap-4' : ''}`}>
-          {pair.map((item) => (
-            <NutritionFrequencyPill
-              key={item.id}
-              label={item.label}
-              fullWidth={pair.length === 1}
-              selected={selectedValue === item.id}
-              onClick={() => onSelect(item.id)}
-              className="flex-1"
-            />
-          ))}
-        </div>
-      ))}
-      {longs.map((item) => (
+    <div className="grid w-full grid-cols-2 gap-4">
+      {items.map((item) => (
         <NutritionFrequencyPill
           key={item.id}
           label={item.label}
-          fullWidth
+          equal
           selected={selectedValue === item.id}
           onClick={() => onSelect(item.id)}
         />

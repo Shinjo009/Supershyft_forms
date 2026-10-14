@@ -210,11 +210,13 @@ export default function BookAppointment() {
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
   const [isResendingOtp, setIsResendingOtp] = useState(false)
   const [otpVerified, setOtpVerified] = useState(false)
+  const [otpDestinationEmail, setOtpDestinationEmail] = useState('')
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     if (uiError) setUiError('')
     if (key === 'phone' || key === 'email') {
       setOtpVerified(false)
+      setOtpDestinationEmail('')
     }
     setForm((f) => ({ ...f, [key]: value }))
   }, [uiError])
@@ -259,11 +261,7 @@ export default function BookAppointment() {
         logClientError('Last name can only contain letters and spaces.')
         return
       }
-      if (!trimmedPhone) {
-        logClientError('Phone is required.')
-        return
-      }
-      if (!PHONE_REGEX.test(trimmedPhone)) {
+      if (trimmedPhone && !PHONE_REGEX.test(trimmedPhone)) {
         logClientError('Enter a valid 10-digit mobile number.')
         return
       }
@@ -297,7 +295,7 @@ export default function BookAppointment() {
       }
     }
 
-    if (!trimmedPhone || !PHONE_REGEX.test(trimmedPhone)) {
+    if (trimmedPhone && !PHONE_REGEX.test(trimmedPhone)) {
       logClientError('Enter a valid 10-digit mobile number.')
       return
     }
@@ -332,7 +330,8 @@ export default function BookAppointment() {
     setIsResendingOtp(true)
 
     try {
-      await resendBookingOtp({ phone: form.phone.trim() })
+      const resent = await resendBookingOtp({ phone: form.phone.trim() })
+      if (resent.email) setOtpDestinationEmail(resent.email)
     } catch (error) {
       logClientError(error, 'Unable to resend OTP.')
     } finally {
@@ -368,7 +367,7 @@ export default function BookAppointment() {
         logClientError('Please enter a valid email address.')
         return
       }
-      if (!trimmedPhone || !PHONE_REGEX.test(trimmedPhone)) {
+      if (trimmedPhone && !PHONE_REGEX.test(trimmedPhone)) {
         logClientError('Enter a valid 10-digit mobile number.')
         return
       }
@@ -451,12 +450,13 @@ export default function BookAppointment() {
       const nextAssessmentInstanceId = onboardResult.assessmentInstanceId ?? null
       setPreviewAvailable(nextPreviewAvailable)
       setPreferredAssessmentInstanceId(nextAssessmentInstanceId)
-      if (otpVerified) {
+      if (otpVerified || !trimmedPhone) {
         setStep(5)
         return
       }
       try {
-        await sendBookingOtp({ phone: trimmedPhone })
+        const sent = await sendBookingOtp({ phone: trimmedPhone })
+        if (sent.email) setOtpDestinationEmail(sent.email)
       } catch (otpError) {
         logClientError(otpError, 'Unable to send OTP.')
       }
@@ -889,6 +889,7 @@ export default function BookAppointment() {
               <OtpVerifyStep
                 key={form.phone}
                 phone={form.phone}
+                email={otpDestinationEmail}
                 isVerifying={isVerifyingOtp}
                 isResending={isResendingOtp}
                 onVerify={handleVerifyOtp}
@@ -1019,13 +1020,8 @@ function PersonalStep({
       : !NAME_REGEX.test(form.firstName.trim()) || !NAME_REGEX.test(form.lastName.trim())
         ? 'invalid'
         : undefined
-  const phoneError: 'missing' | 'invalid' | undefined = !showRequired
-    ? undefined
-    : !form.phone.trim()
-      ? 'missing'
-      : !PHONE_REGEX.test(form.phone.trim())
-        ? 'invalid'
-        : undefined
+  const phoneError: 'missing' | 'invalid' | undefined =
+    showRequired && form.phone.trim() && !PHONE_REGEX.test(form.phone.trim()) ? 'invalid' : undefined
   const emailError: 'missing' | 'invalid' | undefined = !showRequired
     ? undefined
     : !form.email.trim()
@@ -1092,11 +1088,11 @@ function PersonalStep({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        {labelRow(Phone, 'Phone', undefined, Boolean(phoneError), phoneError)}
+        {labelRow(Phone, 'Phone (Whatsapp)', undefined, Boolean(phoneError), phoneError)}
         <input
           className={mobileFieldInput}
           inputMode="tel"
-          placeholder="Phone"
+          placeholder="Phone (Whatsapp)"
           maxLength={10}
           pattern="^[6-9]\d{9}$"
           title="10-digit mobile number starting with 6-9"
