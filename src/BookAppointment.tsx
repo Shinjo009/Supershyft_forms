@@ -427,6 +427,7 @@ export default function BookAppointment() {
         consultations: {
           eye: false,
           doctor: false,
+          nutritionist: false,
         },
       }
 

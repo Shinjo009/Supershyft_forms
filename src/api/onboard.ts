@@ -23,6 +23,7 @@ export type OnboardUserForEngagementPayload = {
   consultations: {
     eye: boolean
     doctor: boolean
+    nutritionist: boolean
   }
 }
 
