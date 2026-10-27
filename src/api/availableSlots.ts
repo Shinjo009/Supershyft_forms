@@ -1,11 +1,12 @@
-import { toUserFacingServiceabilityMessage } from './serviceabilityMessage'
-
 export type AvailableSlotsPayload = {
-  address_line: string
-  landmark: string
-  city: string
-  pincode: string
-  blood_collection_date: string
+  provider: string
+  slot_date: string
+  diagnostic_package_id?: number
+  zone_id?: string
+  latitude: number
+  longitude: number
+  pincode?: string
+  has_female_patient?: boolean
 }
 
 export type AvailableSlot = {
@@ -16,14 +17,15 @@ export type AvailableSlot = {
 }
 
 export type AvailableSlotsData = {
-  engagement_code?: string
-  status: string
+  provider?: string
   slots: AvailableSlot[]
 }
 
 type AvailableSlotsResponse = {
+  provider?: string
+  slots?: AvailableSlot[]
   data?: AvailableSlotsData
-  meta?: Record<string, unknown>
+  message?: string
 }
 
 function trimTrailingSlash(value: string): string {
@@ -44,15 +46,6 @@ function getBaseUrl(): string {
     import.meta.env.VITE_BASE_URL,
     import.meta.env.BACKEND_BASE_URL,
     import.meta.env.API_BASE_URL,
-  )
-}
-
-function getEngagementCode(): string {
-  return firstNonEmpty(
-    import.meta.env.VITE_ENGAGEMENT_CODE,
-    import.meta.env.VITE_CBTW_ENGAGEMENT_CODE,
-    import.meta.env.ENGAGEMENT_CODE,
-    'CBMU0626',
   )
 }
 
@@ -77,7 +70,6 @@ export async function fetchAvailableSlots(
   payload: AvailableSlotsPayload,
 ): Promise<AvailableSlotsData> {
   const baseUrl = getBaseUrl()
-  const engagementCode = getEngagementCode()
 
   if (!baseUrl) {
     throw new Error(
@@ -85,7 +77,7 @@ export async function fetchAvailableSlots(
     )
   }
 
-  const url = `${trimTrailingSlash(baseUrl)}/book/code/${encodeURIComponent(engagementCode)}/available-slots`
+  const url = `${trimTrailingSlash(baseUrl)}/diagnostics/public/available-slots`
 
   const response = await fetch(url, {
     method: 'POST',
@@ -104,18 +96,14 @@ export async function fetchAvailableSlots(
     const requestId = response.headers.get('x-request-id') || ''
     const statusPrefix = `Request failed (${response.status})`
     const traceSuffix = requestId ? ` [request-id: ${requestId}]` : ''
-    const endpointHint = ` [url: ${url}] [engagement: ${engagementCode}]`
+    const endpointHint = ` [url: ${url}]`
     console.error('[available-slots] request payload json', JSON.stringify(payload, null, 2))
     console.error('[available-slots] error response json', JSON.stringify(data, null, 2))
 
     if (data && typeof data === 'object') {
-      const body = data as AvailableSlotsResponse & { message?: string }
-      const apiMessage =
-        (typeof body.data?.status === 'string' && body.data.status !== 'success' && body.message) ||
-        (typeof body.message === 'string' && body.message) ||
-        null
-      if (apiMessage) {
-        throw new Error(toUserFacingServiceabilityMessage(apiMessage))
+      const body = data as AvailableSlotsResponse
+      if (typeof body.message === 'string' && body.message.trim()) {
+        throw new Error(body.message)
       }
 
       const jsonText = JSON.stringify(data)
@@ -136,14 +124,18 @@ export async function fetchAvailableSlots(
   }
 
   const body = data as AvailableSlotsResponse
-  const slotsData = body.data
-  if (!slotsData || !Array.isArray(slotsData.slots)) {
+  const slots = Array.isArray(body.slots)
+    ? body.slots
+    : Array.isArray(body.data?.slots)
+      ? body.data.slots
+      : null
+
+  if (!slots) {
     throw new Error('Unexpected response while loading available time slots.')
   }
 
   return {
-    engagement_code: slotsData.engagement_code,
-    status: slotsData.status || 'success',
-    slots: slotsData.slots,
+    provider: body.provider || body.data?.provider,
+    slots,
   }
 }

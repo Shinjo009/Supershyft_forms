@@ -1,29 +1,18 @@
-import { toUserFacingServiceabilityMessage } from './serviceabilityMessage'
-
-export type LockSlotPayload = {
-  address_line: string
-  landmark: string
-  city: string
-  pincode: string
-  user_id: number
-  blood_collection_date: string
-  blood_collection_time_slot_id: string
-  blood_collection_time_slot: string
-}
-
-export type LockSlotData = {
+export type EngagementDetails = {
+  engagement_name?: string
+  organization_name?: string
+  organization_logo_url?: string
   engagement_code?: string
+  engagement_type?: string
+  slot_duration?: number
   status?: string
-  message?: string
-  slot_id?: string
-  freeze_time?: string
-  vendor_billing_user_id?: string
-  zone_id?: string
+  consultations?: Record<string, boolean>
+  consultation_mode?: string
+  diagnostic_package_id: number
 }
 
-type LockSlotResponse = {
-  data?: LockSlotData
-  meta?: Record<string, unknown>
+type EngagementResponse = EngagementDetails & {
+  data?: EngagementDetails
   message?: string
 }
 
@@ -57,7 +46,16 @@ function getEngagementCode(): string {
   )
 }
 
-export async function lockBookingSlot(payload: LockSlotPayload): Promise<LockSlotData> {
+function parsePackageId(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number.parseInt(value.trim(), 10)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
+export async function fetchEngagementDetails(): Promise<EngagementDetails> {
   const baseUrl = getBaseUrl()
   const engagementCode = getEngagementCode()
 
@@ -67,15 +65,13 @@ export async function lockBookingSlot(payload: LockSlotPayload): Promise<LockSlo
     )
   }
 
-  const url = `${trimTrailingSlash(baseUrl)}/book/code/${encodeURIComponent(engagementCode)}/lock`
+  const url = `${trimTrailingSlash(baseUrl)}/engagements/code/${encodeURIComponent(engagementCode)}`
 
   const response = await fetch(url, {
-    method: 'POST',
+    method: 'GET',
     headers: {
-      'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify(payload),
   })
 
   const contentType = response.headers.get('content-type') || ''
@@ -87,19 +83,13 @@ export async function lockBookingSlot(payload: LockSlotPayload): Promise<LockSlo
     const statusPrefix = `Request failed (${response.status})`
     const traceSuffix = requestId ? ` [request-id: ${requestId}]` : ''
     const endpointHint = ` [url: ${url}] [engagement: ${engagementCode}]`
-    console.error('[lock-slot] request payload json', JSON.stringify(payload, null, 2))
-    console.error('[lock-slot] error response json', JSON.stringify(data, null, 2))
+    console.error('[engagement] error response json', JSON.stringify(data, null, 2))
 
     if (data && typeof data === 'object') {
-      const body = data as LockSlotResponse
-      const apiMessage =
-        (typeof body.data?.message === 'string' && body.data.message) ||
-        (typeof body.message === 'string' && body.message) ||
-        null
-      if (apiMessage) {
-        throw new Error(toUserFacingServiceabilityMessage(apiMessage))
+      const body = data as EngagementResponse
+      if (typeof body.message === 'string' && body.message.trim()) {
+        throw new Error(body.message)
       }
-
       const jsonText = JSON.stringify(data)
       if (jsonText && jsonText !== '{}') {
         throw new Error(`${statusPrefix}: ${jsonText}${traceSuffix}${endpointHint}`)
@@ -110,13 +100,23 @@ export async function lockBookingSlot(payload: LockSlotPayload): Promise<LockSlo
       throw new Error(`${statusPrefix}: ${data}${traceSuffix}${endpointHint}`)
     }
 
-    throw new Error(`${statusPrefix}. Unable to lock time slot.${traceSuffix}${endpointHint}`)
+    throw new Error(`${statusPrefix}. Unable to load engagement details.${traceSuffix}${endpointHint}`)
   }
 
   if (!data || typeof data !== 'object') {
-    throw new Error('Unexpected response while locking time slot.')
+    throw new Error('Unexpected response while loading engagement details.')
   }
 
-  const body = data as LockSlotResponse
-  return body.data || { status: 'success', message: 'Slot locked' }
+  const body = data as EngagementResponse
+  const details = body.data && typeof body.data === 'object' ? body.data : body
+  const diagnosticPackageId = parsePackageId(details.diagnostic_package_id)
+
+  if (diagnosticPackageId == null) {
+    throw new Error('Diagnostic package id is missing from engagement details.')
+  }
+
+  return {
+    ...details,
+    diagnostic_package_id: diagnosticPackageId,
+  }
 }

@@ -20,6 +20,8 @@ export type FormData = {
   appointmentTime: string
   appointmentTimeSlotId: string
   appointmentTimeValue: string
+  latitude: number | null
+  longitude: number | null
 }
 
 export const defaultFormData: FormData = {
@@ -44,4 +46,6 @@ export const defaultFormData: FormData = {
   appointmentTime: '',
   appointmentTimeSlotId: '',
   appointmentTimeValue: '',
+  latitude: null,
+  longitude: null,
 }

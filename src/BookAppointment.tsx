@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Building2,
@@ -15,10 +15,21 @@ import {
   Venus,
 } from 'lucide-react'
 import { ContinueButton } from './components/ContinueButton'
-import { bookOnboardEngagement } from './api/onboard'
-import { checkServiceAvailability } from './api/serviceAvailability'
-import { createUser } from './api/createUser'
-import { lockBookingSlot } from './api/lockSlot'
+import {
+  confirmOnboardPayment,
+  loadRazorpayScript,
+  onboardUserToEngagement,
+  openRazorpayCheckout,
+  verifyOnboardPay,
+} from './api/onboard'
+import { fetchEngagementDetails } from './api/engagement'
+import { applyGeocodeToForm, searchGeocode, type GeocodeResult } from './api/geocode'
+import {
+  checkDiagnosticServiceability,
+  getFirstServiceableProvider,
+  getProviderZoneId,
+  getServiceabilitySummary,
+} from './api/diagnosticServiceability'
 import {
   fetchAvailableSlots,
   formatAvailableSlotLabel,
@@ -45,6 +56,7 @@ const sanitizeName = (value: string) => value.replace(/[^A-Za-z\s]/g, '')
 const sanitizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 10)
 const sanitizeAge = (value: string) => value.replace(/\D/g, '').slice(0, 2)
 const sanitizePincode = (value: string) => value.replace(/\D/g, '').slice(0, 6)
+const sanitizeOtp = (value: string) => value.replace(/\D/g, '').slice(0, 6)
 const normalizeEmployeeId = (value: string) => value.trim().toUpperCase()
 
 const BOOK_APPOINTMENT_ERROR_EVENT = 'book-appointment:error'
@@ -87,6 +99,21 @@ function markEmployeeIdAsBooked(employeeId: string) {
   const booked = getBookedEmployeeIds()
   booked.add(normalized)
   window.localStorage.setItem(BOOKED_EMPLOYEE_IDS_STORAGE_KEY, JSON.stringify(Array.from(booked)))
+}
+
+function estimateDobFromAge(age: number): string {
+  const today = new Date()
+  const dob = new Date(today.getFullYear() - age, today.getMonth(), today.getDate())
+  const year = dob.getFullYear()
+  const month = String(dob.getMonth() + 1).padStart(2, '0')
+  const day = String(dob.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function formatBookingAddress(data: FormData): string {
+  return [data.houseNumber.trim(), data.street.trim(), data.landmark.trim()]
+    .filter(Boolean)
+    .join(', ')
 }
 
 function useIsLg() {
@@ -200,10 +227,14 @@ export default function BookAppointment() {
   const [savedMembers] = useState<FormData[]>([])
   const [expandedMemberIndex, setExpandedMemberIndex] = useState<number | null>(null)
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
-  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false)
-  const [isCreatingUser, setIsCreatingUser] = useState(false)
-  const [isLockingSlot, setIsLockingSlot] = useState(false)
-  const [createdUserId, setCreatedUserId] = useState<number | null>(null)
+  const [isCheckingServiceability, setIsCheckingServiceability] = useState(false)
+  const [showPaymentOtp, setShowPaymentOtp] = useState(false)
+  const [paymentOtp, setPaymentOtp] = useState('')
+  const [isVerifyingPay, setIsVerifyingPay] = useState(false)
+  const [diagnosticPackageId, setDiagnosticPackageId] = useState<number | null>(null)
+  const [engagementConsultations, setEngagementConsultations] = useState<Record<string, boolean>>({})
+  const [serviceableProvider, setServiceableProvider] = useState('healthians')
+  const [serviceableZoneId, setServiceableZoneId] = useState('')
   const [uiError, setUiError] = useState('')
   const [attemptedPersonalContinue, setAttemptedPersonalContinue] = useState(false)
   const [attemptedAddressContinue, setAttemptedAddressContinue] = useState(false)
@@ -219,6 +250,27 @@ export default function BookAppointment() {
   }, [step])
 
   useEffect(() => {
+    let cancelled = false
+    const loadEngagement = async () => {
+      try {
+        const engagement = await fetchEngagementDetails()
+        if (cancelled) return
+        setDiagnosticPackageId(engagement.diagnostic_package_id)
+        setEngagementConsultations(engagement.consultations || {})
+      } catch (error) {
+        if (cancelled) return
+        logClientError(
+          error instanceof Error ? error.message : 'Unable to load engagement details.',
+        )
+      }
+    }
+    void loadEngagement()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return
     const handler = (event: Event) => {
       const custom = event as CustomEvent<string>
@@ -231,9 +283,7 @@ export default function BookAppointment() {
 
   const primaryMember = savedMembers[0]
 
-  const goNextFromPersonal = async () => {
-    if (isCreatingUser) return
-
+  const goNextFromPersonal = () => {
     const trimmedPhone = form.phone.trim()
     const trimmedEmail = form.email.trim()
     const trimmedAge = form.age.trim()
@@ -304,31 +354,11 @@ export default function BookAppointment() {
       return
     }
 
-    setIsCreatingUser(true)
     setUiError('')
-
-    try {
-      const userId = await createUser({
-        age: safeAge,
-        first_name: form.firstName,
-        last_name: form.lastName,
-        email: form.email,
-        phone: form.phone,
-        gender: form.gender,
-        participants_employee_id: normalizedEmployeeId,
-      })
-      setCreatedUserId(userId)
-      setStep(2)
-    } catch (error) {
-      logClientError(error instanceof Error ? error.message : 'Unable to create user.')
-    } finally {
-      setIsCreatingUser(false)
-    }
+    setStep(2)
   }
 
-  const goNextFromSchedule = async () => {
-    if (isLockingSlot) return
-
+  const goNextFromSchedule = () => {
     setAttemptedScheduleContinue(true)
     if (!form.appointmentDate) {
       logClientError('Please select a schedule date.')
@@ -338,41 +368,13 @@ export default function BookAppointment() {
       logClientError('Please select a time slot.')
       return
     }
-    if (createdUserId == null) {
-      logClientError('User id is missing. Please go back and complete Personal details again.')
-      return
-    }
 
-    const addressLine = [form.houseNumber.trim(), form.street.trim()].filter(Boolean).join(', ')
-    if (!addressLine || !form.city.trim() || !form.pincode.trim()) {
-      logClientError('Address details are incomplete. Please go back to Address step.')
-      return
-    }
-
-    setIsLockingSlot(true)
     setUiError('')
-
-    try {
-      await lockBookingSlot({
-        address_line: addressLine,
-        landmark: form.landmark.trim(),
-        city: form.city.trim(),
-        pincode: form.pincode.trim(),
-        user_id: createdUserId,
-        blood_collection_date: form.appointmentDate,
-        blood_collection_time_slot_id: form.appointmentTimeSlotId,
-        blood_collection_time_slot: form.appointmentTimeValue,
-      })
-      setStep(4)
-    } catch (error) {
-      logClientError(error instanceof Error ? error.message : 'Unable to lock time slot.')
-    } finally {
-      setIsLockingSlot(false)
-    }
+    setStep(4)
   }
 
   const goNextFromAddress = async () => {
-    if (isCheckingAvailability) return
+    if (isCheckingServiceability) return
 
     setAttemptedAddressContinue(true)
     const trimmedHouseNumber = form.houseNumber.trim()
@@ -406,34 +408,106 @@ export default function BookAppointment() {
       logClientError('State is required.')
       return
     }
+    if (diagnosticPackageId == null) {
+      logClientError('Diagnostic package id is missing. Please refresh and try again.')
+      return
+    }
 
     const addressLine = [trimmedHouseNumber, trimmedStreet].filter(Boolean).join(', ')
-
-    setIsCheckingAvailability(true)
+    setIsCheckingServiceability(true)
     setUiError('')
 
     try {
-      const availability = await checkServiceAvailability({
+      let latitude = form.latitude
+      let longitude = form.longitude
+
+      if (latitude == null || longitude == null) {
+        const query = [addressLine, trimmedLandmark, trimmedCity, trimmedPincode, trimmedState]
+          .filter(Boolean)
+          .join(' ')
+        const results = await searchGeocode(query, 1)
+        const match = results[0]
+        if (!match) {
+          logClientError('Unable to locate this address. Please pick a recommended address.')
+          return
+        }
+        latitude = match.latitude
+        longitude = match.longitude
+        update('latitude', latitude)
+        update('longitude', longitude)
+      }
+
+      const providers = await checkDiagnosticServiceability({
+        provider: 'healthians',
         address_line: addressLine,
         landmark: trimmedLandmark,
         city: trimmedCity,
         pincode: trimmedPincode,
+        latitude,
+        longitude,
+        diagnostic_package_id: diagnosticPackageId,
       })
 
-      if (availability.status !== 'serviceable') {
-        logClientError(
-          availability.message?.trim() || 'Address not serviceable.',
-        )
+      const summary = getServiceabilitySummary(providers)
+      if (!summary.serviceable) {
+        logClientError(summary.message)
         return
       }
 
+      const selectedProvider = getFirstServiceableProvider(providers)
+      setServiceableProvider(selectedProvider?.provider || 'healthians')
+      setServiceableZoneId(selectedProvider ? getProviderZoneId(selectedProvider) : '')
       setStep(3)
     } catch (error) {
       logClientError(
         error instanceof Error ? error.message : 'Unable to check service availability.',
       )
     } finally {
-      setIsCheckingAvailability(false)
+      setIsCheckingServiceability(false)
+    }
+  }
+
+  const handleVerifyPay = async () => {
+    if (isVerifyingPay) return
+    const trimmedOtp = paymentOtp.trim()
+    if (!/^\d{6}$/.test(trimmedOtp)) {
+      logClientError('Please enter the 6-digit OTP.')
+      return
+    }
+
+    setIsVerifyingPay(true)
+    setUiError('')
+
+    try {
+      const payment = await verifyOnboardPay({
+        phone: form.phone.trim(),
+        otp: trimmedOtp,
+        discount_code: null,
+      })
+
+      if (!payment.razorpay_order_id || !payment.key_id) {
+        throw new Error('Payment order details are missing. Please try again.')
+      }
+
+      await loadRazorpayScript()
+      const razorpayResult = await openRazorpayCheckout(payment, {
+        name: `${form.firstName} ${form.lastName}`.trim(),
+        email: form.email,
+        phone: form.phone.trim(),
+      })
+
+      const confirmation = await confirmOnboardPayment(razorpayResult)
+      if (!confirmation.payment_verified) {
+        throw new Error('Payment could not be verified. Please try again.')
+      }
+
+      markEmployeeIdAsBooked(normalizeEmployeeId(form.employeeId))
+      setShowPaymentOtp(false)
+      setStep(5)
+    } catch (error) {
+      logClientError(error instanceof Error ? error.message : 'Unable to verify payment OTP.')
+    } finally {
+      setIsVerifyingPay(false)
     }
   }
 
@@ -443,8 +517,10 @@ export default function BookAppointment() {
     const normalizedEmployeeId = normalizeEmployeeId(form.employeeId)
     if (isSubmittingBooking) return
 
-    if (createdUserId == null) {
-      logClientError('User id is missing. Please go back and complete Personal details again.')
+    const parsedAge = Number.parseInt(form.age.trim(), 10)
+    const safeAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : NaN
+    if (!Number.isFinite(safeAge) || !form.phone.trim()) {
+      logClientError('Personal details are incomplete. Please go back to Personal step.')
       return
     }
     if (!form.appointmentDate) {
@@ -456,16 +532,44 @@ export default function BookAppointment() {
       return
     }
 
+    const address = formatBookingAddress(form)
+    if (!address || !form.pincode.trim() || !form.city.trim() || !form.state.trim()) {
+      logClientError('Address details are incomplete. Please go back to Address step.')
+      return
+    }
+
     setIsSubmittingBooking(true)
+    setUiError('')
 
     try {
-      await bookOnboardEngagement({
-        user_id: createdUserId,
+      const onboard = await onboardUserToEngagement({
+        age: safeAge,
+        first_name: form.firstName.trim(),
+        last_name: form.lastName.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        gender: form.gender,
+        dob: estimateDobFromAge(safeAge),
+        address,
+        pincode: form.pincode.trim(),
+        city: form.city.trim(),
+        state: form.state.trim(),
+        country: 'India',
         blood_collection_date: form.appointmentDate,
-        blood_collection_time_slot_id: form.appointmentTimeSlotId,
         blood_collection_time_slot: form.appointmentTimeValue,
-        consultations: {},
+        blood_collection_time_slot_id: form.appointmentTimeSlotId,
+        blood_collection_cabin: null,
+        participants_employee_id: normalizedEmployeeId,
+        participant_department: '',
+        participant_blood_group: '',
+        consultations: engagementConsultations,
       })
+      if (onboard.payment_required) {
+        setPaymentOtp('')
+        setShowPaymentOtp(true)
+        return
+      }
+
       markEmployeeIdAsBooked(normalizedEmployeeId)
       setStep(5)
     } catch (error) {
@@ -486,9 +590,9 @@ export default function BookAppointment() {
 
   const isMobile = !isLg
   const mobilePersonal = isMobile && step === 1
-  const showBack = step === 5 ? false : isLg ? step > 1 : step > 1
+  const showBack = step === 5 ? false : showPaymentOtp || (isLg ? step > 1 : step > 1)
   const stretchStepBody = !isLg || step === 4 || step === 5
-  const hideGlobalContinue = mobilePersonal || step === 5 || step === 1
+  const hideGlobalContinue = mobilePersonal || showPaymentOtp || step === 5 || step === 1
   const mobileHeader = isMobile
   const hideStepper = step === 5
   const showHeaderTitle = step !== 5
@@ -531,7 +635,13 @@ export default function BookAppointment() {
                 {showBack ? (
                   <button
                     type="button"
-                    onClick={() => setStep((s) => Math.max(1, s - 1))}
+                    onClick={() => {
+                      if (showPaymentOtp) {
+                        setShowPaymentOtp(false)
+                        return
+                      }
+                      setStep((s) => Math.max(1, s - 1))
+                    }}
                     className="flex size-9 items-center justify-center rounded-lg text-white hover:bg-white/10"
                     aria-label="Back"
                   >
@@ -559,7 +669,13 @@ export default function BookAppointment() {
                 {showBack ? (
                   <button
                     type="button"
-                    onClick={() => setStep((s) => Math.max(1, s - 1))}
+                    onClick={() => {
+                      if (showPaymentOtp) {
+                        setShowPaymentOtp(false)
+                        return
+                      }
+                      setStep((s) => Math.max(1, s - 1))
+                    }}
                     className="flex size-6 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
                     aria-label="Back"
                   >
@@ -621,7 +737,19 @@ export default function BookAppointment() {
                   : ''
             }`}
           >
-            {step === 1 && (
+            {showPaymentOtp && (
+              <div className={mobilePersonal ? 'px-6' : ''}>
+                <PaymentOtpStep
+                  phone={form.phone}
+                  otp={paymentOtp}
+                  onOtpChange={setPaymentOtp}
+                  onVerify={() => void handleVerifyPay()}
+                  isSubmitting={isVerifyingPay}
+                  isMobile={isMobile}
+                />
+              </div>
+            )}
+            {step === 1 && !showPaymentOtp && (
               <>
                 {mobilePersonal ? (
                   <div className="px-6">
@@ -631,8 +759,7 @@ export default function BookAppointment() {
                       isLg={isLg}
                       inputClass={inputClass}
                       labelRow={labelRow}
-                      onContinue={() => void goNextFromPersonal()}
-                      isSubmitting={isCreatingUser}
+                      onContinue={goNextFromPersonal}
                       showMobileContinue
                       showMissingRequired={attemptedPersonalContinue}
                       savedMembers={savedMembers}
@@ -650,8 +777,7 @@ export default function BookAppointment() {
                     isLg={isLg}
                     inputClass={inputClass}
                     labelRow={labelRow}
-                    onContinue={() => void goNextFromPersonal()}
-                    isSubmitting={isCreatingUser}
+                    onContinue={goNextFromPersonal}
                     showMobileContinue
                     showMissingRequired={attemptedPersonalContinue}
                     savedMembers={savedMembers}
@@ -664,7 +790,7 @@ export default function BookAppointment() {
                 )}
               </>
             )}
-            {step === 2 && (
+            {step === 2 && !showPaymentOtp && (
               <AddressStep
                 form={form}
                 update={update}
@@ -673,12 +799,15 @@ export default function BookAppointment() {
                 showMissingRequired={attemptedAddressContinue}
               />
             )}
-            {step === 3 && (
+            {step === 3 && !showPaymentOtp && (
               <ScheduleStep
                 form={form}
                 update={update}
                 isMobile={isMobile}
                 showMissingRequired={attemptedScheduleContinue}
+                diagnosticPackageId={diagnosticPackageId}
+                provider={serviceableProvider}
+                zoneId={serviceableZoneId}
               />
             )}
             {step === 4 && (
@@ -709,24 +838,14 @@ export default function BookAppointment() {
                 <div className="mt-auto shrink-0 px-6 pt-4 pb-[30px]">
                   <ContinueButton
                     variant="mobileBar"
-                    disabled={
-                      (step === 1 && isCreatingUser) ||
-                      (step === 2 && isCheckingAvailability) ||
-                      (step === 3 && isLockingSlot)
-                    }
+                    disabled={step === 2 && isCheckingServiceability}
                     onClick={() => {
-                      if (step === 1) void goNextFromPersonal()
+                      if (step === 1) goNextFromPersonal()
                       else if (step === 2) void goNextFromAddress()
-                      else void goNextFromSchedule()
+                      else goNextFromSchedule()
                     }}
                   >
-                    {step === 1 && isCreatingUser
-                      ? 'Creating...'
-                      : step === 2 && isCheckingAvailability
-                        ? 'Checking...'
-                        : step === 3 && isLockingSlot
-                          ? 'Locking...'
-                          : 'Continue'}
+                    {step === 2 && isCheckingServiceability ? 'Checking...' : 'Continue'}
                   </ContinueButton>
                 </div>
               ) : null
@@ -739,24 +858,14 @@ export default function BookAppointment() {
               >
                 {step < 4 && (
                   <ContinueButton
-                    disabled={
-                      (step === 1 && isCreatingUser) ||
-                      (step === 2 && isCheckingAvailability) ||
-                      (step === 3 && isLockingSlot)
-                    }
+                    disabled={step === 2 && isCheckingServiceability}
                     onClick={() => {
-                      if (step === 1) void goNextFromPersonal()
+                      if (step === 1) goNextFromPersonal()
                       else if (step === 2) void goNextFromAddress()
-                      else void goNextFromSchedule()
+                      else goNextFromSchedule()
                     }}
                   >
-                    {step === 1 && isCreatingUser
-                      ? 'Creating...'
-                      : step === 2 && isCheckingAvailability
-                        ? 'Checking...'
-                        : step === 3 && isLockingSlot
-                          ? 'Locking...'
-                          : 'Continue'}
+                    {step === 2 && isCheckingServiceability ? 'Checking...' : 'Continue'}
                   </ContinueButton>
                 )}
               </div>
@@ -1425,6 +1534,55 @@ function PersonalStep({
   )
 }
 
+function PaymentOtpStep({
+  phone,
+  otp,
+  onOtpChange,
+  onVerify,
+  isSubmitting,
+  isMobile,
+}: {
+  phone: string
+  otp: string
+  onOtpChange: (value: string) => void
+  onVerify: () => void
+  isSubmitting: boolean
+  isMobile: boolean
+}) {
+  const fieldClass = isMobile ? mobileFieldInput : inputClass(true)
+
+  return (
+    <div className={`flex flex-col ${isMobile ? 'gap-6' : 'gap-5'}`}>
+      <h2 className="text-2xl font-medium text-white lg:text-[24px] lg:leading-none">
+        Verify payment
+      </h2>
+      <p className="text-sm text-[#9a9a9a]">
+        Payment is required for this booking. Enter the OTP sent to {phone || 'your phone number'}.
+      </p>
+      <div className="flex flex-col gap-1">
+        <label className="text-sm text-[#9a9a9a]">OTP</label>
+        <input
+          className={fieldClass}
+          placeholder="123456"
+          inputMode="numeric"
+          maxLength={6}
+          value={otp}
+          onChange={(e) => onOtpChange(sanitizeOtp(e.target.value))}
+        />
+      </div>
+      <div className={isMobile ? 'pb-4' : 'flex justify-end'}>
+        <ContinueButton
+          variant={isMobile ? 'mobileBar' : 'default'}
+          disabled={isSubmitting}
+          onClick={onVerify}
+        >
+          {isSubmitting ? 'Verifying...' : 'Verify & Pay'}
+        </ContinueButton>
+      </div>
+    </div>
+  )
+}
+
 function UseSameToggle({
   checked,
   onChange,
@@ -1499,16 +1657,102 @@ function AddressStep({
         : undefined
 
   const fieldClass = isMobile ? mobileFieldInput : inputClass(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [suggestions, setSuggestions] = useState<GeocodeResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const skipSearchRef = useRef(false)
+
+  useEffect(() => {
+    const query = searchQuery.trim()
+    if (skipSearchRef.current) {
+      skipSearchRef.current = false
+      return
+    }
+    if (query.length < 6) {
+      setSuggestions([])
+      setIsSearching(false)
+      return
+    }
+
+    let cancelled = false
+    const timer = window.setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const results = await searchGeocode(query, 1)
+        if (!cancelled) setSuggestions(results)
+      } catch {
+        if (!cancelled) setSuggestions([])
+      } finally {
+        if (!cancelled) setIsSearching(false)
+      }
+    }, 400)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [searchQuery])
+
+  const applySuggestion = (result: GeocodeResult) => {
+    skipSearchRef.current = true
+    const mapped = applyGeocodeToForm(result)
+    update('houseNumber', mapped.houseNumber)
+    update('street', mapped.street)
+    update('landmark', mapped.landmark)
+    update('pincode', mapped.pincode)
+    update('city', mapped.city)
+    update('state', mapped.state)
+    update('latitude', result.latitude)
+    update('longitude', result.longitude)
+    setSearchQuery(result.display_name || result.address || searchQuery)
+    setSuggestions([])
+  }
 
   return (
     <div className={`flex flex-col ${isMobile ? 'gap-6' : 'gap-5'}`}>
+      <div className="relative flex flex-col gap-1">
+        {labelRow(MapPin, 'Search address', undefined, isMobile, false)}
+        <input
+          className={fieldClass}
+          placeholder="12 MG Road Delhi 110001"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        {isSearching ? (
+          <p className="text-[12px] text-[#9a9a9a]">Finding address...</p>
+        ) : null}
+        {suggestions.length > 0 ? (
+          <div className="absolute top-full z-20 mt-1 w-full overflow-hidden rounded-[8px] border border-white/10 bg-[#0d1716] shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
+            {suggestions.map((result) => (
+              <button
+                key={`${result.display_name}-${result.latitude}-${result.longitude}`}
+                type="button"
+                onClick={() => applySuggestion(result)}
+                className="flex w-full flex-col items-start gap-0.5 px-4 py-3 text-left transition hover:bg-white/5"
+              >
+                <span className="text-sm text-white">
+                  {result.display_name || result.address}
+                </span>
+                <span className="text-[12px] text-[#9a9a9a]">
+                  {[result.city, result.state, result.pincode].filter(Boolean).join(', ')}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
       <div className="flex flex-col gap-1">
         {labelRow(House, 'House No./ Building', undefined, isMobile, isMissing(form.houseNumber))}
         <input
           className={fieldClass}
           placeholder="350 A, Avenue Street"
           value={form.houseNumber}
-          onChange={(e) => update('houseNumber', e.target.value)}
+          onChange={(e) => {
+            update('houseNumber', e.target.value)
+            update('latitude', null)
+            update('longitude', null)
+          }}
         />
       </div>
 
@@ -1518,7 +1762,11 @@ function AddressStep({
           className={fieldClass}
           placeholder="Area/ Street"
           value={form.street}
-          onChange={(e) => update('street', e.target.value)}
+          onChange={(e) => {
+            update('street', e.target.value)
+            update('latitude', null)
+            update('longitude', null)
+          }}
         />
       </div>
 
@@ -1528,7 +1776,11 @@ function AddressStep({
           className={fieldClass}
           placeholder="opp. Pink Salt Cafe"
           value={form.landmark}
-          onChange={(e) => update('landmark', e.target.value)}
+          onChange={(e) => {
+            update('landmark', e.target.value)
+            update('latitude', null)
+            update('longitude', null)
+          }}
         />
       </div>
 
@@ -1540,7 +1792,11 @@ function AddressStep({
           placeholder="402201"
           maxLength={6}
           value={form.pincode}
-          onChange={(e) => update('pincode', sanitizePincode(e.target.value))}
+          onChange={(e) => {
+            update('pincode', sanitizePincode(e.target.value))
+            update('latitude', null)
+            update('longitude', null)
+          }}
         />
       </div>
 
@@ -1550,7 +1806,11 @@ function AddressStep({
           className={fieldClass}
           placeholder="Mumbai"
           value={form.city}
-          onChange={(e) => update('city', e.target.value)}
+          onChange={(e) => {
+            update('city', e.target.value)
+            update('latitude', null)
+            update('longitude', null)
+          }}
         />
       </div>
 
@@ -1560,7 +1820,11 @@ function AddressStep({
           className={fieldClass}
           placeholder="State"
           value={form.state}
-          onChange={(e) => update('state', e.target.value)}
+          onChange={(e) => {
+            update('state', e.target.value)
+            update('latitude', null)
+            update('longitude', null)
+          }}
         />
       </div>
     </div>
@@ -1747,11 +2011,17 @@ function ScheduleStep({
   update,
   isMobile,
   showMissingRequired,
+  diagnosticPackageId,
+  provider,
+  zoneId,
 }: {
   form: FormData
   update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
   isMobile: boolean
   showMissingRequired?: boolean
+  diagnosticPackageId: number | null
+  provider: string
+  zoneId: string
 }) {
   const dates = useMemo(() => getMayDates(), [])
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([])
@@ -1774,14 +2044,30 @@ function ScheduleStep({
       setAvailableSlots([])
 
       try {
-        const addressLine = [form.houseNumber.trim(), form.street.trim()].filter(Boolean).join(', ')
-        const result = await fetchAvailableSlots({
-          address_line: addressLine,
-          landmark: form.landmark.trim(),
-          city: form.city.trim(),
-          pincode: form.pincode.trim(),
-          blood_collection_date: form.appointmentDate,
-        })
+        if (form.latitude == null || form.longitude == null) {
+          throw new Error('Address location is missing. Please go back and select a recommended address.')
+        }
+
+        const payload =
+          provider === 'orange_health'
+            ? {
+                provider,
+                slot_date: form.appointmentDate,
+                latitude: form.latitude,
+                longitude: form.longitude,
+              }
+            : {
+                provider: provider || 'healthians',
+                slot_date: form.appointmentDate,
+                diagnostic_package_id: diagnosticPackageId ?? undefined,
+                zone_id: zoneId || undefined,
+                latitude: form.latitude,
+                longitude: form.longitude,
+                pincode: form.pincode.trim(),
+                has_female_patient: form.gender === 'female',
+              }
+
+        const result = await fetchAvailableSlots(payload)
 
         if (cancelled) return
         setAvailableSlots(result.slots)
@@ -1802,11 +2088,13 @@ function ScheduleStep({
     }
   }, [
     form.appointmentDate,
-    form.houseNumber,
-    form.street,
-    form.landmark,
-    form.city,
+    form.latitude,
+    form.longitude,
     form.pincode,
+    form.gender,
+    diagnosticPackageId,
+    provider,
+    zoneId,
   ])
 
   const selectedDateClass =
