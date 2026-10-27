@@ -5,6 +5,7 @@ export type OnboardUserForEngagementPayload = {
   email: string
   phone: string
   gender: string
+  dob: string
   address: string
   pincode: string
   city: string
@@ -12,9 +13,12 @@ export type OnboardUserForEngagementPayload = {
   country: string
   blood_collection_date: string
   blood_collection_time_slot: string
+  blood_collection_time_slot_id: string
+  blood_collection_cabin: null
   participants_employee_id: string
+  participant_department: string
   participant_blood_group: string
-  want_doctor_consultation: boolean
+  consultations: Record<string, unknown>
 }
 
 export type OnboardResult = {
@@ -146,6 +150,13 @@ export function getBackendBaseUrl(): string {
 
 export function getCelebalEngagementCodeForGender(gender: string): string {
   return resolveCelebalEngagementCode(parseBookingGender(gender))
+}
+
+export function getDiagnosticPackageId(): number | null {
+  const raw = firstNonEmpty(import.meta.env.VITE_DIAGNOSTIC_PACKAGE_ID)
+  if (!raw) return null
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
 function parseValidationMessage(data: unknown): string | null {

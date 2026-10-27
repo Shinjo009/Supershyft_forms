@@ -1,12 +1,4 @@
-import { getBackendBaseUrl, getCelebalEngagementCodeForGender } from './onboard'
-
-export type AvailableSlotsPayload = {
-  address_line: string
-  landmark: string
-  city: string
-  pincode: string
-  blood_collection_date: string
-}
+import { getBackendBaseUrl, getDiagnosticPackageId } from './onboard'
 
 export type AvailableSlot = {
   slotDate: string
@@ -16,19 +8,36 @@ export type AvailableSlot = {
   label: string
 }
 
+export type FetchAvailableSlotsInput = {
+  provider: string
+  slotDate: string
+  zoneId: string
+  latitude: number
+  longitude: number
+  pincode: string
+  hasFemalePatient: boolean
+  diagnosticPackageId?: number
+}
+
 type AvailableSlotsResponse = {
+  provider?: string
+  slots?: Array<{
+    slot_date?: string
+    slot_time?: string
+    end_time?: string
+    stm_id?: string | number
+  }>
   data?: {
-    engagement_code?: string
-    status?: string
-    message?: string
+    provider?: string
     slots?: Array<{
       slot_date?: string
       slot_time?: string
       end_time?: string
       stm_id?: string | number
     }>
+    message?: string
   }
-  meta?: Record<string, unknown>
+  message?: string
 }
 
 function trimTrailingSlash(value: string): string {
@@ -52,10 +61,29 @@ export function formatSlotRangeLabel(slotTime: string, endTime: string): string 
   return `${formatClockLabel(slotTime)} - ${formatClockLabel(endTime)}`
 }
 
-export async function fetchAvailableSlots(
-  gender: string,
-  payload: AvailableSlotsPayload,
-): Promise<AvailableSlot[]> {
+function mapSlots(data: unknown): AvailableSlot[] {
+  const row = data && typeof data === 'object' ? (data as AvailableSlotsResponse) : null
+  const slots = Array.isArray(row?.slots) ? row.slots : Array.isArray(row?.data?.slots) ? row.data.slots : []
+
+  return slots
+    .map((slot) => {
+      const slotTime = String(slot.slot_time || '').trim()
+      const endTime = String(slot.end_time || '').trim()
+      const slotDate = String(slot.slot_date || '').trim()
+      const stmId = slot.stm_id != null ? String(slot.stm_id).trim() : ''
+      if (!slotTime || !endTime) return null
+      return {
+        slotDate,
+        slotTime,
+        endTime,
+        stmId,
+        label: formatSlotRangeLabel(slotTime, endTime),
+      } satisfies AvailableSlot
+    })
+    .filter((slot): slot is AvailableSlot => slot != null)
+}
+
+export async function fetchAvailableSlots(input: FetchAvailableSlotsInput): Promise<AvailableSlot[]> {
   const baseUrl = getBackendBaseUrl()
   if (!baseUrl) {
     throw new Error(
@@ -63,10 +91,34 @@ export async function fetchAvailableSlots(
     )
   }
 
-  const engagementCode = getCelebalEngagementCodeForGender(gender)
-  const url = `${trimTrailingSlash(baseUrl)}/book/code/${encodeURIComponent(engagementCode)}/available-slots`
+  const provider = (input.provider || 'healthians').trim().toLowerCase() || 'healthians'
+  const payload =
+    provider === 'orange_health'
+      ? {
+          provider: 'orange_health',
+          slot_date: input.slotDate,
+          latitude: input.latitude,
+          longitude: input.longitude,
+        }
+      : {
+          provider: 'healthians',
+          slot_date: input.slotDate,
+          diagnostic_package_id: input.diagnosticPackageId ?? getDiagnosticPackageId(),
+          zone_id: input.zoneId,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          pincode: input.pincode,
+          has_female_patient: input.hasFemalePatient,
+        }
 
-  console.info('[available-slots] request', { engagementCode, url, payload })
+  if (provider !== 'orange_health' && payload.diagnostic_package_id == null) {
+    throw new Error(
+      'Missing diagnostic package id. Set VITE_DIAGNOSTIC_PACKAGE_ID in .env and restart the dev server.',
+    )
+  }
+
+  const url = `${trimTrailingSlash(baseUrl)}/diagnostics/public/available-slots`
+  console.info('[available-slots] request', { url, payload })
 
   const response = await fetch(url, {
     method: 'POST',
@@ -86,6 +138,7 @@ export async function fetchAvailableSlots(
     if (data && typeof data === 'object') {
       const row = data as AvailableSlotsResponse
       if (row.data?.message) throw new Error(row.data.message)
+      if (row.message) throw new Error(row.message)
       const jsonText = JSON.stringify(data)
       if (jsonText && jsonText !== '{}') {
         throw new Error(`Unable to load time slots (${response.status}): ${jsonText}`)
@@ -97,31 +150,5 @@ export async function fetchAvailableSlots(
     throw new Error(`Unable to load time slots (${response.status}). Please try again.`)
   }
 
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid available-slots response from server.')
-  }
-
-  const row = (data as AvailableSlotsResponse).data
-  const status = (row?.status || '').trim().toLowerCase()
-  if (status && status !== 'success') {
-    throw new Error(row?.message?.trim() || 'Unable to load time slots for this date.')
-  }
-
-  const slots = Array.isArray(row?.slots) ? row.slots : []
-  return slots
-    .map((slot) => {
-      const slotTime = String(slot.slot_time || '').trim()
-      const endTime = String(slot.end_time || '').trim()
-      const slotDate = String(slot.slot_date || '').trim()
-      const stmId = slot.stm_id != null ? String(slot.stm_id).trim() : ''
-      if (!slotTime || !endTime) return null
-      return {
-        slotDate,
-        slotTime,
-        endTime,
-        stmId,
-        label: formatSlotRangeLabel(slotTime, endTime),
-      } satisfies AvailableSlot
-    })
-    .filter((slot): slot is AvailableSlot => slot != null)
+  return mapSlots(data)
 }

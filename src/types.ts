@@ -21,6 +21,12 @@ export type FormData = {
   appointmentStmId: string
   appointmentSlotTime: string
   userId: number | null
+  latitude: number | null
+  longitude: number | null
+  provider: string
+  zoneId: string
+  country: string
+  diagnosticPackageId: number | null
 }
 
 export const defaultFormData: FormData = {
@@ -46,4 +52,10 @@ export const defaultFormData: FormData = {
   appointmentStmId: '',
   appointmentSlotTime: '',
   userId: null,
+  latitude: null,
+  longitude: null,
+  provider: '',
+  zoneId: '',
+  country: 'India',
+  diagnosticPackageId: null,
 }

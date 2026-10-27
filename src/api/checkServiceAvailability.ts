@@ -1,27 +1,41 @@
-import { getBackendBaseUrl, getCelebalEngagementCodeForGender } from './onboard'
+import { getBackendBaseUrl, getDiagnosticPackageId } from './onboard'
 
-export type CheckServiceAvailabilityPayload = {
+export type ServiceabilityPayload = {
+  provider?: string
   address_line: string
   landmark: string
   city: string
   pincode: string
+  latitude: number
+  longitude: number
+  diagnostic_package_id?: number
 }
 
-export type ServiceAvailabilityResult = {
-  status: 'serviceable' | 'not_serviceable'
+export type ServiceabilityResult = {
+  serviceable: boolean
+  provider: string
+  zoneId: string
   message: string
-  engagementCode: string
-  zoneId?: string
 }
 
-type ServiceAvailabilityResponse = {
+type ServiceabilityProvider = {
+  provider?: string
+  serviceable?: boolean
+  message?: string
+  zone_id?: string | number
   data?: {
-    engagement_code?: string
-    status?: string
-    message?: string
     zone_id?: string | number
+    [key: string]: unknown
   }
-  meta?: Record<string, unknown>
+}
+
+type ServiceabilityResponse = {
+  providers?: ServiceabilityProvider[]
+  data?: {
+    providers?: ServiceabilityProvider[]
+    message?: string
+  }
+  message?: string
 }
 
 function trimTrailingSlash(value: string): string {
@@ -29,8 +43,8 @@ function trimTrailingSlash(value: string): string {
 }
 
 const LOCATION_NOT_SERVICEABLE = 'This address is not serviceable.'
+const DEFAULT_PROVIDER = 'healthians'
 
-/** Prefer a clear user-facing line over raw API copy (e.g. "Lat Long is not serviceable"). */
 function toUserFacingServiceabilityMessage(message: string | undefined, fallback: string): string {
   const trimmed = typeof message === 'string' ? message.trim() : ''
   if (!trimmed) return fallback
@@ -38,10 +52,25 @@ function toUserFacingServiceabilityMessage(message: string | undefined, fallback
   return trimmed
 }
 
+function extractProviders(data: unknown): ServiceabilityProvider[] {
+  if (!data || typeof data !== 'object') return []
+  const row = data as ServiceabilityResponse
+  if (Array.isArray(row.providers)) return row.providers
+  if (Array.isArray(row.data?.providers)) return row.data.providers
+  return []
+}
+
+function zoneIdFromProvider(provider: ServiceabilityProvider): string {
+  if (provider.zone_id != null && String(provider.zone_id).trim()) return String(provider.zone_id).trim()
+  if (provider.data?.zone_id != null && String(provider.data.zone_id).trim()) {
+    return String(provider.data.zone_id).trim()
+  }
+  return ''
+}
+
 export async function checkServiceAvailability(
-  gender: string,
-  payload: CheckServiceAvailabilityPayload,
-): Promise<ServiceAvailabilityResult> {
+  payload: ServiceabilityPayload,
+): Promise<ServiceabilityResult> {
   const baseUrl = getBackendBaseUrl()
   if (!baseUrl) {
     throw new Error(
@@ -49,10 +78,26 @@ export async function checkServiceAvailability(
     )
   }
 
-  const engagementCode = getCelebalEngagementCodeForGender(gender)
-  const url = `${trimTrailingSlash(baseUrl)}/book/code/${encodeURIComponent(engagementCode)}/check-service-availability`
+  const diagnosticPackageId = payload.diagnostic_package_id ?? getDiagnosticPackageId()
+  if (diagnosticPackageId == null) {
+    throw new Error(
+      'Missing diagnostic package id. Set VITE_DIAGNOSTIC_PACKAGE_ID in .env and restart the dev server.',
+    )
+  }
 
-  console.info('[serviceability] check', { engagementCode, url, payload })
+  const body = {
+    provider: payload.provider?.trim() || DEFAULT_PROVIDER,
+    address_line: payload.address_line,
+    landmark: payload.landmark || '',
+    city: payload.city,
+    pincode: payload.pincode,
+    latitude: payload.latitude,
+    longitude: payload.longitude,
+    diagnostic_package_id: diagnosticPackageId,
+  }
+
+  const url = `${trimTrailingSlash(baseUrl)}/diagnostics/public/serviceability`
+  console.info('[serviceability] check', { url, payload: body })
 
   const response = await fetch(url, {
     method: 'POST',
@@ -60,7 +105,7 @@ export async function checkServiceAvailability(
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   })
 
   const contentType = response.headers.get('content-type') || ''
@@ -70,11 +115,10 @@ export async function checkServiceAvailability(
   if (!response.ok) {
     console.error('[serviceability] error response', data)
     if (data && typeof data === 'object') {
-      const row = data as ServiceAvailabilityResponse
-      if (row.data?.message) {
-        throw new Error(
-          toUserFacingServiceabilityMessage(row.data.message, LOCATION_NOT_SERVICEABLE),
-        )
+      const row = data as ServiceabilityResponse
+      const message = row.data?.message || row.message
+      if (message) {
+        throw new Error(toUserFacingServiceabilityMessage(message, LOCATION_NOT_SERVICEABLE))
       }
       const jsonText = JSON.stringify(data)
       if (jsonText && jsonText !== '{}') {
@@ -87,34 +131,29 @@ export async function checkServiceAvailability(
     throw new Error(`Serviceability check failed (${response.status}). Please try again.`)
   }
 
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid serviceability response from server.')
-  }
+  const providers = extractProviders(data)
+  const serviceableProviders = providers.filter((item) => item.serviceable === true)
+  const preferred =
+    serviceableProviders.find((item) => (item.provider || '').trim().toLowerCase() === DEFAULT_PROVIDER) ||
+    serviceableProviders[0]
 
-  const row = (data as ServiceAvailabilityResponse).data
-  const statusRaw = (row?.status || '').trim().toLowerCase()
-  const rawMessage = typeof row?.message === 'string' ? row.message.trim() : ''
-  const message =
-    statusRaw === 'serviceable'
-      ? rawMessage || 'Serviceable'
-      : toUserFacingServiceabilityMessage(rawMessage, LOCATION_NOT_SERVICEABLE)
-
-  if (statusRaw === 'serviceable') {
+  if (!preferred) {
+    const fallbackMessage =
+      providers.find((item) => typeof item.message === 'string' && item.message.trim())?.message ||
+      (data && typeof data === 'object' ? (data as ServiceabilityResponse).message : '') ||
+      LOCATION_NOT_SERVICEABLE
     return {
-      status: 'serviceable',
-      message,
-      engagementCode: row?.engagement_code?.trim() || engagementCode,
-      zoneId: row?.zone_id != null ? String(row.zone_id) : undefined,
+      serviceable: false,
+      provider: '',
+      zoneId: '',
+      message: toUserFacingServiceabilityMessage(fallbackMessage, LOCATION_NOT_SERVICEABLE),
     }
   }
 
-  if (statusRaw === 'not_serviceable' || statusRaw === 'not-serviceable') {
-    return {
-      status: 'not_serviceable',
-      message,
-      engagementCode: row?.engagement_code?.trim() || engagementCode,
-    }
+  return {
+    serviceable: true,
+    provider: (preferred.provider || DEFAULT_PROVIDER).trim() || DEFAULT_PROVIDER,
+    zoneId: zoneIdFromProvider(preferred),
+    message: preferred.message?.trim() || 'Serviceable',
   }
-
-  throw new Error(message || 'Unable to verify serviceability for this location.')
 }
