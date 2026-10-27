@@ -221,7 +221,10 @@ export function saveOnboardTokens(tokens: OnboardTokens): void {
 export async function onboardUserForEngagement(
   payload: OnboardUserForEngagementPayload,
 ): Promise<OnboardResult> {
-  const engagementCode = resolveEngagementCode(payload.city)
+  const engagementCode = resolveEngagementCode()
+  if (!engagementCode) {
+    throw new Error('Use the link you were sent.')
+  }
 
   if (isFrontendOnly()) {
     const bookingGender = parseBookingGender(payload.gender)

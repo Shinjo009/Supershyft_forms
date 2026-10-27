@@ -1,23 +1,32 @@
-const DEFAULT_ENGAGEMENT_CODE = 'SUMU0226'
+const RESERVED_PATH_SEGMENTS = new Set(['assets', 'data', 'favicon.svg', 'icons.svg'])
+const ENGAGEMENT_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$/
 
-function firstNonEmpty(...values: Array<string | undefined>): string {
-  for (const value of values) {
-    if (typeof value === 'string' && value.trim().length > 0) return value.trim()
+function currentPathname(): string {
+  if (typeof window === 'undefined') return ''
+  return window.location.pathname
+}
+
+/** First path segment only: `/SUMU0226` or `/SUMU0226/` → `SUMU0226`. */
+export function getEngagementCodeFromPath(pathname = currentPathname()): string {
+  const segments = pathname.split('/').filter(Boolean)
+  if (segments.length !== 1) return ''
+
+  let raw = segments[0]
+  try {
+    raw = decodeURIComponent(raw)
+  } catch {
+    return ''
   }
-  return ''
+
+  const code = raw.trim()
+  if (!code) return ''
+  if (RESERVED_PATH_SEGMENTS.has(code.toLowerCase())) return ''
+  if (code.toUpperCase() === 'XXXXXXXX') return ''
+  if (!ENGAGEMENT_CODE_PATTERN.test(code)) return ''
+  return code
 }
 
-function isUsableEngagementCode(value: string): boolean {
-  return value.length > 0 && value.toUpperCase() !== 'XXXXXXXX'
-}
-
-const CITY_ENGAGEMENT_CODES: Record<string, string | undefined> = {
-  Mumbai: import.meta.env.VITE_ENGAGEMENT_CODE_MUMBAI,
-  Pune: import.meta.env.VITE_ENGAGEMENT_CODE_PUNE,
-}
-
-export function resolveEngagementCode(city?: string): string {
-  const fromCity = firstNonEmpty(city ? CITY_ENGAGEMENT_CODES[city.trim()] : undefined)
-  if (isUsableEngagementCode(fromCity)) return fromCity
-  return firstNonEmpty(import.meta.env.VITE_ENGAGEMENT_CODE, DEFAULT_ENGAGEMENT_CODE)
+/** Engagement comes from the URL path. Empty when the link has no usable code. */
+export function resolveEngagementCode(): string {
+  return getEngagementCodeFromPath()
 }
