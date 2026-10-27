@@ -206,6 +206,18 @@ async function authorizedRequest<T = unknown>(
   })
 }
 
+export async function publicGet<T = unknown>(
+  path: string,
+  query?: Record<string, string | number | undefined>,
+): Promise<T> {
+  return jsonRequest<T>({
+    path,
+    method: 'GET',
+    query,
+    retryOnUnauthorized: false,
+  })
+}
+
 export async function publicPost<T = unknown>(path: string, body?: unknown): Promise<T> {
   return jsonRequest<T>({
     path,

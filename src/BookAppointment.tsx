@@ -22,18 +22,26 @@ import {
   getPreferredDateOptions,
   toIsoDate,
 } from './lib/bookingDates'
-import { createEmployeeUser } from './api/users'
 import {
   checkServiceAvailability,
   confirmOnboardBooking,
+  dobFromAge,
   fetchAvailableSlots,
+  fetchEngagementConfig,
+  formatOnboardTimeSlot,
   formatStoredSlotLabel,
-  lockBookingSlot,
+  resolveEmployeeId,
+  type EngagementConfig,
 } from './api/booking'
 import { PageBackdrop } from './components/PageBackdrop'
 import { Stepper } from './components'
 import { toUserFacingError } from './lib/userFacingError'
 import { lookupPincode } from './lib/pincodeLookup'
+import {
+  resolveGeocodeCoordinates,
+  searchGeocode,
+  type GeocodeSuggestion,
+} from './api/geocode'
 import {
   defaultAdditionalMemberForm,
   defaultFormData,
@@ -79,6 +87,25 @@ function buildAddressLineForAvailability(
   form: Pick<FormData, 'houseNo' | 'areaStreet'> | Pick<AdditionalMemberForm, 'houseNo' | 'areaStreet'>,
 ): string {
   return [form.houseNo, form.areaStreet].map((part) => part.trim()).filter(Boolean).join(', ')
+}
+
+function applyGeocodeSuggestion<T extends FormData | AdditionalMemberForm>(
+  current: T,
+  suggestion: GeocodeSuggestion,
+): T {
+  return {
+    ...current,
+    houseNo: suggestion.address || suggestion.displayName || current.houseNo,
+    areaStreet: suggestion.subLocality || current.areaStreet,
+    landmark: suggestion.landmark || current.landmark,
+    pincode: suggestion.pincode || current.pincode,
+    city: suggestion.city || current.city,
+    state: suggestion.state || current.state,
+    latitude: suggestion.latitude,
+    longitude: suggestion.longitude,
+    provider: '',
+    zoneId: '',
+  }
 }
 
 function bookingAge(form: Pick<FormData, 'age'>, fallback = 25): number {
@@ -169,21 +196,31 @@ export default function BookAppointment() {
   const [isLookingUpPincode, setIsLookingUpPincode] = useState(false)
   const [isLookingUpAdditionalPincode, setIsLookingUpAdditionalPincode] = useState(false)
   const [isCheckingServiceAvailability, setIsCheckingServiceAvailability] = useState(false)
-  const [isCreatingUser, setIsCreatingUser] = useState(false)
-  const [isLockingSlot, setIsLockingSlot] = useState(false)
-  // const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
-  // const [isResendingOtp, setIsResendingOtp] = useState(false)
-  const [, setHasCreatedUser] = useState(false)
   const [hasOnboarded, setHasOnboarded] = useState(false)
-  const [, setHasCreatedAdditionalUser] = useState(false)
   const [hasOnboardedAdditional, setHasOnboardedAdditional] = useState(false)
-  const [primaryUserId, setPrimaryUserId] = useState<number | null>(null)
-  const [additionalUserId, setAdditionalUserId] = useState<number | null>(null)
-  // const [otpVerified, setOtpVerified] = useState(false)
+  const [engagement, setEngagement] = useState<EngagementConfig>({
+    engagementCode: '',
+    diagnosticPackageId: null,
+    consultations: {},
+  })
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     if (uiError) setUiError('')
-    setForm((f) => ({ ...f, [key]: value }))
+    const addressKeys: (keyof FormData)[] = [
+      'houseNo',
+      'areaStreet',
+      'landmark',
+      'pincode',
+      'city',
+      'state',
+    ]
+    setForm((f) => ({
+      ...f,
+      [key]: value,
+      ...(addressKeys.includes(key)
+        ? { latitude: null, longitude: null, provider: '', zoneId: '' }
+        : {}),
+    }))
   }, [uiError])
 
   const updateAdditional = useCallback(
@@ -200,7 +237,9 @@ export default function BookAppointment() {
       setAdditionalMember((f) => ({
         ...f,
         [key]: value,
-        ...(addressKeys.includes(key) ? { useSameAddress: false } : {}),
+        ...(addressKeys.includes(key)
+          ? { useSameAddress: false, latitude: null, longitude: null, provider: '', zoneId: '' }
+          : {}),
       }))
     },
     [uiError],
@@ -222,14 +261,40 @@ export default function BookAppointment() {
         pincode: form.pincode,
         city: form.city,
         state: form.state,
+        latitude: form.latitude,
+        longitude: form.longitude,
+        provider: form.provider,
+        zoneId: form.zoneId,
       }))
     },
-    [form.areaStreet, form.city, form.houseNo, form.landmark, form.pincode, form.state, uiError],
+    [
+      form.areaStreet,
+      form.city,
+      form.houseNo,
+      form.landmark,
+      form.latitude,
+      form.longitude,
+      form.pincode,
+      form.provider,
+      form.state,
+      form.zoneId,
+      uiError,
+    ],
   )
 
   useEffect(() => {
     setMaxReachedStep((prev) => Math.max(prev, step))
   }, [step])
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchEngagementConfig().then((config) => {
+      if (!cancelled) setEngagement(config)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -242,54 +307,8 @@ export default function BookAppointment() {
     return () => window.removeEventListener(BOOK_APPOINTMENT_ERROR_EVENT, handler as EventListener)
   }, [])
 
-  const createUserFromPersonalDetails = async (
-    memberForm: Pick<
-      FormData,
-      'firstName' | 'lastName' | 'phone' | 'email' | 'age' | 'gender' | 'houseNo' | 'areaStreet' | 'landmark' | 'pincode' | 'city' | 'state'
-    >,
-    markCreated: (userId?: number) => void,
-  ): Promise<boolean> => {
-    if (isCreatingUser) return false
-
-    setIsCreatingUser(true)
-    try {
-      const memberEmail = EMAIL_REGEX.test(memberForm.email.trim())
-        ? memberForm.email.trim()
-        : null
-      const result = await createEmployeeUser({
-        age: bookingAge(memberForm),
-        phone: memberForm.phone.trim(),
-        first_name: memberForm.firstName.trim() || null,
-        last_name: memberForm.lastName.trim() || null,
-        email: memberEmail,
-        gender: memberForm.gender || null,
-        address: formatBookingAddress(memberForm) || 'NA',
-        pin_code: memberForm.pincode.trim() || '000000',
-        city: memberForm.city.trim() || 'NA',
-        state: memberForm.state.trim() || 'Maharashtra',
-        country: 'India',
-        is_participant: true,
-        status: 'active',
-      })
-      markCreated(result.userId)
-      return true
-    } catch (error) {
-      logClientError(error instanceof Error ? error.message : 'Unable to create user.')
-      return false
-    } finally {
-      setIsCreatingUser(false)
-    }
-  }
-
-  const goNextFromPersonal = async () => {
-    if (isCreatingUser) return
-
+  const goNextFromPersonal = () => {
     if (!ENFORCE_REQUIRED_FIELDS) {
-      const created = await createUserFromPersonalDetails(form, (userId) => {
-        setHasCreatedUser(true)
-        if (userId) setPrimaryUserId(userId)
-      })
-      if (!created) return
       setUiError('')
       setStep(2)
       return
@@ -345,24 +364,74 @@ export default function BookAppointment() {
       return
     }
 
-    const created = await createUserFromPersonalDetails(form, (userId) => {
-      setHasCreatedUser(true)
-      if (userId) setPrimaryUserId(userId)
-    })
-    if (!created) return
-
     setUiError('')
     setStep(2)
   }
 
-  const ensureAddressIsServiceable = async (addressForm: {
-    houseNo: string
-    areaStreet: string
-    landmark: string
-    city: string
-    pincode: string
-  }): Promise<boolean> => {
+  const ensureAddressCoordinates = async (
+    addressForm: Pick<FormData, 'houseNo' | 'areaStreet' | 'landmark' | 'city' | 'pincode' | 'latitude' | 'longitude'>,
+    applyCoords: (latitude: number, longitude: number) => void,
+  ): Promise<{ latitude: number; longitude: number } | null> => {
+    if (addressForm.latitude !== null && addressForm.longitude !== null) {
+      return { latitude: addressForm.latitude, longitude: addressForm.longitude }
+    }
+
+    const query = [
+      addressForm.houseNo,
+      addressForm.areaStreet,
+      addressForm.landmark,
+      addressForm.city,
+      addressForm.pincode,
+    ]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join(', ')
+
+    try {
+      const coords = await resolveGeocodeCoordinates(query)
+      if (!coords || coords.latitude === null || coords.longitude === null) {
+        logClientError('Please select an address from the search results.')
+        return null
+      }
+      applyCoords(coords.latitude, coords.longitude)
+      return { latitude: coords.latitude, longitude: coords.longitude }
+    } catch (error) {
+      logClientError(error instanceof Error ? error.message : 'Unable to find this address.')
+      return null
+    }
+  }
+
+  const applyPrimaryGeocode = (suggestion: GeocodeSuggestion) => {
+    if (uiError) setUiError('')
+    setForm((f) => applyGeocodeSuggestion(f, suggestion))
+  }
+
+  const applyAdditionalGeocode = (suggestion: GeocodeSuggestion) => {
+    if (uiError) setUiError('')
+    setAdditionalMember((f) => ({
+      ...applyGeocodeSuggestion(f, suggestion),
+      useSameAddress: false,
+    }))
+  }
+
+  const ensureAddressIsServiceable = async (
+    addressForm: {
+      houseNo: string
+      areaStreet: string
+      landmark: string
+      city: string
+      pincode: string
+    },
+    coords: { latitude: number; longitude: number },
+    applyProvider: (provider: string, zoneId: string) => void,
+  ): Promise<boolean> => {
     if (isCheckingServiceAvailability) return false
+
+    const packageId = engagement.diagnosticPackageId
+    if (!packageId) {
+      logClientError('Service is temporarily unavailable. Please try again later.')
+      return false
+    }
 
     setIsCheckingServiceAvailability(true)
     try {
@@ -371,13 +440,17 @@ export default function BookAppointment() {
         landmark: addressForm.landmark.trim(),
         city: addressForm.city.trim(),
         pincode: addressForm.pincode.trim(),
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        diagnostic_package_id: packageId,
       })
 
-      if (result.status !== 'serviceable') {
+      if (!result.serviceable) {
         logClientError(result.message || 'Location not serviceable.')
         return false
       }
 
+      applyProvider(result.provider, result.zoneId)
       return true
     } catch (error) {
       const raw = error instanceof Error ? error.message : 'Unable to check service availability.'
@@ -392,7 +465,13 @@ export default function BookAppointment() {
     if (isCheckingServiceAvailability) return
 
     if (!ENFORCE_REQUIRED_FIELDS) {
-      const isServiceable = await ensureAddressIsServiceable(form)
+      const coords = await ensureAddressCoordinates(form, (latitude, longitude) => {
+        setForm((f) => ({ ...f, latitude, longitude }))
+      })
+      if (!coords) return
+      const isServiceable = await ensureAddressIsServiceable(form, coords, (provider, zoneId) => {
+        setForm((f) => ({ ...f, provider, zoneId }))
+      })
       if (!isServiceable) return
       setUiError('')
       setStep(3)
@@ -426,72 +505,29 @@ export default function BookAppointment() {
       return
     }
 
-    const isServiceable = await ensureAddressIsServiceable(form)
+    const coords = await ensureAddressCoordinates(form, (latitude, longitude) => {
+      setForm((f) => ({ ...f, latitude, longitude }))
+    })
+    if (!coords) return
+
+    const isServiceable = await ensureAddressIsServiceable(form, coords, (provider, zoneId) => {
+      setForm((f) => ({ ...f, provider, zoneId }))
+    })
     if (!isServiceable) return
 
     setUiError('')
     setStep(3)
   }
 
-  const lockSelectedSlot = async (
-    memberForm: Pick<
-      FormData,
-      | 'houseNo'
-      | 'areaStreet'
-      | 'landmark'
-      | 'city'
-      | 'pincode'
-      | 'appointmentDate'
-      | 'appointmentTime'
-      | 'appointmentSlotId'
-    >,
-    userId: number | null,
-  ): Promise<boolean> => {
-    if (isLockingSlot) return false
-
-    if (!userId) {
-      logClientError('Missing user id. Please go back and complete personal details again.')
-      return false
-    }
-    if (!memberForm.appointmentSlotId.trim()) {
-      logClientError('Please select a preferred time slot.')
-      return false
-    }
-
-    setIsLockingSlot(true)
-    try {
-      await lockBookingSlot({
-        address_line: buildAddressLineForAvailability(memberForm),
-        landmark: memberForm.landmark.trim(),
-        city: memberForm.city.trim(),
-        pincode: memberForm.pincode.trim(),
-        user_id: userId,
-        blood_collection_date: memberForm.appointmentDate,
-        blood_collection_time_slot_id: memberForm.appointmentSlotId.trim(),
-        blood_collection_time_slot: memberForm.appointmentTime.trim(),
-      })
-      return true
-    } catch (error) {
-      logClientError(error instanceof Error ? error.message : 'Unable to lock the selected time slot.')
-      return false
-    } finally {
-      setIsLockingSlot(false)
-    }
-  }
-
-  const goNextFromSchedule = async () => {
-    if (isLockingSlot) return
+  const goNextFromSchedule = () => {
     if (!form.appointmentDate) {
       logClientError('Please select a preferred date.')
       return
     }
-    if (!form.appointmentTime) {
+    if (!form.appointmentTime || !form.appointmentSlotId.trim()) {
       logClientError('Please select a preferred time slot.')
       return
     }
-
-    const locked = await lockSelectedSlot(form, primaryUserId)
-    if (!locked) return
 
     setUiError('')
     setStep(4)
@@ -506,22 +542,13 @@ export default function BookAppointment() {
     setAdditionalMember(defaultAdditionalMemberForm)
     setAttemptedAdditionalContinue(false)
     setAttemptedAdditionalAddressContinue(false)
-    setHasCreatedAdditionalUser(false)
     setHasOnboardedAdditional(false)
-    setAdditionalUserId(null)
     setUiError('')
     setStep(8)
   }
 
-  const goNextFromAdditionalMember = async () => {
-    if (isCreatingUser) return
-
+  const goNextFromAdditionalMember = () => {
     if (!ENFORCE_REQUIRED_FIELDS) {
-      const created = await createUserFromPersonalDetails(additionalMember, (userId) => {
-        setHasCreatedAdditionalUser(true)
-        if (userId) setAdditionalUserId(userId)
-      })
-      if (!created) return
       setUiError('')
       setStep(6)
       return
@@ -579,12 +606,6 @@ export default function BookAppointment() {
       return
     }
 
-    const created = await createUserFromPersonalDetails(additionalMember, (userId) => {
-      setHasCreatedAdditionalUser(true)
-      if (userId) setAdditionalUserId(userId)
-    })
-    if (!created) return
-
     setUiError('')
     setStep(6)
   }
@@ -593,7 +614,17 @@ export default function BookAppointment() {
     if (isCheckingServiceAvailability) return
 
     if (!ENFORCE_REQUIRED_FIELDS) {
-      const isServiceable = await ensureAddressIsServiceable(additionalMember)
+      const coords = await ensureAddressCoordinates(additionalMember, (latitude, longitude) => {
+        setAdditionalMember((f) => ({ ...f, latitude, longitude }))
+      })
+      if (!coords) return
+      const isServiceable = await ensureAddressIsServiceable(
+        additionalMember,
+        coords,
+        (provider, zoneId) => {
+          setAdditionalMember((f) => ({ ...f, provider, zoneId }))
+        },
+      )
       if (!isServiceable) return
       setUiError('')
       setStep(7)
@@ -627,26 +658,33 @@ export default function BookAppointment() {
       return
     }
 
-    const isServiceable = await ensureAddressIsServiceable(additionalMember)
+    const coords = await ensureAddressCoordinates(additionalMember, (latitude, longitude) => {
+      setAdditionalMember((f) => ({ ...f, latitude, longitude }))
+    })
+    if (!coords) return
+
+    const isServiceable = await ensureAddressIsServiceable(
+      additionalMember,
+      coords,
+      (provider, zoneId) => {
+        setAdditionalMember((f) => ({ ...f, provider, zoneId }))
+      },
+    )
     if (!isServiceable) return
 
     setUiError('')
     setStep(7)
   }
 
-  const goNextFromAdditionalSchedule = async () => {
-    if (isLockingSlot) return
+  const goNextFromAdditionalSchedule = () => {
     if (!additionalMember.appointmentDate) {
       logClientError('Please select a preferred date.')
       return
     }
-    if (!additionalMember.appointmentTime) {
+    if (!additionalMember.appointmentTime || !additionalMember.appointmentSlotId.trim()) {
       logClientError('Please select a preferred time slot.')
       return
     }
-
-    const locked = await lockSelectedSlot(additionalMember, additionalUserId)
-    if (!locked) return
 
     setUiError('')
     setStep(8)
@@ -659,13 +697,17 @@ export default function BookAppointment() {
       setForm((f) => ({
         ...f,
         pincode,
+        latitude: null,
+        longitude: null,
+        provider: '',
+        zoneId: '',
         ...(f.city || f.state ? { city: '', state: '' } : {}),
       }))
       if (uiError) setUiError('')
       return
     }
 
-    setForm((f) => ({ ...f, pincode }))
+    setForm((f) => ({ ...f, pincode, latitude: null, longitude: null, provider: '', zoneId: '' }))
     if (uiError) setUiError('')
     setIsLookingUpPincode(true)
     try {
@@ -693,13 +735,25 @@ export default function BookAppointment() {
         ...f,
         pincode,
         useSameAddress: false,
+        latitude: null,
+        longitude: null,
+        provider: '',
+        zoneId: '',
         ...(f.city || f.state ? { city: '', state: '' } : {}),
       }))
       if (uiError) setUiError('')
       return
     }
 
-    setAdditionalMember((f) => ({ ...f, pincode, useSameAddress: false }))
+    setAdditionalMember((f) => ({
+      ...f,
+      pincode,
+      useSameAddress: false,
+      latitude: null,
+      longitude: null,
+      provider: '',
+      zoneId: '',
+    }))
     if (uiError) setUiError('')
     setIsLookingUpAdditionalPincode(true)
     try {
@@ -866,22 +920,12 @@ export default function BookAppointment() {
       return
     }
 
-    if (!primaryUserId) {
-      logClientError('Missing user id. Please go back and complete personal details again.')
-      return
-    }
     if (!form.appointmentDate || !form.appointmentTime.trim() || !form.appointmentSlotId.trim()) {
       logClientError('Please select a preferred date and time slot.')
       return
     }
 
     if (hasAdditional) {
-      if (!additionalUserId) {
-        logClientError(
-          'Missing second member user id. Please go back and complete their personal details again.',
-        )
-        return
-      }
       if (
         !additionalMember.appointmentDate ||
         !additionalMember.appointmentTime.trim() ||
@@ -895,26 +939,56 @@ export default function BookAppointment() {
     setUiError('')
     setIsSubmittingBooking(true)
 
+    const buildOnboardPayload = (
+      member: Pick<
+        FormData,
+        | 'firstName'
+        | 'lastName'
+        | 'phone'
+        | 'email'
+        | 'age'
+        | 'gender'
+        | 'houseNo'
+        | 'areaStreet'
+        | 'landmark'
+        | 'city'
+        | 'pincode'
+        | 'state'
+        | 'appointmentDate'
+        | 'appointmentTime'
+        | 'appointmentSlotId'
+      >,
+    ) => ({
+      age: bookingAge(member),
+      first_name: member.firstName.trim(),
+      last_name: member.lastName.trim(),
+      email: member.email.trim(),
+      phone: member.phone.trim(),
+      gender: member.gender || 'male',
+      dob: dobFromAge(bookingAge(member)),
+      address: formatBookingAddress(member) || 'NA',
+      pincode: member.pincode.trim(),
+      city: member.city.trim(),
+      state: member.state.trim() || 'Maharashtra',
+      country: 'India',
+      blood_collection_date: member.appointmentDate,
+      blood_collection_time_slot: formatOnboardTimeSlot(member.appointmentTime),
+      blood_collection_time_slot_id: member.appointmentSlotId.trim(),
+      blood_collection_cabin: null,
+      participants_employee_id: resolveEmployeeId(),
+      participant_department: '',
+      participant_blood_group: '',
+      consultations: engagement.consultations || {},
+    })
+
     try {
       if (!hasOnboarded) {
-        await confirmOnboardBooking({
-          user_id: primaryUserId,
-          blood_collection_date: form.appointmentDate,
-          blood_collection_time_slot_id: form.appointmentSlotId.trim(),
-          blood_collection_time_slot: form.appointmentTime.trim(),
-          consultations: {},
-        })
+        await confirmOnboardBooking(buildOnboardPayload(form))
         setHasOnboarded(true)
       }
 
       if (hasAdditional && !hasOnboardedAdditional) {
-        await confirmOnboardBooking({
-          user_id: additionalUserId!,
-          blood_collection_date: additionalMember.appointmentDate,
-          blood_collection_time_slot_id: additionalMember.appointmentSlotId.trim(),
-          blood_collection_time_slot: additionalMember.appointmentTime.trim(),
-          consultations: {},
-        })
+        await confirmOnboardBooking(buildOnboardPayload(additionalMember))
         setHasOnboardedAdditional(true)
       }
 
@@ -1040,12 +1114,18 @@ export default function BookAppointment() {
                 update={update}
                 labelRow={labelRow}
                 onPincodeChange={handlePincodeChange}
+                onGeocodeSelect={applyPrimaryGeocode}
                 isLookingUpPincode={isLookingUpPincode}
                 showMissingRequired={ENFORCE_REQUIRED_FIELDS && attemptedAddressContinue}
               />
             )}
             {step === 3 && (
-              <ScheduleStep form={form} update={update} labelRow={labelRow} />
+              <ScheduleStep
+                form={form}
+                update={update}
+                labelRow={labelRow}
+                diagnosticPackageId={engagement.diagnosticPackageId}
+              />
             )}
             {step === 5 && (
               <AdditionalMemberPersonalStep
@@ -1064,6 +1144,7 @@ export default function BookAppointment() {
                 onUseSameChange={applySameAddressAsPrimary}
                 labelRow={labelRow}
                 onPincodeChange={handleAdditionalPincodeChange}
+                onGeocodeSelect={applyAdditionalGeocode}
                 isLookingUpPincode={isLookingUpAdditionalPincode}
                 showMissingRequired={ENFORCE_REQUIRED_FIELDS && attemptedAdditionalAddressContinue}
               />
@@ -1074,6 +1155,7 @@ export default function BookAppointment() {
                 form={additionalMember}
                 update={updateAdditional}
                 labelRow={labelRow}
+                diagnosticPackageId={engagement.diagnosticPackageId}
               />
             )}
             {step === 8 && (
@@ -1081,11 +1163,8 @@ export default function BookAppointment() {
                 form={form}
                 additionalMember={additionalMember}
                 onEdit={(s) => {
-                  setHasCreatedUser(false)
                   setHasOnboarded(false)
-                  setHasCreatedAdditionalUser(false)
                   setHasOnboardedAdditional(false)
-                  // setOtpVerified(false)
                   setStep(s)
                 }}
                 onProceed={handleConfirmBooking}
@@ -1115,15 +1194,9 @@ export default function BookAppointment() {
               <ContinueButton
                 variant={continueVariant}
                 onClick={handleStepContinue}
-                disabled={isCheckingServiceAvailability || isCreatingUser || isLockingSlot}
+                disabled={isCheckingServiceAvailability}
               >
-                {isCreatingUser
-                  ? 'Saving…'
-                  : isLockingSlot
-                    ? 'Locking…'
-                    : isCheckingServiceAvailability
-                      ? 'Checking…'
-                      : 'Continue'}
+                {isCheckingServiceAvailability ? 'Checking…' : 'Continue'}
               </ContinueButton>
             </div>
           ) : null}
@@ -1288,11 +1361,106 @@ function PersonalStep({
   )
 }
 
+function AddressSearchField({
+  onSelect,
+}: {
+  onSelect: (suggestion: GeocodeSuggestion) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<GeocodeSuggestion[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
+
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 3) {
+      setResults([])
+      setIsSearching(false)
+      return
+    }
+
+    let cancelled = false
+    setIsSearching(true)
+    const timer = window.setTimeout(async () => {
+      try {
+        const matches = await searchGeocode(q, 5)
+        if (!cancelled) {
+          setResults(matches)
+          setIsOpen(true)
+        }
+      } catch {
+        if (!cancelled) setResults([])
+      } finally {
+        if (!cancelled) setIsSearching(false)
+      }
+    }, 300)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [query])
+
+  return (
+    <div className="relative flex flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <span className="flex size-5 shrink-0 items-center justify-center text-[#999]">
+          <MapPin className="size-5" strokeWidth={1.75} />
+        </span>
+        <span className="text-[14px] font-medium leading-normal text-[#999]">Search address</span>
+        {isSearching ? (
+          <span className="text-[11px] font-medium text-[#4b8d83]">Searching…</span>
+        ) : null}
+      </div>
+      <input
+        className={mobileFieldInput}
+        placeholder="Start typing your address"
+        autoComplete="off"
+        value={query}
+        onChange={(e) => {
+          setQuery(sanitizeAddressLine(e.target.value))
+          setIsOpen(true)
+        }}
+        onFocus={() => {
+          if (results.length > 0) setIsOpen(true)
+        }}
+        onBlur={() => {
+          window.setTimeout(() => setIsOpen(false), 150)
+        }}
+      />
+      {isOpen && results.length > 0 ? (
+        <ul className="absolute top-full z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-[8px] border border-white/10 bg-[#10221e] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+          {results.map((item, index) => (
+            <li key={`${item.displayName}-${item.pincode}-${index}`}>
+              <button
+                type="button"
+                className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left hover:bg-white/5"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  onSelect(item)
+                  setQuery(item.displayName)
+                  setIsOpen(false)
+                }}
+              >
+                <span className="text-[13px] font-medium text-white">{item.displayName}</span>
+                <span className="text-[11px] text-[#9a9a9a]">
+                  {[item.city, item.pincode].filter(Boolean).join(' · ')}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  )
+}
+
 function AddressStep({
   form,
   update,
   labelRow,
   onPincodeChange,
+  onGeocodeSelect,
   isLookingUpPincode,
   showMissingRequired,
 }: {
@@ -1306,6 +1474,7 @@ function AddressStep({
     errorType?: 'missing' | 'invalid',
   ) => React.ReactNode
   onPincodeChange: (value: string) => void
+  onGeocodeSelect: (suggestion: GeocodeSuggestion) => void
   isLookingUpPincode: boolean
   showMissingRequired?: boolean
 }) {
@@ -1323,6 +1492,8 @@ function AddressStep({
 
   return (
     <div className="flex flex-col gap-6">
+      <AddressSearchField onSelect={onGeocodeSelect} />
+
       <div className="flex flex-col gap-1">
         {labelRow(Home, 'House No./ Building', undefined, Boolean(houseError), houseError)}
         <input
@@ -1613,6 +1784,7 @@ function AdditionalMemberAddressStep({
   onUseSameChange,
   labelRow,
   onPincodeChange,
+  onGeocodeSelect,
   isLookingUpPincode,
   showMissingRequired,
 }: {
@@ -1628,6 +1800,7 @@ function AdditionalMemberAddressStep({
     errorType?: 'missing' | 'invalid',
   ) => React.ReactNode
   onPincodeChange: (value: string) => void
+  onGeocodeSelect: (suggestion: GeocodeSuggestion) => void
   isLookingUpPincode: boolean
   showMissingRequired?: boolean
 }) {
@@ -1712,6 +1885,8 @@ function AdditionalMemberAddressStep({
             </span>
           </button>
         </div>
+
+        <AddressSearchField onSelect={onGeocodeSelect} />
 
         <div className="flex flex-col gap-1">
           {labelRow(Home, 'House No./ Building', undefined, Boolean(houseError), houseError)}
@@ -1866,14 +2041,21 @@ function PreferredTimeSlots({
   date,
   value,
   slotId,
+  gender,
+  diagnosticPackageId,
   onChange,
   labelRow,
 }: {
-  address: Pick<FormData, 'houseNo' | 'areaStreet' | 'landmark' | 'city' | 'pincode'>
+  address: Pick<
+    FormData,
+    'houseNo' | 'areaStreet' | 'landmark' | 'city' | 'pincode' | 'latitude' | 'longitude' | 'provider' | 'zoneId'
+  >
   date: string
   value: string
   slotId: string
-  onChange: (selection: { slotTime: string; stmId: string } | null) => void
+  gender: FormData['gender']
+  diagnosticPackageId: number | null
+  onChange: (selection: { label: string; slotTime: string; stmId: string } | null) => void
   labelRow: (
     Icon: IconType,
     label: string,
@@ -1886,19 +2068,16 @@ function PreferredTimeSlots({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const addressLine = [address.houseNo, address.areaStreet]
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join(', ')
-  const landmark = address.landmark.trim()
-  const city = address.city.trim()
-  const pincode = address.pincode.trim()
-
   useEffect(() => {
     let cancelled = false
 
     const loadSlots = async () => {
-      if (!date || !addressLine || !city || !pincode) {
+      if (
+        !date ||
+        address.latitude === null ||
+        address.longitude === null ||
+        !address.provider.trim()
+      ) {
         setSlots([])
         setError('')
         if (value || slotId) onChange(null)
@@ -1909,15 +2088,18 @@ function PreferredTimeSlots({
       setError('')
       try {
         const result = await fetchAvailableSlots({
-          address_line: addressLine,
-          landmark,
-          city,
-          pincode,
-          blood_collection_date: date,
+          provider: address.provider,
+          slot_date: date,
+          diagnostic_package_id: diagnosticPackageId,
+          zone_id: address.zoneId,
+          latitude: address.latitude,
+          longitude: address.longitude,
+          pincode: address.pincode.trim(),
+          has_female_patient: gender === 'female',
         })
         if (cancelled) return
 
-        const nextSlots = result.slots.map((slot) => ({
+        const nextSlots = result.map((slot) => ({
           slotTime: slot.slotTime,
           stmId: slot.stmId,
           label: slot.label,
@@ -1932,7 +2114,7 @@ function PreferredTimeSlots({
         )
         if (!stillValid) {
           const first = nextSlots[0]
-          onChange(first ? { slotTime: first.slotTime, stmId: first.stmId } : null)
+          onChange(first ? { label: first.label, slotTime: first.slotTime, stmId: first.stmId } : null)
         }
         if (nextSlots.length === 0) {
           setError('No time slots available for this date.')
@@ -1952,7 +2134,16 @@ function PreferredTimeSlots({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, addressLine, landmark, city, pincode])
+  }, [
+    date,
+    address.latitude,
+    address.longitude,
+    address.provider,
+    address.zoneId,
+    address.pincode,
+    diagnosticPackageId,
+    gender,
+  ])
 
   return (
     <div className="flex flex-col gap-3 pb-2">
@@ -1977,7 +2168,7 @@ function PreferredTimeSlots({
               <button
                 key={slot.stmId || slot.slotTime}
                 type="button"
-                onClick={() => onChange({ slotTime: slot.slotTime, stmId: slot.stmId })}
+                onClick={() => onChange({ label: slot.label, slotTime: slot.slotTime, stmId: slot.stmId })}
                 className={[
                   'flex h-10 items-center justify-center rounded-full px-2.5 text-[14px] font-medium transition',
                   selected ? SELECTED_CHIP_BG : 'bg-white/5 text-[rgba(154,154,154,0.8)]',
@@ -1998,6 +2189,7 @@ function AdditionalMemberScheduleStep({
   form,
   update,
   labelRow,
+  diagnosticPackageId,
 }: {
   primary: FormData
   form: AdditionalMemberForm
@@ -2009,6 +2201,7 @@ function AdditionalMemberScheduleStep({
     showRequired?: boolean,
     errorType?: 'missing' | 'invalid',
   ) => React.ReactNode
+  diagnosticPackageId: number | null
 }) {
   const [primaryExpanded, setPrimaryExpanded] = useState(true)
   const primaryName =
@@ -2072,8 +2265,10 @@ function AdditionalMemberScheduleStep({
           date={form.appointmentDate}
           value={form.appointmentTime}
           slotId={form.appointmentSlotId}
+          gender={form.gender}
+          diagnosticPackageId={diagnosticPackageId}
           onChange={(selection) => {
-            update('appointmentTime', selection?.slotTime || '')
+            update('appointmentTime', selection?.slotTime || selection?.label || '')
             update('appointmentSlotId', selection?.stmId || '')
           }}
           labelRow={labelRow}
@@ -2169,6 +2364,7 @@ function ScheduleStep({
   form,
   update,
   labelRow,
+  diagnosticPackageId,
 }: {
   form: FormData
   update: <K extends keyof FormData>(key: K, value: FormData[K]) => void
@@ -2179,6 +2375,7 @@ function ScheduleStep({
     showRequired?: boolean,
     errorType?: 'missing' | 'invalid',
   ) => React.ReactNode
+  diagnosticPackageId: number | null
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -2193,8 +2390,10 @@ function ScheduleStep({
         date={form.appointmentDate}
         value={form.appointmentTime}
         slotId={form.appointmentSlotId}
+        gender={form.gender}
+        diagnosticPackageId={diagnosticPackageId}
         onChange={(selection) => {
-          update('appointmentTime', selection?.slotTime || '')
+          update('appointmentTime', selection?.slotTime || selection?.label || '')
           update('appointmentSlotId', selection?.stmId || '')
         }}
         labelRow={labelRow}

@@ -11,6 +11,10 @@ export type FormData = {
   pincode: string
   city: string
   state: string
+  latitude: number | null
+  longitude: number | null
+  provider: string
+  zoneId: string
   relation: string
   appointmentDate: string
   appointmentTime: string
@@ -30,6 +34,10 @@ export const defaultFormData: FormData = {
   pincode: '',
   city: '',
   state: '',
+  latitude: null,
+  longitude: null,
+  provider: '',
+  zoneId: '',
   relation: 'spouse',
   appointmentDate: '',
   appointmentTime: '',
@@ -56,6 +64,10 @@ export type AdditionalMemberForm = {
   pincode: string
   city: string
   state: string
+  latitude: number | null
+  longitude: number | null
+  provider: string
+  zoneId: string
   useSameAddress: boolean
   appointmentDate: string
   appointmentTime: string
@@ -75,6 +87,10 @@ export const defaultAdditionalMemberForm: AdditionalMemberForm = {
   pincode: '',
   city: '',
   state: '',
+  latitude: null,
+  longitude: null,
+  provider: '',
+  zoneId: '',
   useSameAddress: false,
   appointmentDate: '',
   appointmentTime: '',

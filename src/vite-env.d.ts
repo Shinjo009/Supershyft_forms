@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string
   readonly VITE_BASE_URL?: string
   readonly VITE_ENGAGEMENT_CODE?: string
+  readonly VITE_DIAGNOSTIC_PACKAGE_ID?: string
+  readonly VITE_PARTICIPANTS_EMPLOYEE_ID?: string
 }
 
 interface ImportMeta {
