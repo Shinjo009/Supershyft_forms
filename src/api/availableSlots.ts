@@ -112,9 +112,7 @@ export async function fetchAvailableSlots(input: FetchAvailableSlotsInput): Prom
         }
 
   if (provider !== 'orange_health' && payload.diagnostic_package_id == null) {
-    throw new Error(
-      'Missing diagnostic package id. Set VITE_DIAGNOSTIC_PACKAGE_ID in .env and restart the dev server.',
-    )
+    throw new Error('Unable to find a diagnostic package for this engagement.')
   }
 
   const url = `${trimTrailingSlash(baseUrl)}/diagnostics/public/available-slots`

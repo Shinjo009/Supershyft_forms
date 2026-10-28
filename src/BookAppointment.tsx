@@ -21,8 +21,9 @@ import { ContinueButton } from './components/ContinueButton'
 import { getSelectableBookingDates, toIsoDate } from './lib/bookingDates'
 import { loadPincodeLookup, lookupPincode } from './lib/pincodeLookup'
 import { checkServiceAvailability } from './api/checkServiceAvailability'
-import { fetchAvailableSlots, type AvailableSlot } from './api/availableSlots'
+import { fetchAvailableSlots, formatClockLabel, type AvailableSlot } from './api/availableSlots'
 import { geocodeOnce, resolveCoordinates, searchGeocode, type GeocodePlace } from './api/geocodeSearch'
+import { fetchEngagementForGender } from './api/engagement'
 import { getDiagnosticPackageId, onboardUserForEngagement } from './api/onboard'
 import { PageBackdrop } from './components/PageBackdrop'
 import { SavedMemberCard } from './components/SavedMemberCard'
@@ -141,6 +142,26 @@ function dobFromAge(age: number): string {
   const month = String(dob.getMonth() + 1).padStart(2, '0')
   const day = String(dob.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function toSingleSlotLabel(value: string): string {
+  const first = value.trim().split(/\s*-\s*/)[0]?.trim() || ''
+  return first ? formatClockLabel(first) : ''
+}
+
+/** API expects a single 24-hour time such as "06:00:00", not "06:00 am". */
+function toApiSlotTime(value: string): string {
+  const first = value.trim().split(/\s*-\s*/)[0]?.trim() || ''
+  const match = first.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i)
+  if (!match) return first
+  let hour = Number.parseInt(match[1], 10)
+  const minute = match[2]
+  const second = match[3] || '00'
+  const suffix = (match[4] || '').toLowerCase()
+  if (suffix === 'pm' && hour < 12) hour += 12
+  if (suffix === 'am' && hour === 12) hour = 0
+  if (!Number.isFinite(hour)) return first
+  return `${String(hour).padStart(2, '0')}:${minute}:${second}`
 }
 
 function geocodeQueryFromForm(form: FormData): string {
@@ -437,11 +458,8 @@ export default function BookAppointment() {
     }
 
     const addressLine = formatHouseStreet(trimmedHouseNumber, trimmedStreet)
-    const packageId = form.diagnosticPackageId ?? getDiagnosticPackageId()
-    if (packageId == null) {
-      logClientError(
-        'Diagnostic package is not configured. Set VITE_DIAGNOSTIC_PACKAGE_ID and restart the dev server.',
-      )
+    if (!form.gender) {
+      logClientError('Gender is required to check serviceability.')
       return
     }
 
@@ -468,6 +486,12 @@ export default function BookAppointment() {
         return
       }
 
+      let packageId = form.diagnosticPackageId ?? getDiagnosticPackageId()
+      if (packageId == null) {
+        const engagement = await fetchEngagementForGender(form.gender)
+        packageId = engagement.diagnosticPackageId
+      }
+
       const result = await checkServiceAvailability({
         provider: 'healthians',
         address_line: addressLine,
@@ -476,7 +500,7 @@ export default function BookAppointment() {
         pincode: trimmedPincode,
         latitude: coords.latitude,
         longitude: coords.longitude,
-        diagnostic_package_id: packageId,
+        diagnostic_package_id: packageId ?? undefined,
       })
 
       if (!result.serviceable) {
@@ -577,7 +601,7 @@ export default function BookAppointment() {
         state: form.state.trim(),
         country: form.country.trim() || 'India',
         blood_collection_date: form.appointmentDate,
-        blood_collection_time_slot: form.appointmentTime,
+        blood_collection_time_slot: toApiSlotTime(form.appointmentSlotTime || form.appointmentTime),
         blood_collection_time_slot_id: form.appointmentStmId,
         blood_collection_cabin: null,
         participants_employee_id: normalizedEmployeeId,
@@ -1942,7 +1966,7 @@ function ConfirmStep({
         </div>
         <div className="grid grid-cols-2 gap-3 text-[11px] font-light text-[#ccc]">
           <SummaryItem Icon={Calendar} label={formatBookingDate(form.appointmentDate)} dense />
-          <SummaryItem Icon={Clock} label={form.appointmentTime || '—'} dense />
+          <SummaryItem Icon={Clock} label={toSingleSlotLabel(form.appointmentSlotTime || form.appointmentTime) || '—'} dense />
         </div>
       </section>
 
@@ -2110,6 +2134,13 @@ function ScheduleStep({
           throw new Error('This address is missing a service zone. Go back to Address and continue again.')
         }
 
+        let packageId = form.diagnosticPackageId ?? getDiagnosticPackageId()
+        if (packageId == null && form.gender) {
+          const engagement = await fetchEngagementForGender(form.gender)
+          packageId = engagement.diagnosticPackageId
+          if (!cancelled) update('diagnosticPackageId', packageId)
+        }
+
         const nextSlots = await fetchAvailableSlots({
           provider,
           slotDate: form.appointmentDate,
@@ -2118,7 +2149,7 @@ function ScheduleStep({
           longitude: coords.longitude,
           pincode: form.pincode.trim(),
           hasFemalePatient: form.gender === 'female',
-          diagnosticPackageId: form.diagnosticPackageId ?? getDiagnosticPackageId() ?? undefined,
+          diagnosticPackageId: packageId ?? undefined,
         })
         if (cancelled) return
         setSlots(nextSlots)
@@ -2177,7 +2208,7 @@ function ScheduleStep({
   const selectSlot = (slot: AvailableSlot) => {
     update('appointmentTime', slot.label)
     update('appointmentStmId', slot.stmId)
-    update('appointmentSlotTime', slot.label)
+    update('appointmentSlotTime', slot.slotTime)
   }
 
   return (
@@ -2310,7 +2341,7 @@ function BookingConfirmedStep({
     .filter(Boolean)
     .join(', ')
   const bookingDate = formatBookingDate(form.appointmentDate)
-  const bookingDateTime = `${bookingDate} | ${form.appointmentTime || '—'}`
+  const bookingDateTime = `${bookingDate} | ${toSingleSlotLabel(form.appointmentSlotTime || form.appointmentTime) || '—'}`
   const bookingId = [form.employeeId?.trim(), form.appointmentDate?.replaceAll('-', '')]
     .filter(Boolean)
     .join('-') || 'XYZ123'
