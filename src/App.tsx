@@ -1,9 +1,9 @@
 import BookAppointment from './BookAppointment'
 import { PageBackdrop } from './components/PageBackdrop'
-import { resolveEngagementCode } from './lib/engagementCode'
+import { resolveCampCode } from './lib/campCode'
 import superShyftLogo from './assets/SuperShyft - Logo [Final]-03 7 (1).svg'
 
-function MissingEngagementLink() {
+function MissingCampLink() {
   return (
     <PageBackdrop wide>
       <div className="flex h-full min-w-0 flex-col">
@@ -23,7 +23,7 @@ function MissingEngagementLink() {
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center">
           <p className="text-[18px] font-semibold text-white">Use the link you were sent.</p>
           <p className="mt-2 max-w-[280px] text-[13px] leading-5 text-[#9a9a9a]">
-            This form only opens from a booking link that includes your engagement code.
+            This form only opens from a booking link that includes your camp code.
           </p>
         </div>
       </div>
@@ -32,9 +32,9 @@ function MissingEngagementLink() {
 }
 
 function App() {
-  const engagementCode = resolveEngagementCode()
-  if (!engagementCode) return <MissingEngagementLink />
-  return <BookAppointment />
+  const campCode = resolveCampCode()
+  if (!campCode) return <MissingCampLink />
+  return <BookAppointment campCode={campCode} />
 }
 
 export default App

@@ -1,5 +1,4 @@
 import { saveAuthTokens, applyAuthTokensFromResponse, getAccessToken, getRefreshToken } from '../lib/authStorage'
-import { resolveEngagementCode } from '../lib/engagementCode'
 import { isFrontendOnly } from '../lib/frontendOnly'
 import { getBackendBaseUrl } from './http'
 
@@ -15,11 +14,15 @@ export type OnboardUserForEngagementPayload = {
   city: string
   state: string
   country: string
+  referred_by?: string | null
   blood_collection_date: string | null
   blood_collection_time_slot: string | null
   blood_collection_cabin?: string | null
   participants_employee_id: string
+  participant_department?: string | null
   participant_blood_group: string
+  want_doctor_consultation?: boolean
+  want_nutritionist_consultation?: boolean
   consultations: {
     eye: boolean
     doctor: boolean
@@ -220,10 +223,10 @@ export function saveOnboardTokens(tokens: OnboardTokens): void {
 
 export async function onboardUserForEngagement(
   payload: OnboardUserForEngagementPayload,
+  engagementCode: string,
 ): Promise<OnboardResult> {
-  const engagementCode = resolveEngagementCode()
-  if (!engagementCode) {
-    throw new Error('Use the link you were sent.')
+  if (!engagementCode.trim()) {
+    throw new Error('Select a city to continue.')
   }
 
   if (isFrontendOnly()) {

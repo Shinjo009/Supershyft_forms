@@ -1,33 +1,35 @@
-const STEPS = ['Personal', 'Preview', 'OTP'] as const
-
 type Props = {
+  steps: readonly string[]
   current: number
   maxReachable?: number
   onStepClick?: (step: number) => void
+  complete?: boolean
 }
 
-function activeStep(current: number) {
-  return Math.max(1, Math.min(STEPS.length, current))
+function activeStep(current: number, count: number) {
+  return Math.max(1, Math.min(count, current))
 }
 
-function progressWidthPercent(current: number) {
-  const step = activeStep(current)
-  if (step <= 1) return 8
-  if (step === 2) return 50
-  return 100
+function progressWidthPercent(current: number, count: number, complete: boolean) {
+  if (complete || count <= 1) return 100
+  const step = activeStep(current, count)
+  if (step <= 1) return 6
+  return Math.min(100, ((step - 1) / (count - 1)) * 94)
 }
 
-export function Stepper({ current, maxReachable, onStepClick }: Props) {
-  const stepForA11y = activeStep(current)
-  const fillPercent = progressWidthPercent(current)
+export function Stepper({ steps, current, maxReachable, onStepClick, complete = false }: Props) {
+  const count = Math.max(1, steps.length)
+  const stepForA11y = complete ? count : activeStep(current, count)
+  const fillPercent = progressWidthPercent(current, count, complete)
+  const labelWidth = count >= 5 ? 'w-[56px]' : 'w-[70px]'
 
   return (
     <div
       className="w-full"
       role="navigation"
-      aria-label={`Form progress, step ${stepForA11y} of ${STEPS.length}: ${STEPS[stepForA11y - 1]}`}
+      aria-label={`Form progress, step ${stepForA11y} of ${count}: ${steps[stepForA11y - 1] ?? ''}`}
     >
-      <div className="relative mx-auto w-full max-w-[360px]">
+      <div className="relative mx-auto w-full max-w-[420px]">
         <div className="pointer-events-none absolute left-[15px] right-[15px] top-[14px] h-px rounded-full bg-[#9a9a9a]/50" />
         <div
           className="pointer-events-none absolute left-[15px] top-[14px] h-[2px] rounded-full bg-[#4b8d83] shadow-[0_1px_10px_0_#90df9e]"
@@ -35,10 +37,10 @@ export function Stepper({ current, maxReachable, onStepClick }: Props) {
         />
 
         <div className="relative z-10 flex items-start justify-between">
-          {STEPS.map((label, i) => {
+          {steps.map((label, i) => {
             const step = i + 1
-            const active = current < 5 && step === current
-            const done = (current < 5 && step < current) || current >= 5
+            const active = !complete && step === current
+            const done = complete || (!complete && step < current)
             const reachable = maxReachable ?? current
             const clickable = Boolean(onStepClick) && step !== current && step <= reachable
 
@@ -52,12 +54,12 @@ export function Stepper({ current, maxReachable, onStepClick }: Props) {
             ].join(' ')
 
             const labelClass = [
-              'mt-1.5 w-[60px] text-center text-[11px] leading-none',
+              `mt-1.5 ${labelWidth} text-center text-[11px] leading-none`,
               active ? 'font-semibold text-white' : done ? 'font-medium text-[#4b8d83]' : 'font-medium text-[#9a9a9a]',
             ].join(' ')
 
             return (
-              <div key={label} className="flex w-[60px] flex-col items-center">
+              <div key={label} className={`flex ${labelWidth} flex-col items-center`}>
                 <div className={active ? 'flex h-[30px] items-center' : 'flex h-[36px] items-start pb-1.5'}>
                   {clickable ? (
                     <button

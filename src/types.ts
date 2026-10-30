@@ -1,9 +1,12 @@
+export type YesNo = '' | 'yes' | 'no'
+
 export type FormData = {
   firstName: string
   lastName: string
   phone: string
   email: string
   employeeId: string
+  department: string
   bloodGroup: string
   age: string
   gender: '' | 'male' | 'female'
@@ -12,7 +15,11 @@ export type FormData = {
   pincode: string
   city: string
   state: string
-  doctorConsultation: '' | 'yes' | 'no'
+  country: string
+  referredBy: string
+  doctorConsultation: YesNo
+  nutritionistConsultation: YesNo
+  eyeConsultation: YesNo
   relation: string
   houseNumber: string
   appointmentDate: string
@@ -27,6 +34,7 @@ export const defaultFormData: FormData = {
   phone: '',
   email: '',
   employeeId: '',
+  department: '',
   bloodGroup: '',
   age: '',
   gender: '',
@@ -35,7 +43,11 @@ export const defaultFormData: FormData = {
   pincode: '',
   city: '',
   state: '',
+  country: '',
+  referredBy: '',
   doctorConsultation: '',
+  nutritionistConsultation: '',
+  eyeConsultation: '',
   relation: 'spouse',
   houseNumber: '',
   appointmentDate: '',
