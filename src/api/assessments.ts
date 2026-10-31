@@ -71,16 +71,20 @@ export function sortAssessmentCategoriesForUi(
   })
 }
 
+function normalizeCategoryStatus(status: unknown): string {
+  return String(status || '')
+    .trim()
+    .toLowerCase()
+}
+
+/** API status is `complete` / `incomplete`; some payloads also send `completed`. */
 export function isCategoryCompleted(
   category: AssessmentCategoryStatus,
   completedCategoryIds: number[],
 ): boolean {
   if (completedCategoryIds.includes(Number(category.category_id))) return true
-  return (
-    String(category.status || '')
-      .trim()
-      .toLowerCase() === 'completed'
-  )
+  const status = normalizeCategoryStatus(category.status)
+  return status === 'complete' || status === 'completed' || status === 'done'
 }
 
 function toTimestamp(value: unknown): number {

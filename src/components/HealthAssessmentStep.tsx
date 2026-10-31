@@ -2,8 +2,10 @@ import { ASSESSMENT_CARD_STACK_CLASS, ASSESSMENT_SUBTITLE_CLASS } from './mcq/mc
 import assessmentRadioImg from '../assets/Ellipse 13077.svg'
 import hourglassIcon from '../assets/Group.svg'
 import heartRateIcon from '../assets/figma/heart-rate-assessment.svg'
+import tickCircleSolid from '../assets/figma/tick-circle-solid.svg'
 import {
   categoryDescriptionForKey,
+  isCategoryCompleted,
   type AssessmentCategoryStatus,
 } from '../api/assessments'
 
@@ -11,6 +13,7 @@ function AssessmentCard({
   title,
   description,
   featured,
+  completed = false,
   compact = false,
   onClick,
   disabled = false,
@@ -19,11 +22,25 @@ function AssessmentCard({
   title: string
   description?: string
   featured: boolean
+  completed?: boolean
   compact?: boolean
   onClick?: () => void
   disabled?: boolean
   loading?: boolean
 }) {
+  if (completed) {
+    return (
+      <div
+        className={`flex w-full items-center rounded-xl border border-[rgba(218,193,90,0.5)] bg-white/5 ${compact ? 'p-3.5' : 'p-4'}`}
+      >
+        <div className="flex min-w-0 items-center gap-1.5">
+          <img src={tickCircleSolid} alt="" className="size-[15px] shrink-0" aria-hidden />
+          <span className="text-[14px] font-medium text-white">{title}</span>
+        </div>
+      </div>
+    )
+  }
+
   if (featured) {
     return (
       <button
@@ -70,13 +87,19 @@ export function HealthAssessmentStep({
   isStarting?: boolean
 }) {
   const dense = categories.length >= 4
+  const featuredIndex = Math.max(
+    0,
+    categories.findIndex((category) => !isCategoryCompleted(category, [])),
+  )
   const sections = categories.map((category, index) => {
     const key = String(category.category_key || '').trim().toLowerCase()
+    const completed = isCategoryCompleted(category, [])
     return {
       id: String(category.id || category.category_id || key || index),
       title: category.display_name || category.category_key || 'Assessment',
       description: categoryDescriptionForKey(key),
-      featured: index === 0,
+      completed,
+      featured: !completed && index === featuredIndex,
     }
   })
 
@@ -116,6 +139,7 @@ export function HealthAssessmentStep({
               title={section.title}
               description={section.featured ? section.description : undefined}
               featured={section.featured}
+              completed={section.completed}
               compact={dense}
               onClick={section.featured ? onStartAssessment : undefined}
               disabled={section.featured && (isStarting || categories.length === 0)}

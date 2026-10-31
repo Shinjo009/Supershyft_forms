@@ -112,34 +112,6 @@ import lifestyleHabitsBackgroundSvg from './assets/lifestyle-habits/background.s
 import superShyftLogo from './assets/SuperShyft - Logo [Final]-03 7 (1).svg'
 import bookingSuccessGif from './assets/animation-gif.gif'
 
-function mergeQuestionnaireQuestions(
-  previous: QuestionnaireQuestion[] | undefined,
-  incoming: QuestionnaireQuestion[],
-): QuestionnaireQuestion[] {
-  if (!previous?.length) return incoming
-
-  const incomingById = new Map(incoming.map((question) => [question.question_id, question]))
-  const seen = new Set<number>()
-  const merged: QuestionnaireQuestion[] = []
-
-  for (const question of previous) {
-    const incomingQuestion = incomingById.get(question.question_id)
-    if (!incomingQuestion) {
-      merged.push(question)
-    } else {
-      const answer = incomingQuestion.answer ?? question.answer
-      merged.push(answer === undefined ? incomingQuestion : { ...incomingQuestion, answer })
-    }
-    seen.add(question.question_id)
-  }
-  for (const question of incoming) {
-    if (seen.has(question.question_id)) continue
-    merged.push(question)
-    seen.add(question.question_id)
-  }
-  return merged
-}
-
 const RELATION_OPTIONS = [
   'Parent',
   'Sibling',
@@ -750,9 +722,8 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
     questions: QuestionnaireQuestion[],
     draftAnswers?: Record<number, AnswerValue>,
   ) => {
-    const merged = mergeQuestionnaireQuestions(questionsByCategoryId[categoryId], questions)
     const withDrafts = applyAnswersToQuestions(
-      merged,
+      questions,
       draftAnswers ?? answersByCategoryId[categoryId],
     )
     setQuestionsByCategoryId((prev) => ({ ...prev, [categoryId]: withDrafts }))
@@ -773,7 +744,6 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
 
     const categoryId = Number(category.category_id || 0)
     const instanceId = options?.assessmentInstanceId ?? assessmentInstanceId
-    const usePreview = options?.previewAvailable ?? previewAvailable
     if (!instanceId || categoryId <= 0) {
       logClientError('Assessment category is missing. Go back and continue to Step 2 again.')
       return
@@ -790,23 +760,23 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
 
     const cachedQuestions = questionsByCategoryId[categoryId]
     const beginCategory = (questions: QuestionnaireQuestion[]) => {
-      if (options?.resumeToUnanswered) {
-        const seeded = seedAnswersFromQuestions(questions)
-        const startIndex = firstUnansweredNavigableIndex(questions)
-        setAnswersByCategoryId((prev) => ({ ...prev, [categoryId]: seeded }))
-        setProgressByCategoryId((prev) => ({ ...prev, [categoryId]: startIndex }))
-        if (options.unstartedGoesToHub && !hasSavedAnswers(questions)) {
-          openCategoryQuestions(categoryId, questions, seeded)
-          setStep(6)
-          return
-        }
-        setActiveCategory(category)
+      const seeded = seedAnswersFromQuestions(questions)
+      const startIndex = options?.resumeToUnanswered
+        ? firstUnansweredNavigableIndex(questions)
+        : 0
+      setAnswersByCategoryId((prev) => ({ ...prev, [categoryId]: seeded }))
+      setProgressByCategoryId((prev) => ({ ...prev, [categoryId]: startIndex }))
+      if (
+        options?.resumeToUnanswered &&
+        options.unstartedGoesToHub &&
+        !hasSavedAnswers(questions)
+      ) {
         openCategoryQuestions(categoryId, questions, seeded)
-        setStep(7)
+        setStep(6)
         return
       }
       setActiveCategory(category)
-      openCategoryQuestions(categoryId, questions)
+      openCategoryQuestions(categoryId, questions, seeded)
       setStep(7)
     }
 
@@ -831,7 +801,7 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
         accessToken,
         instanceId,
         categoryId,
-        { includeAllQuestions: usePreview },
+        { includeAllQuestions: true },
       )
       const questions = questionnaire.questions
       if (!Array.isArray(questions) || questions.length === 0) {
@@ -852,7 +822,7 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
         categoryId,
         categoryKey: category.category_key,
         questionCount: questions.length,
-        questionAll: usePreview,
+        questionAll: true,
       })
     } catch (error) {
       if (cachedQuestions?.length) {
@@ -874,7 +844,9 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
   }) => {
     if (isLoadingAssessmentCategories) return
 
-    const usePreview = overrides?.previewAvailable ?? previewAvailable
+    const usePreview = overrides?.resume
+      ? false
+      : (overrides?.previewAvailable ?? previewAvailable)
     const preferredId =
       overrides?.preferredAssessmentInstanceId ?? preferredAssessmentInstanceId
 
@@ -919,12 +891,23 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
         return
       }
 
+      const lastCompleted = [...categories]
+        .reverse()
+        .find((category) => isCategoryCompleted(category, completedIds))
+      const resumeHubStep = lastCompleted
+        ? hubStepForVariant(variantForCategory(lastCompleted))
+        : 6
+      if (lastCompleted) {
+        setHubVariant(variantForCategory(lastCompleted))
+        setHighestHubStep((prev) => Math.max(prev, resumeHubStep))
+      }
+
       await handleLoadCategory(remaining[0], {
-        returnStep: 6,
+        returnStep: resumeHubStep,
         resumeToUnanswered: true,
         unstartedGoesToHub: completedIds.length === 0,
         assessmentInstanceId: result.assessmentInstanceId,
-        previewAvailable: usePreview,
+        previewAvailable: false,
       })
     } catch (error) {
       if (overrides?.resume) persistBookingRef.current = true
@@ -1370,7 +1353,7 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
             )}
             {step === 7 && activeCategory && isAnthroActive ? (
               <AnthropometryStep
-                key={Number(activeCategory.category_id)}
+                key={`${Number(activeCategory.category_id)}-${categoryQuestions.length}`}
                 questions={categoryQuestions}
                 assessmentInstanceId={assessmentInstanceId ?? 1}
                 categoryId={Number(activeCategory.category_id)}
@@ -1380,7 +1363,7 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
             ) : null}
             {step === 7 && activeCategory && !isAnthroActive && categoryQuestions.length > 0 ? (
               <ApiQuestionnaireStep
-                key={Number(activeCategory.category_id)}
+                key={`${Number(activeCategory.category_id)}-${categoryQuestions.length}-${categoryQuestions[0]?.question_id ?? 0}`}
                 title={activeCategory.display_name || 'Assessment'}
                 questions={categoryQuestions}
                 assessmentInstanceId={assessmentInstanceId ?? 1}
