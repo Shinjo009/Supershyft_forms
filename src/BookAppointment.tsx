@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Building2,
@@ -61,9 +61,25 @@ import {
   type QuestionnaireQuestion,
 } from './api/questionnaire'
 import { getAccessToken } from './lib/authStorage'
+import {
+  clearBookingDraft,
+  readBookingDraft,
+  writeBookingDraft,
+} from './lib/bookingResume'
+import {
+  clearAssessmentResume,
+  firstUnansweredNavigableIndex,
+  hasSavedAnswers,
+  readAssessmentResume,
+  writeAssessmentResume,
+} from './lib/assessmentResume'
 import { toUserFacingError } from './lib/userFacingError'
 import { isFrontendOnly } from './lib/frontendOnly'
-import { applyAnswersToQuestions, type AnswerValue } from './lib/questionnaireVisibility'
+import {
+  applyAnswersToQuestions,
+  seedAnswersFromQuestions,
+  type AnswerValue,
+} from './lib/questionnaireVisibility'
 import { getMockQuestionnaireQuestions } from './data/mockApiQuestionnaires'
 /** Validate booking fields with the input regexes before continuing. */
 const ENFORCE_REQUIRED_FIELDS = true
@@ -263,6 +279,10 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
   const [isResendingOtp, setIsResendingOtp] = useState(false)
   const [otpVerified, setOtpVerified] = useState(false)
   const [otpDestinationEmail, setOtpDestinationEmail] = useState('')
+  const [isHydratingResume, setIsHydratingResume] = useState(true)
+  const [isAssessmentResumeOtp, setIsAssessmentResumeOtp] = useState(false)
+  const persistBookingRef = useRef(true)
+  const didHydrateResumeRef = useRef(false)
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     if (uiError) setUiError('')
@@ -296,6 +316,36 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
   useEffect(() => {
     if (bookingPage === 'address' && !includeAddress) setBookingPage('schedule')
   }, [bookingPage, includeAddress])
+
+  useEffect(() => {
+    didHydrateResumeRef.current = false
+    persistBookingRef.current = true
+    setIsHydratingResume(true)
+    setIsAssessmentResumeOtp(false)
+  }, [campCode])
+
+  useEffect(() => {
+    if (isHydratingResume || isLoadingCamp || campLoadError) return
+    if (campOnboarding && campOnboarding.campCode !== campCode) return
+    if (!persistBookingRef.current || isAssessmentResumeOtp) return
+    if (step >= 5) return
+    writeBookingDraft(campCode, {
+      form,
+      bookingPage,
+      maxReachedBookingIndex,
+    })
+  }, [
+    campCode,
+    form,
+    bookingPage,
+    maxReachedBookingIndex,
+    step,
+    isHydratingResume,
+    isLoadingCamp,
+    campLoadError,
+    isAssessmentResumeOtp,
+    campOnboarding,
+  ])
 
   useEffect(() => {
     let cancelled = false
@@ -497,6 +547,18 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
         await verifyBookingOtp({ phone: form.phone.trim() }, otp)
         setOtpVerified(true)
       }
+      if (isAssessmentResumeOtp) {
+        persistBookingRef.current = false
+        clearBookingDraft(campCode)
+        setIsAssessmentResumeOtp(false)
+        const resume = readAssessmentResume(campCode)
+        await handleContinueToAssessment({
+          resume: true,
+          preferredAssessmentInstanceId: resume?.assessmentInstanceId,
+          previewAvailable: resume?.previewAvailable,
+        })
+        return
+      }
       setStep(5)
     } catch (error) {
       logClientError(error, 'Unable to verify OTP.')
@@ -625,6 +687,14 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
       const nextAssessmentInstanceId = onboardResult.assessmentInstanceId ?? null
       setPreviewAvailable(nextPreviewAvailable)
       setPreferredAssessmentInstanceId(nextAssessmentInstanceId)
+      persistBookingRef.current = false
+      clearBookingDraft(campCode)
+      writeAssessmentResume(campCode, {
+        phone: trimmedPhone,
+        email: trimmedEmail,
+        assessmentInstanceId: nextAssessmentInstanceId,
+        previewAvailable: nextPreviewAvailable,
+      })
       if (otpVerified || !trimmedPhone) {
         setStep(5)
         return
@@ -675,62 +745,36 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
     })
   }
 
-  const openCategoryQuestions = (categoryId: number, questions: QuestionnaireQuestion[]) => {
+  const openCategoryQuestions = (
+    categoryId: number,
+    questions: QuestionnaireQuestion[],
+    draftAnswers?: Record<number, AnswerValue>,
+  ) => {
     const merged = mergeQuestionnaireQuestions(questionsByCategoryId[categoryId], questions)
-    const withDrafts = applyAnswersToQuestions(merged, answersByCategoryId[categoryId])
+    const withDrafts = applyAnswersToQuestions(
+      merged,
+      draftAnswers ?? answersByCategoryId[categoryId],
+    )
     setQuestionsByCategoryId((prev) => ({ ...prev, [categoryId]: withDrafts }))
     setCategoryQuestions(withDrafts)
   }
 
-  const handleContinueToAssessment = async (overrides?: {
-    previewAvailable?: boolean
-    preferredAssessmentInstanceId?: number | null
-  }) => {
-    if (isLoadingAssessmentCategories) return
-
-    const usePreview = overrides?.previewAvailable ?? previewAvailable
-    const preferredId =
-      overrides?.preferredAssessmentInstanceId ?? preferredAssessmentInstanceId
-
-    setUiError('')
-    setIsLoadingAssessmentCategories(true)
-
-    try {
-      const accessToken = getAccessToken()
-      const result = await loadAssessmentCategoriesForStep2(accessToken, preferredId)
-      const categories = usePreview
-        ? result.categories.map((category) => ({ ...category, status: 'pending' }))
-        : result.categories
-      setAssessmentInstanceId(result.assessmentInstanceId)
-      setAssessmentCategories(categories)
-      setCompletedCategoryIds(
-        usePreview
-          ? []
-          : categories
-              .filter((category) => isCategoryCompleted(category, []))
-              .map((category) => Number(category.category_id)),
-      )
-      console.info('[assessment] step 2 categories loaded', {
-        assessmentInstanceId: result.assessmentInstanceId,
-        previewAvailable: usePreview,
-        categories: categories.map((c) => c.category_key),
-      })
-      setStep(6)
-    } catch (error) {
-      logClientError(error, 'Unable to load health assessment categories.')
-    } finally {
-      setIsLoadingAssessmentCategories(false)
-    }
-  }
-
   const handleLoadCategory = async (
     category: AssessmentCategoryStatus,
-    options?: { returnStep?: number },
+    options?: {
+      returnStep?: number
+      resumeToUnanswered?: boolean
+      unstartedGoesToHub?: boolean
+      assessmentInstanceId?: number
+      previewAvailable?: boolean
+    },
   ) => {
     if (isLoadingQuestionnaire) return
 
     const categoryId = Number(category.category_id || 0)
-    if (!assessmentInstanceId || categoryId <= 0) {
+    const instanceId = options?.assessmentInstanceId ?? assessmentInstanceId
+    const usePreview = options?.previewAvailable ?? previewAvailable
+    if (!instanceId || categoryId <= 0) {
       logClientError('Assessment category is missing. Go back and continue to Step 2 again.')
       return
     }
@@ -746,6 +790,21 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
 
     const cachedQuestions = questionsByCategoryId[categoryId]
     const beginCategory = (questions: QuestionnaireQuestion[]) => {
+      if (options?.resumeToUnanswered) {
+        const seeded = seedAnswersFromQuestions(questions)
+        const startIndex = firstUnansweredNavigableIndex(questions)
+        setAnswersByCategoryId((prev) => ({ ...prev, [categoryId]: seeded }))
+        setProgressByCategoryId((prev) => ({ ...prev, [categoryId]: startIndex }))
+        if (options.unstartedGoesToHub && !hasSavedAnswers(questions)) {
+          openCategoryQuestions(categoryId, questions, seeded)
+          setStep(6)
+          return
+        }
+        setActiveCategory(category)
+        openCategoryQuestions(categoryId, questions, seeded)
+        setStep(7)
+        return
+      }
       setActiveCategory(category)
       openCategoryQuestions(categoryId, questions)
       setStep(7)
@@ -770,9 +829,9 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
       const accessToken = getAccessToken()
       const questionnaire = await getCategoryQuestionnaire(
         accessToken,
-        assessmentInstanceId,
+        instanceId,
         categoryId,
-        { includeAllQuestions: previewAvailable },
+        { includeAllQuestions: usePreview },
       )
       const questions = questionnaire.questions
       if (!Array.isArray(questions) || questions.length === 0) {
@@ -789,11 +848,11 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
 
       beginCategory(questions)
       console.info('[assessment] category questionnaire loaded', {
-        assessmentInstanceId,
+        assessmentInstanceId: instanceId,
         categoryId,
         categoryKey: category.category_key,
         questionCount: questions.length,
-        questionAll: previewAvailable,
+        questionAll: usePreview,
       })
     } catch (error) {
       if (cachedQuestions?.length) {
@@ -807,6 +866,147 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
       setLoadingCategoryId(null)
     }
   }
+
+  const handleContinueToAssessment = async (overrides?: {
+    previewAvailable?: boolean
+    preferredAssessmentInstanceId?: number | null
+    resume?: boolean
+  }) => {
+    if (isLoadingAssessmentCategories) return
+
+    const usePreview = overrides?.previewAvailable ?? previewAvailable
+    const preferredId =
+      overrides?.preferredAssessmentInstanceId ?? preferredAssessmentInstanceId
+
+    setUiError('')
+    setIsLoadingAssessmentCategories(true)
+
+    try {
+      const accessToken = getAccessToken()
+      const result = await loadAssessmentCategoriesForStep2(accessToken, preferredId)
+      const categories = usePreview
+        ? result.categories.map((category) => ({ ...category, status: 'pending' }))
+        : result.categories
+      const completedIds = usePreview
+        ? []
+        : categories
+            .filter((category) => isCategoryCompleted(category, []))
+            .map((category) => Number(category.category_id))
+      setAssessmentInstanceId(result.assessmentInstanceId)
+      setAssessmentCategories(categories)
+      setCompletedCategoryIds(completedIds)
+      console.info('[assessment] step 2 categories loaded', {
+        assessmentInstanceId: result.assessmentInstanceId,
+        previewAvailable: usePreview,
+        resume: Boolean(overrides?.resume),
+        categories: categories.map((c) => c.category_key),
+      })
+
+      if (!overrides?.resume) {
+        setStep(6)
+        return
+      }
+
+      const remaining = categories.filter(
+        (category) => !isCategoryCompleted(category, completedIds),
+      )
+      if (categories.length > 0 && remaining.length === 0) {
+        setStep(13)
+        return
+      }
+      if (!remaining[0]) {
+        setStep(6)
+        return
+      }
+
+      await handleLoadCategory(remaining[0], {
+        returnStep: 6,
+        resumeToUnanswered: true,
+        unstartedGoesToHub: completedIds.length === 0,
+        assessmentInstanceId: result.assessmentInstanceId,
+        previewAvailable: usePreview,
+      })
+    } catch (error) {
+      if (overrides?.resume) persistBookingRef.current = true
+      logClientError(error, 'Unable to load health assessment categories.')
+    } finally {
+      setIsLoadingAssessmentCategories(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isLoadingCamp || !campOnboarding) return
+    if (campOnboarding.campCode !== campCode) return
+    if (campLoadError) {
+      setIsHydratingResume(false)
+      return
+    }
+    if (didHydrateResumeRef.current) return
+    didHydrateResumeRef.current = true
+
+    const draft = readBookingDraft(campCode)
+    if (draft) {
+      setForm({
+        ...defaultFormData,
+        ...draft.form,
+        gender: draft.form.gender || 'male',
+        country: draft.form.country || 'India',
+      })
+      setBookingPage(draft.bookingPage)
+      setMaxReachedBookingIndex(draft.maxReachedBookingIndex)
+      if (draft.bookingPage === 'otp' && draft.form.phone.trim()) {
+        void sendBookingOtp({ phone: draft.form.phone.trim() })
+          .then((sent) => {
+            if (sent.email) setOtpDestinationEmail(sent.email)
+          })
+          .catch((error) => {
+            logClientError(error, 'Unable to send OTP.')
+          })
+      }
+      setIsHydratingResume(false)
+      return
+    }
+
+    const token = getAccessToken()
+    const resume = readAssessmentResume(campCode)
+    if (!token && !resume?.phone) {
+      setIsHydratingResume(false)
+      return
+    }
+
+    persistBookingRef.current = false
+    clearBookingDraft(campCode)
+
+    if (!token && resume?.phone) {
+      setForm((current) => ({
+        ...current,
+        phone: resume.phone,
+        email: current.email || resume.email,
+      }))
+      setOtpDestinationEmail(resume.email)
+      setIsAssessmentResumeOtp(true)
+      goToBookingPage('otp')
+      void sendBookingOtp({ phone: resume.phone })
+        .then((sent) => {
+          if (sent.email) setOtpDestinationEmail(sent.email)
+        })
+        .catch((error) => {
+          logClientError(error, 'Unable to send OTP.')
+        })
+        .finally(() => {
+          setIsHydratingResume(false)
+        })
+      return
+    }
+
+    void handleContinueToAssessment({
+      resume: true,
+      preferredAssessmentInstanceId: resume?.assessmentInstanceId,
+      previewAvailable: resume?.previewAvailable,
+    }).finally(() => {
+      setIsHydratingResume(false)
+    })
+  }, [campCode, campLoadError, campOnboarding, isLoadingCamp])
 
   const handleStartAssessment = async () => {
     const nextCategory =
@@ -885,6 +1085,7 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
   const handleSubmitCompletedAssessment = async () => {
     if (isSubmittingAssessment) return
     if (!assessmentInstanceId) {
+      clearAssessmentResume(campCode)
       setStep(13)
       return
     }
@@ -909,6 +1110,7 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
     } finally {
       setIsSubmittingAssessment(false)
       setUiError('')
+      clearAssessmentResume(campCode)
       setStep(13)
     }
   }
@@ -920,11 +1122,12 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
     (step > 1 && step !== 5 && step !== 13 && !isInBooking)
   const hideGlobalContinue =
     isLoadingCamp ||
+    isHydratingResume ||
     Boolean(campLoadError) ||
     !isInBooking ||
     bookingPage === 'preview' ||
     bookingPage === 'otp'
-  const hideStepper = step >= 5 || bookingPage === 'otp'
+  const hideStepper = step >= 5 || bookingPage === 'otp' || isHydratingResume
   const hideMainHeader = step === 6 || step === 7 || step === 8 || step === 9 || step === 10 || step === 12
   const confirmStepperBorder = isInBooking && bookingPage === 'preview'
   const stepperSteps = bookingPages.map((page) => BOOKING_PAGE_LABELS[page])
@@ -1072,15 +1275,19 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
                   : 'min-h-0 min-w-0 flex-1 overflow-x-visible overflow-y-auto px-2 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
             }
           >
-            {isLoadingCamp ? (
-              <p className="pt-8 text-center text-[14px] text-[#9a9a9a]">Loading camp details...</p>
+            {isLoadingCamp || isHydratingResume ? (
+              <p className="pt-8 text-center text-[14px] text-[#9a9a9a]">
+                {isHydratingResume && !isLoadingCamp
+                  ? 'Loading your progress...'
+                  : 'Loading camp details...'}
+              </p>
             ) : campLoadError ? (
               <div className="flex flex-col items-center gap-2 pt-8 text-center">
                 <p className="text-[18px] font-semibold text-white">This camp link is not available.</p>
                 <p className="max-w-[280px] text-[13px] leading-5 text-[#9a9a9a]">{campLoadError}</p>
               </div>
             ) : null}
-            {isInBooking && bookingPage === 'personal' && !isLoadingCamp && !campLoadError && (
+            {isInBooking && bookingPage === 'personal' && !isLoadingCamp && !isHydratingResume && !campLoadError && (
               <PersonalStep
                 form={form}
                 update={update}
@@ -1101,7 +1308,7 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
                 }}
               />
             )}
-            {isInBooking && bookingPage === 'address' && !isLoadingCamp && !campLoadError && (
+            {isInBooking && bookingPage === 'address' && !isLoadingCamp && !isHydratingResume && !campLoadError && (
               <AddressStep
                 form={form}
                 update={update}
@@ -1110,7 +1317,7 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
                 fields={fields}
               />
             )}
-            {isInBooking && bookingPage === 'schedule' && !isLoadingCamp && !campLoadError && (
+            {isInBooking && bookingPage === 'schedule' && !isLoadingCamp && !isHydratingResume && !campLoadError && (
               <ScheduleStep
                 city={selectedEngagement?.city || form.city}
                 schedule={schedule}
@@ -1131,7 +1338,7 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
                 onTimeChange={(slot) => update('appointmentTime', slot)}
               />
             )}
-            {isInBooking && bookingPage === 'preview' && (
+            {isInBooking && bookingPage === 'preview' && !isHydratingResume && (
               <ConfirmStep
                 form={form}
                 onEdit={(page) => goToBookingPage(page)}
@@ -1142,7 +1349,7 @@ export default function BookAppointment({ campCode }: { campCode: string }) {
                 consultationOffers={consultationOffers}
               />
             )}
-            {isInBooking && bookingPage === 'otp' && (
+            {isInBooking && bookingPage === 'otp' && !isHydratingResume && (
               <OtpVerifyStep
                 key={form.phone}
                 phone={form.phone}
