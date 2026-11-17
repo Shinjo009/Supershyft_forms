@@ -8,6 +8,10 @@ import {
   type EngagementSchedule,
 } from '../api/engagements'
 import { parseIsoDate } from '../lib/bookingDates'
+import { resolveCampCode } from '../lib/campCode'
+
+const FORCE_ONE_CAMP_CODE = 'TKvegqE5ITcR'
+const FORCE_ONE_TIME_LABEL = '7:30 AM - 10:30 AM'
 
 type Props = {
   city: string
@@ -81,10 +85,13 @@ export function ScheduleStep({
       ? getCabinDay(schedule, selectedCabin.name, appointmentDate)
       : null
   const timeSlots = cabinDay?.slots ?? []
+  const isForceOneCamp = resolveCampCode() === FORCE_ONE_CAMP_CODE
   const timeHint =
-    timeSlots.length > 0
-      ? `${timeSlots[0].display} – ${timeSlots[timeSlots.length - 1].display}`
-      : ''
+    isForceOneCamp
+      ? FORCE_ONE_TIME_LABEL
+      : timeSlots.length > 0
+        ? `${timeSlots[0].display} – ${timeSlots[timeSlots.length - 1].display}`
+        : ''
 
   const selectedSlotClass =
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
@@ -244,13 +251,26 @@ export function ScheduleStep({
         ) : !selectedCabin ? (
           <p className="text-[12px] font-light text-[#9a9a9a]">Select a cabin to see time slots.</p>
         ) : (
-          <div className="grid w-full grid-cols-3 gap-x-2 gap-y-3 px-1 sm:grid-cols-5 lg:grid-cols-10">
+          <div
+            className={
+              isForceOneCamp
+                ? 'flex w-full px-1'
+                : 'grid w-full grid-cols-3 gap-x-2 gap-y-3 px-1 sm:grid-cols-5 lg:grid-cols-10'
+            }
+          >
             {timeSlots.map((slot) => {
               const selected = appointmentTime === slot.display
               const remaining = slot.spotLeft
               const isFull = remaining <= 0
               return (
-                <div key={slot.hhmm} className="flex min-w-0 flex-col items-center gap-1">
+                <div
+                  key={slot.hhmm}
+                  className={
+                    isForceOneCamp
+                      ? 'flex w-full max-w-[220px] flex-col items-center gap-1'
+                      : 'flex min-w-0 flex-col items-center gap-1'
+                  }
+                >
                   <button
                     type="button"
                     disabled={isFull}
@@ -266,7 +286,9 @@ export function ScheduleStep({
                       isFull ? 'cursor-not-allowed opacity-40 hover:scale-100' : '',
                     ].join(' ')}
                   >
-                    <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>{slot.display}</span>
+                    <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>
+                      {isForceOneCamp ? FORCE_ONE_TIME_LABEL : slot.display}
+                    </span>
                   </button>
                   <span className="text-[9px] font-light leading-none text-[#41ab99]">
                     {isFull ? 'Full' : `${remaining} slot${remaining === 1 ? '' : 's'} left`}
