@@ -10,9 +10,9 @@ export type OnboardUserForEngagementPayload = {
   phone: string
   gender: string
   address: string
-  pincode: string
+  pincode: string | null
   city: string
-  state: string
+  state: string | null
   country: string
   referred_by?: string | null
   blood_collection_date: string | null
@@ -20,7 +20,7 @@ export type OnboardUserForEngagementPayload = {
   blood_collection_cabin?: string | null
   participants_employee_id: string
   participant_department?: string | null
-  participant_blood_group: string
+  participant_blood_group: string | null
   want_doctor_consultation?: boolean
   want_nutritionist_consultation?: boolean
   consultations: {
