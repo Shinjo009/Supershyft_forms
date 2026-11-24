@@ -75,7 +75,7 @@ const logClientError = (message: string) => {
 const TEST_EMPLOYEE_ID = 'HRM000'
 /** Celebal-only; do not share key with CBTW or other company forms on the same domain. */
 const BOOKED_EMPLOYEE_IDS_STORAGE_KEY = 'celebalBookedEmployeeIds'
-/** 156 Celebal employee IDs plus {@link TEST_EMPLOYEE_ID}. */
+/** 157 Celebal employee IDs plus {@link TEST_EMPLOYEE_ID}. */
 const ALLOWED_EMPLOYEE_IDS = new Set([
   TEST_EMPLOYEE_ID,
   'HRM4196', 'HRM4039', 'HRM4032', 'HRM3803', 'HRM3666', 'HRM3598',
@@ -104,7 +104,7 @@ const ALLOWED_EMPLOYEE_IDS = new Set([
   'HRM1152', 'HRM6819', 'HRM4091', 'HRM5631', 'HRM7197', 'HRM7059',
   'HRM6814', 'HRM7195', 'HRM6986', 'HRM6241', 'HRM6881', 'HRM7273',
   'HRM7198', 'HRM7127', 'HRM7012', 'HRM292', 'HRM378', 'HRM7292',
-  'HRM7294', 'HRM7352',
+  'HRM7294', 'HRM7352', 'HRM7403',
 ])
 
 function getBookedEmployeeIds(): Set<string> {
