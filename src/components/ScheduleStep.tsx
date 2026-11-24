@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import {
+  formatPreferredTimeHint,
   getCabinDay,
   getCabinsForDate,
   getAllScheduleDates,
@@ -86,12 +87,10 @@ export function ScheduleStep({
       : null
   const timeSlots = cabinDay?.slots ?? []
   const isForceOneCamp = resolveCampCode() === FORCE_ONE_CAMP_CODE
-  const timeHint =
-    isForceOneCamp
-      ? FORCE_ONE_TIME_LABEL
-      : timeSlots.length > 0
-        ? `${timeSlots[0].display} – ${timeSlots[timeSlots.length - 1].display}`
-        : ''
+  const usesRangeLabels = (cabinDay?.slotDuration ?? 0) > 0
+  const timeHint = isForceOneCamp
+    ? FORCE_ONE_TIME_LABEL
+    : formatPreferredTimeHint(timeSlots, cabinDay?.slotDuration ?? 0)
 
   const selectedSlotClass =
     'bg-[radial-gradient(50.74%_50.76%_at_50%_50%,_#11795F_0%,_#1C493D_100%)] border-transparent'
@@ -253,8 +252,8 @@ export function ScheduleStep({
         ) : (
           <div
             className={
-              isForceOneCamp
-                ? 'flex w-full px-1'
+              isForceOneCamp || usesRangeLabels
+                ? 'flex w-full flex-wrap gap-x-2 gap-y-3 px-1'
                 : 'grid w-full grid-cols-3 gap-x-2 gap-y-3 px-1 sm:grid-cols-5 lg:grid-cols-10'
             }
           >
@@ -266,8 +265,8 @@ export function ScheduleStep({
                 <div
                   key={slot.hhmm}
                   className={
-                    isForceOneCamp
-                      ? 'flex w-full max-w-[220px] flex-col items-center gap-1'
+                    isForceOneCamp || usesRangeLabels
+                      ? 'flex w-auto max-w-full flex-col items-center gap-1'
                       : 'flex min-w-0 flex-col items-center gap-1'
                   }
                 >
@@ -281,12 +280,18 @@ export function ScheduleStep({
                     }}
                     aria-pressed={selected}
                     className={[
-                      'flex h-10 w-full items-center justify-center rounded-full border text-[12px] font-medium transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                      'flex h-10 items-center justify-center rounded-full border px-4 text-[12px] font-medium transition duration-200 hover:z-[1] hover:scale-[1.03]',
+                      isForceOneCamp || usesRangeLabels ? 'w-auto min-w-[11.5rem]' : 'w-full',
                       selected ? selectedSlotClass : idleSlotClass,
                       isFull ? 'cursor-not-allowed opacity-40 hover:scale-100' : '',
                     ].join(' ')}
                   >
-                    <span className={selected ? 'text-white' : 'text-[#9a9a9a]/80'}>
+                    <span
+                      className={[
+                        'whitespace-nowrap',
+                        selected ? 'text-white' : 'text-[#9a9a9a]/80',
+                      ].join(' ')}
+                    >
                       {isForceOneCamp ? FORCE_ONE_TIME_LABEL : slot.display}
                     </span>
                   </button>

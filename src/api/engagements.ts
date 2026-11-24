@@ -16,6 +16,8 @@ export type CabinDay = {
   name: string
   key: string
   slots: EngagementSlot[]
+  /** Minutes per slot from API `slot_duration`. Used to show start–end ranges. */
+  slotDuration: number
 }
 
 export type EngagementSchedule = {
@@ -76,16 +78,45 @@ function minutesFromHHmm(value: string): number | null {
 export function toDisplayTimeSlot(value: string): string {
   const minutes = minutesFromHHmm(value)
   if (minutes === null) return value
-  const hour24 = Math.floor(minutes / 60)
+  const hour24 = Math.floor(minutes / 60) % 24
   const minute = minutes % 60
   const meridiem = hour24 >= 12 ? 'PM' : 'AM'
   const hour12 = hour24 % 12 || 12
   return `${hour12}:${String(minute).padStart(2, '0')} ${meridiem}`
 }
 
+/** Start time + duration minutes → "7:00 AM – 9:00 AM". */
+export function toDisplayTimeSlotRange(startHHmm: string, durationMinutes: number): string {
+  const startLabel = toDisplayTimeSlot(startHHmm)
+  if (!(durationMinutes > 0)) return startLabel
+  const startMinutes = minutesFromHHmm(startHHmm)
+  if (startMinutes === null) return startLabel
+  const endTotal = startMinutes + durationMinutes
+  const endHHmm = `${String(Math.floor(endTotal / 60) % 24).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}`
+  return `${startLabel} – ${toDisplayTimeSlot(endHHmm)}`
+}
+
+/** Preferred-time hint: first start through last start + duration. */
+export function formatPreferredTimeHint(
+  slots: EngagementSlot[],
+  slotDuration: number,
+): string {
+  if (slots.length === 0) return ''
+  if (slotDuration > 0) {
+    const firstStart = minutesFromHHmm(slots[0].hhmm)
+    const lastStart = minutesFromHHmm(slots[slots.length - 1].hhmm)
+    if (firstStart === null || lastStart === null) return slots[0].display
+    const overallMinutes = lastStart - firstStart + slotDuration
+    return toDisplayTimeSlotRange(slots[0].hhmm, Math.max(slotDuration, overallMinutes))
+  }
+  if (slots.length === 1) return slots[0].display
+  return `${slots[0].display} – ${slots[slots.length - 1].display}`
+}
+
 export function displaySlotToHHmm(slot: string): string {
-  const normalized = slot.trim()
-  const match = normalized.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  // Ranges are stored as "7:00 AM – 9:00 AM"; API still needs the start time.
+  const startPart = slot.split(/\s*[–-]\s*/)[0]?.trim() || slot.trim()
+  const match = startPart.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
   if (match) {
     let hour = Number.parseInt(match[1], 10)
     const minute = match[2]
@@ -94,7 +125,7 @@ export function displaySlotToHHmm(slot: string): string {
     if (meridiem === 'AM' && hour === 12) hour = 0
     return `${String(hour).padStart(2, '0')}:${minute}`
   }
-  return normalizeHHmm(normalized)
+  return normalizeHHmm(startPart)
 }
 
 function dayLookupKey(cabinName: string, date: string): string {
@@ -158,7 +189,13 @@ export function resolveCabinKey(
   return getCabinDay(schedule, cabinName, date)?.key || cabinName
 }
 
-function parseAvailableSlots(value: unknown): EngagementSlot[] {
+function slotDisplayLabel(hhmm: string, durationMinutes: number): string {
+  return durationMinutes > 0
+    ? toDisplayTimeSlotRange(hhmm, durationMinutes)
+    : toDisplayTimeSlot(hhmm)
+}
+
+function parseAvailableSlots(value: unknown, durationMinutes: number): EngagementSlot[] {
   if (!Array.isArray(value)) return []
   return value.flatMap((item) => {
     const row = asRecord(item)
@@ -168,7 +205,7 @@ function parseAvailableSlots(value: unknown): EngagementSlot[] {
     return [
       {
         hhmm,
-        display: toDisplayTimeSlot(hhmm),
+        display: slotDisplayLabel(hhmm, durationMinutes),
         spotLeft: Math.max(0, readNumber(row.spot_left ?? row.spots_left ?? row.capacity, 0)),
       },
     ]
@@ -183,7 +220,7 @@ function generateSlots(startTime: string, endTime: string, duration: number, spo
   const slots: EngagementSlot[] = []
   for (let total = start; total <= end; total += step) {
     const hhmm = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
-    slots.push({ hhmm, display: toDisplayTimeSlot(hhmm), spotLeft })
+    slots.push({ hhmm, display: slotDisplayLabel(hhmm, duration), spotLeft })
   }
   return slots
 }
@@ -195,16 +232,18 @@ function parseCabinDay(value: unknown, index: number): CabinDay | null {
 
   const name = readString(row.cabin_name) || readString(row.name) || `Cabin ${index + 1}`
   const key = readString(row.cabin_key) || readString(row.key) || name
-  let slots = parseAvailableSlots(row.available_slots)
+  const duration = Math.max(0, readNumber(row.slot_duration, 0))
+  let slots = parseAvailableSlots(row.available_slots, duration)
+  let slotDuration = duration
   if (slots.length === 0) {
     const start = normalizeHHmm(readString(row.start_time)) || '09:00'
     const end = normalizeHHmm(readString(row.end_time)) || '13:50'
-    const duration = readNumber(row.slot_duration, 10)
+    slotDuration = duration > 0 ? duration : 10
     const capacity = readNumber(row.capacity_per_slot, 6)
-    slots = generateSlots(start, end, duration, capacity)
+    slots = generateSlots(start, end, slotDuration, capacity)
   }
   if (!name) return null
-  return { name, key, slots }
+  return { name, key, slots, slotDuration }
 }
 
 function emptySchedule(engagementCode: string): EngagementSchedule {
@@ -285,7 +324,7 @@ function buildFallbackSchedule(city: string, engagementCode: string): Engagement
     hhmm: displaySlotToHHmm(display),
     spotLeft: 6,
   }))
-  const cabin: CabinDay = { name: 'Cabin 1', key: 'cabin-1', slots }
+  const cabin: CabinDay = { name: 'Cabin 1', key: 'cabin-1', slots, slotDuration: 10 }
   for (const date of getCityBookableDates(city).map(toIsoDate)) {
     recordScheduleDate(schedule, date, true)
     addCabinDay(schedule, date, cabin)
